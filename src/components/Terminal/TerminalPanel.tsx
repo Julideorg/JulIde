@@ -34,10 +34,44 @@ const XTERM_THEME = {
 interface TermInstance {
   terminal: Terminal;
   fitAddon: FitAddon;
+  wrapper: HTMLDivElement;
   unlisten: (() => void) | null;
+  lastRows: number;
+  lastCols: number;
 }
 
 let termCounter = 0;
+
+// Instances live at module level so they survive TerminalPanel unmounts:
+// PTY output keeps flowing into the (detached) xterm buffers, and the DOM
+// wrappers are reparented on remount, preserving scrollback and REPL state.
+// The backend keeps its side of the session alive too (pty_create is
+// idempotent), so a remount re-attaches instead of restarting the process.
+const termInstances = new Map<string, TermInstance>();
+
+// Fit the terminal to its container and propagate the new size to the PTY,
+// but only when the geometry actually changed: redundant resizes make
+// Windows ConPTY repaint the whole viewport (flicker, mangled scrollback).
+function fitAndResize(sessionId: string) {
+  const inst = termInstances.get(sessionId);
+  if (!inst) return;
+  try {
+    inst.fitAddon.fit();
+  } catch {
+    return; // container has no layout yet
+  }
+  const { rows, cols } = inst.terminal;
+  if (rows === inst.lastRows && cols === inst.lastCols) return;
+  inst.lastRows = rows;
+  inst.lastCols = cols;
+  invoke("pty_resize", { sessionId, rows, cols }).catch(() => {});
+}
+
+// The backend prunes dead sessions and emits pty-exit; tell the user.
+listen<PtyOutputEvent>("pty-exit", (event) => {
+  const inst = termInstances.get(event.payload.session_id);
+  inst?.terminal.write("\r\n\x1b[31m[process exited]\x1b[0m\r\n");
+}).catch(() => {}); // not running inside Tauri (tests, storybook)
 
 function injectRevise(sessionId: string, delayMs = 2500) {
   setTimeout(() => {
@@ -55,24 +89,33 @@ export function TerminalPanel() {
   const removeTerminalSession = useIdeStore((s) => s.removeTerminalSession);
   const setActiveTerminal = useIdeStore((s) => s.setActiveTerminal);
 
-  const instancesRef = useRef<Map<string, TermInstance>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
-  const initialized = useRef(false);
 
-  // Create initial terminal session on first mount
+  // Create the initial terminal session once. Guarded by store state (not a
+  // component ref) so a remount doesn't add a duplicate "Terminal 1".
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
+    if (useIdeStore.getState().terminalSessions.length > 0) return;
     const id = `terminal-${++termCounter}`;
     addTerminalSession({ id, name: "Terminal 1" });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Create xterm instances for sessions that don't have one
+  // Create xterm instances for sessions that don't have one, and re-attach
+  // surviving instances after a remount.
   useEffect(() => {
     if (!containerRef.current) return;
 
     for (const session of sessions) {
-      if (instancesRef.current.has(session.id)) continue;
+      const existing = termInstances.get(session.id);
+      if (existing) {
+        // Remounted: reparent the wrapper — buffer and PTY stay intact.
+        if (existing.wrapper.parentElement !== containerRef.current) {
+          containerRef.current.appendChild(existing.wrapper);
+          existing.wrapper.style.display =
+            session.id === activeTerminalId ? "block" : "none";
+          setTimeout(() => fitAndResize(session.id), 50);
+        }
+        continue;
+      }
 
       const term = new Terminal({
         cursorBlink: true,
@@ -96,38 +139,48 @@ export function TerminalPanel() {
 
       term.open(wrapper);
 
-      const instance: TermInstance = { terminal: term, fitAddon, unlisten: null };
-      instancesRef.current.set(session.id, instance);
+      const instance: TermInstance = {
+        terminal: term,
+        fitAddon,
+        wrapper,
+        unlisten: null,
+        lastRows: term.rows,
+        lastCols: term.cols,
+      };
+      // Register before the async setup so a concurrent effect run
+      // (StrictMode) hits the re-attach branch instead of creating twice.
+      termInstances.set(session.id, instance);
 
       // Send keystrokes to PTY
       term.onData((data) => {
         invoke("pty_write", { sessionId: session.id, data }).catch(console.error);
       });
 
-      // Start PTY session
+      // Start PTY session; returns false when a live session with this id
+      // already exists (e.g. after a page reload) and we just re-attach.
       const sessionId = session.id;
       const setup = async () => {
         try {
           const storeState = useIdeStore.getState();
           if (storeState.containerMode && storeState.containerId) {
-            await invoke("container_pty_create", {
+            await invoke<boolean>("container_pty_create", {
               sessionId,
               containerId: storeState.containerId,
               command: null,
               workingDir: null,
             });
           } else if (session.type === "shell") {
-            await invoke("pty_create_shell", {
+            await invoke<boolean>("pty_create_shell", {
               sessionId,
               workingDir: workspacePath ?? null,
             });
           } else {
-            await invoke("pty_create", {
+            const created = await invoke<boolean>("pty_create", {
               sessionId,
               juliaPath: null,
               projectPath: workspacePath ?? null,
             });
-            injectRevise(sessionId);
+            if (created) injectRevise(sessionId);
           }
         } catch (e) {
           term.writeln(`\x1b[31mFailed to start terminal: ${e}\x1b[0m`);
@@ -141,7 +194,7 @@ export function TerminalPanel() {
       };
 
       setup();
-      setTimeout(() => fitAddon.fit(), 100);
+      setTimeout(() => fitAndResize(sessionId), 100);
     }
   }, [sessions, activeTerminalId, workspacePath]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -154,10 +207,10 @@ export function TerminalPanel() {
     });
     // Fit the active terminal
     if (activeTerminalId) {
-      const inst = instancesRef.current.get(activeTerminalId);
+      const inst = termInstances.get(activeTerminalId);
       if (inst) {
         setTimeout(() => {
-          inst.fitAddon.fit();
+          fitAndResize(activeTerminalId);
           inst.terminal.focus();
         }, 50);
       }
@@ -169,15 +222,7 @@ export function TerminalPanel() {
     if (!containerRef.current) return;
     const observer = new ResizeObserver(() => {
       if (activeTerminalId) {
-        const inst = instancesRef.current.get(activeTerminalId);
-        if (inst) {
-          inst.fitAddon.fit();
-          invoke("pty_resize", {
-            sessionId: activeTerminalId,
-            rows: inst.terminal.rows,
-            cols: inst.terminal.cols,
-          }).catch(() => {});
-        }
+        fitAndResize(activeTerminalId);
       }
     });
     observer.observe(containerRef.current);
@@ -191,14 +236,12 @@ export function TerminalPanel() {
   }, [addTerminalSession]);
 
   const closeTerminal = useCallback((id: string) => {
-    const inst = instancesRef.current.get(id);
+    const inst = termInstances.get(id);
     if (inst) {
       inst.unlisten?.();
       inst.terminal.dispose();
-      instancesRef.current.delete(id);
-      // Remove the DOM wrapper
-      const wrapper = containerRef.current?.querySelector(`[data-session-id="${id}"]`);
-      wrapper?.remove();
+      termInstances.delete(id);
+      inst.wrapper.remove();
     }
     invoke("pty_close", { sessionId: id }).catch(() => {});
     removeTerminalSession(id);
@@ -217,20 +260,11 @@ export function TerminalPanel() {
   const activeBottomPanel = useIdeStore((s) => s.activeBottomPanel);
   useEffect(() => {
     if (activeBottomPanel !== "terminal" || !activeTerminalId) return;
-    const inst = instancesRef.current.get(activeTerminalId);
+    const inst = termInstances.get(activeTerminalId);
     if (!inst) return;
     const t = setTimeout(() => {
-      try {
-        inst.fitAddon.fit();
-      } catch {
-        // fit() can throw if the container has no layout yet; ignore.
-      }
+      fitAndResize(activeTerminalId);
       inst.terminal.focus();
-      invoke("pty_resize", {
-        sessionId: activeTerminalId,
-        rows: inst.terminal.rows,
-        cols: inst.terminal.cols,
-      }).catch(() => {});
     }, 50);
     return () => clearTimeout(t);
   }, [activeBottomPanel, activeTerminalId]);

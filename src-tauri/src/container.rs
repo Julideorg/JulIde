@@ -1,7 +1,6 @@
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::io::Read;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use tauri::Emitter;
@@ -1229,7 +1228,11 @@ pub async fn container_pty_create(
     container_id: String,
     command: Option<String>,
     working_dir: Option<String>,
-) -> Result<(), String> {
+) -> Result<bool, String> {
+    if crate::pty::session_exists(&session_id) {
+        return Ok(false);
+    }
+
     let rt = get_runtime()?;
 
     let pty_system = portable_pty::native_pty_system();
@@ -1275,42 +1278,9 @@ pub async fn container_pty_create(
 
     let _child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
 
-    let writer = pair.master.take_writer().map_err(|e| e.to_string())?;
-    let mut reader = pair.master.try_clone_reader().map_err(|e| e.to_string())?;
+    crate::pty::register_session(&app, &session_id, pair.master)?;
 
-    {
-        let mut sessions = crate::pty::PTY_SESSIONS.lock().unwrap();
-        sessions.insert(
-            session_id.clone(),
-            crate::pty::PtySession {
-                writer,
-                master: pair.master,
-            },
-        );
-    }
-
-    let app_clone = app.clone();
-    let sid = session_id.clone();
-    std::thread::spawn(move || {
-        let mut buf = [0u8; 4096];
-        loop {
-            match reader.read(&mut buf) {
-                Ok(0) | Err(_) => break,
-                Ok(n) => {
-                    let data = String::from_utf8_lossy(&buf[..n]).to_string();
-                    let _ = app_clone.emit(
-                        "pty-output",
-                        crate::pty::PtyOutputEvent {
-                            session_id: sid.clone(),
-                            data,
-                        },
-                    );
-                }
-            }
-        }
-    });
-
-    Ok(())
+    Ok(true)
 }
 
 // ─── Container Julia Run ─────────────────────────────────────────────────────

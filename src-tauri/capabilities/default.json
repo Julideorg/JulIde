@@ -17,6 +17,8 @@
     "fs:allow-exists",
     "fs:allow-stat",
     "dialog:allow-open",
-    "dialog:allow-save"
+    "dialog:allow-save",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text"
   ]
 }
