@@ -1,63 +1,101 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Trash2, ChevronLeft, ChevronRight, Maximize2, Minimize2 } from "lucide-react";
 import { useIdeStore } from "../../stores/useIdeStore";
 
-interface PlotEntry {
-  id: string;
-  type: string;
-  data: string;
-  timestamp: number;
+// Helper to convert base64 to Blob efficiently using modern browser APIs
+function base64ToBlob(base64: string, type: string): Blob {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return new Blob([bytes], { type });
 }
 
 export function PlotPane() {
+  // Selector optimization: Only grab output if you must, but filtering it inside useMemo is the key
   const output = useIdeStore((s) => s.output);
-  const [plots, setPlots] = useState<PlotEntry[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [expanded, setExpanded] = useState(false);
+  const [clearedTimestamp, setClearedTimestamp] = useState<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Extract plots from output (any MIME output with image/svg/html)
-  useEffect(() => {
-    const plotLines = output.filter(
+  // 1. Optimized filtering: Only recalculate when output array reference changes
+  const plotLines = useMemo(() => {
+    return output.filter(
       (line) =>
+        line.timestamp > clearedTimestamp &&
         line.mime &&
-        (line.mime.type === "image/png" ||
-          line.mime.type === "image/jpeg" ||
-          line.mime.type === "image/gif" ||
-          line.mime.type === "image/svg+xml" ||
-          line.mime.type === "text/html")
+        (line.mime.type.startsWith("image/") || line.mime.type === "text/html")
     );
-    const newPlots: PlotEntry[] = plotLines.map((line) => ({
-      id: line.id,
-      type: line.mime!.type,
-      data: line.mime!.data,
-      timestamp: line.timestamp,
-    }));
+  }, [output, clearedTimestamp]);
 
-    setPlots(newPlots);
-    // Auto-navigate to latest plot
-    if (newPlots.length > plots.length) {
-      setCurrentIndex(newPlots.length - 1);
+  // Track active line to prevent unnecessary URL recreations
+  const activeLine = plotLines[currentIndex];
+  const activeLineKey = activeLine ? `${activeLine.timestamp}-${currentIndex}` : null;
+
+  // State to hold the safely generated object URL
+  const [plotData, setPlotData] = useState<{ url: string; type: string } | null>(null);
+
+  // 2. Safely track history length to auto-navigate to newer plots
+  const prevLengthRef = useRef(plotLines.length);
+
+  useEffect(() => {
+    if (plotLines.length > prevLengthRef.current) {
+      setCurrentIndex(plotLines.length - 1);
+    } else if (currentIndex >= plotLines.length) {
+      setCurrentIndex(Math.max(0, plotLines.length - 1));
     }
-  }, [output]); // eslint-disable-line react-hooks/exhaustive-deps
+    prevLengthRef.current = plotLines.length;
+  }, [plotLines.length, currentIndex]);
+
+  // 3. Correct Side-Effect Management for Object URLs
+  useEffect(() => {
+    if (!activeLine || !activeLine.mime) {
+      setPlotData(null);
+      return;
+    }
+
+    let active = true;
+    let objectUrl: string | null = null;
+
+    try {
+      const { type, data } = activeLine.mime;
+      const blob = base64ToBlob(data, type);
+      objectUrl = URL.createObjectURL(blob);
+
+      if (active) {
+        setPlotData({ url: objectUrl, type });
+      }
+    } catch (err) {
+      console.error("Failed to process plot data:", err);
+      if (active) setPlotData(null);
+    }
+
+    // Strict cleanup: Revokes the URL precisely when the active plot changes or unmounts
+    return () => {
+      active = false;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [activeLineKey]); // Rely on a specific primitive key instead of object reference
 
   const clearPlots = () => {
-    setPlots([]);
+    setClearedTimestamp(Date.now());
     setCurrentIndex(0);
   };
 
-  const goPrev = () => setCurrentIndex(Math.max(0, currentIndex - 1));
-  const goNext = () => setCurrentIndex(Math.min(plots.length - 1, currentIndex + 1));
-
-  const currentPlot = plots[currentIndex];
+  const goPrev = () => setCurrentIndex((prev) => Math.max(0, prev - 1));
+  const goNext = () => setCurrentIndex((prev) => Math.min(plotLines.length - 1, prev + 1));
 
   return (
     <div className={`plot-pane ${expanded ? "plot-pane-expanded" : ""}`}>
       <div className="plot-pane-toolbar">
         <span className="plot-pane-title">Plots</span>
-        {plots.length > 0 && (
+        {plotLines.length > 0 && (
           <span className="plot-pane-counter">
-            {currentIndex + 1} / {plots.length}
+            {currentIndex + 1} / {plotLines.length}
           </span>
         )}
         <div className="plot-pane-actions">
@@ -72,7 +110,7 @@ export function PlotPane() {
           <button
             className="plot-pane-btn"
             onClick={goNext}
-            disabled={currentIndex >= plots.length - 1}
+            disabled={currentIndex >= plotLines.length - 1}
             title="Next plot"
           >
             <ChevronRight size={14} />
@@ -95,35 +133,25 @@ export function PlotPane() {
       </div>
 
       <div className="plot-pane-content" ref={containerRef}>
-        {plots.length === 0 ? (
+        {plotLines.length === 0 ? (
           <div className="plot-pane-empty">
             <p>No plots yet</p>
             <p className="plot-pane-hint">Run Julia code that generates plots (Plots.jl, Makie.jl, etc.)</p>
           </div>
-        ) : currentPlot ? (
+        ) : plotData ? (
           <div className="plot-pane-display">
-            {(currentPlot.type === "image/png" ||
-              currentPlot.type === "image/jpeg" ||
-              currentPlot.type === "image/gif") && (
-              <img
-                src={`data:${currentPlot.type};base64,${currentPlot.data}`}
-                className="plot-pane-image"
-                alt={`Plot ${currentIndex + 1}`}
-              />
-            )}
-            {currentPlot.type === "image/svg+xml" && (
-              <img
-                src={`data:image/svg+xml;base64,${currentPlot.data}`}
-                className="plot-pane-image"
-                alt={`SVG Plot ${currentIndex + 1}`}
-              />
-            )}
-            {currentPlot.type === "text/html" && (
+            {plotData.type === "text/html" ? (
               <iframe
-                srcDoc={atob(currentPlot.data)}
+                src={plotData.url}
                 className="plot-pane-iframe"
                 sandbox="allow-scripts"
                 title={`HTML Plot ${currentIndex + 1}`}
+              />
+            ) : (
+              <img
+                src={plotData.url}
+                className="plot-pane-image"
+                alt={`Plot ${currentIndex + 1}`}
               />
             )}
           </div>
