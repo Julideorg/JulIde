@@ -1,5 +1,5 @@
 import { installClipboardPolyfill } from "./services/clipboardPolyfill";
-import React from "react";
+
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { registerBuiltinContributions } from "./services/builtinContributions";
