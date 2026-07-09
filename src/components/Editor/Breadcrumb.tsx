@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronRight } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { useIdeStore } from "../../stores/useIdeStore";
@@ -13,7 +13,7 @@ export function Breadcrumb() {
   const [dropdown, setDropdown] = useState<{ index: number; items: string[] } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown on click outside — hook must be called unconditionally
+  // Unconditional click-outside effect
   useEffect(() => {
     if (!dropdown) return;
     const handler = (e: MouseEvent) => {
@@ -25,23 +25,26 @@ export function Breadcrumb() {
     return () => document.removeEventListener("mousedown", handler);
   }, [dropdown]);
 
-  const activeTab = openTabs.find((t) => t.id === activeTabId);
-  if (!activeTab) return null;
+  // Find the active tab
+  const activeTab = useMemo(() => openTabs.find((t) => t.id === activeTabId), [openTabs, activeTabId]);
 
-  let relativePath = activeTab.path;
-  if (workspacePath && relativePath.startsWith(workspacePath)) {
-    relativePath = relativePath.slice(workspacePath.length + 1);
-  }
+  // Memoize path segments to avoid string splitting on every render tick
+  const segments = useMemo(() => {
+    if (!activeTab) return [];
+    let relativePath = activeTab.path;
+    if (workspacePath && relativePath.startsWith(workspacePath)) {
+      relativePath = relativePath.slice(workspacePath.length + 1);
+    }
+    return relativePath.split(/[/\\]/);
+  }, [activeTab, workspacePath]);
 
-  const segments = relativePath.split(/[/\\]/);
+  if (!activeTab || segments.length === 0) return null;
 
   const handleSegmentClick = async (index: number) => {
-    if (!workspacePath) return;
+    if (!workspacePath || index === segments.length - 1) return;
+
     const dirSegments = segments.slice(0, index + 1);
     const dirPath = `${workspacePath}/${dirSegments.join("/")}`;
-
-    // If it's the last segment (file), do nothing
-    if (index === segments.length - 1) return;
 
     try {
       const tree = await invoke<{ children?: Array<{ name: string; path: string; is_dir: boolean }> }>(
