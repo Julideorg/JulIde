@@ -133,7 +133,7 @@ jobs:
       # to the same draft release. Hand-assembling that file is easy to get subtly
       # wrong, and a wrong manifest means every installed client fails to update.
       - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Signs the updater manifest. This is the updater's OWN keypair and is
