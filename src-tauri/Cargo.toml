@@ -53,6 +53,15 @@ tempfile = "3"
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
+# Desktop-only: on mobile the platform store handles updates, and the plugin does
+# not build there.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"
+# Only needed to restart after an update is staged.
+tauri-plugin-process = "2"
+# Restores window size/position across launches.
+tauri-plugin-window-state = "2"
+
 
 # Release builds ship to end users, so trade compile time for a smaller, faster binary.
 #

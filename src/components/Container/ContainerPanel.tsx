@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { startDevcontainer } from "../../services/devcontainer";
 import {
   Container,
   Play,
@@ -72,8 +73,7 @@ export function ContainerPanel() {
     clearContainerLogs();
     setActiveBottomPanel("container-logs");
     try {
-      await invoke("devcontainer_up", {
-        workspacePath,
+      await startDevcontainer(workspacePath, {
         displayForwarding: settings.displayForwarding,
         gpuPassthrough: settings.gpuPassthrough,
         selinuxLabel: settings.selinuxLabel,
@@ -102,13 +102,16 @@ export function ContainerPanel() {
     clearContainerLogs();
     setActiveBottomPanel("container-logs");
     try {
-      await invoke("devcontainer_rebuild", {
+      await startDevcontainer(
         workspacePath,
-        displayForwarding: settings.displayForwarding,
-        gpuPassthrough: settings.gpuPassthrough,
-        selinuxLabel: settings.selinuxLabel,
-        persistJuliaPackages: settings.persistJuliaPackages,
-      });
+        {
+          displayForwarding: settings.displayForwarding,
+          gpuPassthrough: settings.gpuPassthrough,
+          selinuxLabel: settings.selinuxLabel,
+          persistJuliaPackages: settings.persistJuliaPackages,
+        },
+        "rebuild",
+      );
     } catch (e) {
       setError(String(e));
     } finally {

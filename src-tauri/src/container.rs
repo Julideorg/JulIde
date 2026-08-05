@@ -823,6 +823,68 @@ fn strip_json_comments(input: &str) -> String {
     result
 }
 
+/// Every command a devcontainer config would execute, in the order it runs.
+///
+/// `initializeCommand` is the one that matters: it runs on the **host**, so a
+/// `devcontainer.json` from an untrusted repo can execute arbitrary shell on the
+/// user's machine the moment they click "start dev container".
+pub fn lifecycle_commands(config: &DevContainerConfig) -> Vec<crate::trust::LifecycleCommand> {
+    let mut out = Vec::new();
+
+    let mut push = |phase: &str, cmd: &Option<StringOrArray>, runs_on_host: bool| {
+        if let Some(value) = cmd {
+            let command = value.to_shell_command();
+            if !command.trim().is_empty() {
+                out.push(crate::trust::LifecycleCommand {
+                    phase: phase.to_string(),
+                    command,
+                    runs_on_host,
+                });
+            }
+        }
+    };
+
+    push("initializeCommand", &config.initialize_command, true);
+    push("onCreateCommand", &config.on_create_command, false);
+    push(
+        "updateContentCommand",
+        &config.update_content_command,
+        false,
+    );
+    push("postCreateCommand", &config.post_create_command, false);
+    push("postStartCommand", &config.post_start_command, false);
+    push("postAttachCommand", &config.post_attach_command, false);
+
+    out
+}
+
+/// What would run for this workspace, and whether the user has already approved it.
+#[tauri::command]
+pub async fn devcontainer_trust_status(
+    workspace_path: String,
+) -> Result<crate::trust::TrustStatus, String> {
+    let config = devcontainer_load_config(workspace_path.clone()).await?;
+    let commands = lifecycle_commands(&config);
+    Ok(crate::trust::TrustStatus {
+        trusted: crate::trust::is_trusted(&workspace_path, &commands),
+        has_host_commands: commands.iter().any(|c| c.runs_on_host),
+        commands,
+    })
+}
+
+/// Record the user's approval of this workspace's current lifecycle commands.
+#[tauri::command]
+pub async fn devcontainer_trust_grant(workspace_path: String) -> Result<(), String> {
+    let config = devcontainer_load_config(workspace_path.clone()).await?;
+    let commands = lifecycle_commands(&config);
+    crate::trust::grant(&workspace_path, &commands)
+}
+
+#[tauri::command]
+pub fn devcontainer_trust_revoke(workspace_path: String) -> Result<(), String> {
+    crate::trust::revoke(&workspace_path)
+}
+
 #[tauri::command]
 pub async fn devcontainer_up(
     app: tauri::AppHandle,
@@ -833,6 +895,21 @@ pub async fn devcontainer_up(
     persist_julia_packages: bool,
 ) -> Result<(), String> {
     let config = devcontainer_load_config(workspace_path.clone()).await?;
+
+    // Enforced here, not only in the UI: this command is reachable from the webview
+    // (and from any plugin holding the `containers` permission), so the check has to
+    // live on the side of the boundary that actually runs the commands.
+    let commands = lifecycle_commands(&config);
+    if !crate::trust::is_trusted(&workspace_path, &commands) {
+        return Err(format!(
+            "This workspace has not been trusted to run its devcontainer lifecycle commands. \
+             {} command(s) are declared, {} of which would run on this machine rather than in the container. \
+             Review them and approve the workspace before starting the dev container.",
+            commands.len(),
+            commands.iter().filter(|c| c.runs_on_host).count()
+        ));
+    }
+
     let rt = get_runtime()?;
 
     // Auto-detect SELinux if the setting is enabled

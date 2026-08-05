@@ -4,6 +4,7 @@ import { usePluginStore } from "../stores/usePluginStore";
 import { useIdeStore } from "../stores/useIdeStore";
 import { useSettingsStore } from "../stores/useSettingsStore";
 import { useJuliaStore } from "../stores/useJuliaStore";
+import { startDevcontainer } from "./devcontainer";
 import { showInputDialog } from "../components/InputDialog/InputDialog";
 import { showBestieTemplateDialog } from "../components/BestieTemplateDialog/BestieTemplateDialog";
 import type { FileNode, JuliaOutputEvent } from "../types";
@@ -259,6 +260,31 @@ function registerBuiltinCommands() {
   });
 
   store.registerCommand({
+    id: "view.command-palette",
+    label: "Show Command Palette",
+    shortcut: "⌘⇧P",
+    // Registered so the application menu has something real to point at; the
+    // keybinding itself is handled by the global keydown listener in App.tsx.
+    execute: () => ide().setCommandPaletteOpen(true),
+  });
+
+  store.registerCommand({
+    id: "file.save",
+    label: "Save File",
+    shortcut: "⌘S",
+    // Monaco owns the Ctrl/Cmd+S keybinding directly; this exists so the same
+    // action is reachable from the application menu and the command palette.
+    execute: async () => {
+      const s = ide();
+      const tab = s.openTabs.find((t) => t.id === s.activeTabId);
+      if (!tab) return;
+      const content = s.editorInstance?.getValue() ?? tab.content;
+      await invoke("fs_write_file", { path: tab.path, content });
+      s.markTabSaved(tab.id);
+    },
+  });
+
+  store.registerCommand({
     id: "edit.find",
     label: "Find in File",
     shortcut: "⌘F",
@@ -351,6 +377,23 @@ function registerBuiltinCommands() {
     // Routed through the store so the binary gets probed with --version, the
     // setting is persisted, and every surface re-detects afterwards.
     execute: () => useJuliaStore.getState().locateManually(),
+  });
+
+  store.registerCommand({
+    id: "app.check-for-updates",
+    label: "Check for Updates",
+    description: "See whether a newer julIDE release is available",
+    execute: async () => {
+      const { useUpdateStore } = await import("../stores/useUpdateStore");
+      const store = useUpdateStore.getState();
+      await store.check();
+      const s = useUpdateStore.getState();
+      if (s.phase === "upToDate") {
+        ide().appendOutput({ kind: "info", text: "julIDE is up to date." });
+      } else if (s.phase === "error") {
+        ide().appendOutput({ kind: "stderr", text: `Update check failed: ${s.error}` });
+      }
+    },
   });
 
   store.registerCommand({
@@ -505,8 +548,7 @@ function registerBuiltinCommands() {
       if (!s.workspacePath) return;
       const st = settings().settings;
       s.setActiveBottomPanel("container-logs");
-      await invoke("devcontainer_up", {
-        workspacePath: s.workspacePath,
+      await startDevcontainer(s.workspacePath, {
         displayForwarding: st.displayForwarding,
         gpuPassthrough: st.gpuPassthrough,
         selinuxLabel: st.selinuxLabel,
@@ -523,13 +565,16 @@ function registerBuiltinCommands() {
       if (!s.workspacePath) return;
       const st = settings().settings;
       s.setActiveBottomPanel("container-logs");
-      await invoke("devcontainer_rebuild", {
-        workspacePath: s.workspacePath,
-        displayForwarding: st.displayForwarding,
-        gpuPassthrough: st.gpuPassthrough,
-        selinuxLabel: st.selinuxLabel,
-        persistJuliaPackages: st.persistJuliaPackages,
-      }).catch((e) => console.error(e));
+      await startDevcontainer(
+        s.workspacePath,
+        {
+          displayForwarding: st.displayForwarding,
+          gpuPassthrough: st.gpuPassthrough,
+          selinuxLabel: st.selinuxLabel,
+          persistJuliaPackages: st.persistJuliaPackages,
+        },
+        "rebuild",
+      ).catch((e) => console.error(e));
     },
   });
 

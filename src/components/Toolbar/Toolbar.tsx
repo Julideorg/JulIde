@@ -17,6 +17,7 @@ import { useIdeStore } from "../../stores/useIdeStore";
 import { useSettingsStore } from "../../stores/useSettingsStore";
 import { usePluginStore } from "../../stores/usePluginStore";
 import { PluginPanel } from "../Plugin/PluginPanel";
+import { startDevcontainer } from "../../services/devcontainer";
 import type { FileNode } from "../../types";
 
 export function Toolbar() {
@@ -294,8 +295,7 @@ export function Toolbar() {
                 clearOutput();
                 setActiveBottomPanel("container-logs");
                 try {
-                  await invoke("devcontainer_up", {
-                    workspacePath,
+                  await startDevcontainer(workspacePath, {
                     displayForwarding: s.displayForwarding,
                     gpuPassthrough: s.gpuPassthrough,
                     selinuxLabel: s.selinuxLabel,

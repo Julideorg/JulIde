@@ -345,6 +345,24 @@ If Julia is not found, use the command palette (`Cmd/Ctrl+Shift+P` → "Set Juli
 
 ---
 
+## Updates
+
+julIDE checks for new releases on startup and shows a banner when one is available.
+
+**What it can install depends on how you installed it.** `tauri-plugin-updater` can only
+replace the running binary when that binary is a single self-contained file:
+
+| Install | In-app update |
+|---|---|
+| **AppImage** (Linux) | Yes — one click, then restart. **Recommended download on Linux.** |
+| `.deb` / `.rpm` | No — these are owned by your package manager. julIDE still tells you a new version exists and links to the download page. |
+| Windows `.msi` / `.exe` | Yes |
+| macOS `.app` / `.dmg` | Yes |
+
+Run **Check for Updates** from the command palette (`Cmd/Ctrl+Shift+P`) to check manually.
+
+---
+
 ## License
 
 [MIT](LICENSE) -- Copyright 2026 Ofek Bickel

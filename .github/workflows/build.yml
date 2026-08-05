@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Release tag (e.g., v0.1.0). Leave empty to skip release."
+        description: "Release tag (e.g., v0.2.0). Leave empty to build without releasing."
         required: false
         default: ""
 
@@ -18,7 +18,34 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # Fails fast on a tag build if the updater is not configured, so the mistake
+  # surfaces in seconds rather than after four platform builds.
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check updater signing is configured
+        env:
+          HAS_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
+        run: |
+          PUBKEY=$(python3 -c "import json;print(json.load(open('src-tauri/tauri.conf.json'))['plugins']['updater']['pubkey'])")
+          if [ "$PUBKEY" = "REPLACE_WITH_UPDATER_PUBLIC_KEY" ]; then
+            echo "::error::plugins.updater.pubkey in src-tauri/tauri.conf.json is still the placeholder."
+            echo "Generate a keypair with: bun run tauri signer generate -w ~/.tauri/julide.key"
+            echo "Then set the TAURI_SIGNING_PRIVATE_KEY and TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+            echo "repo secrets and paste the public key into tauri.conf.json."
+            exit 1
+          fi
+          if [ "$HAS_KEY" != "true" ]; then
+            echo "::error::TAURI_SIGNING_PRIVATE_KEY secret is not set."
+            echo "bundle.createUpdaterArtifacts is enabled, so the build will fail without it."
+            exit 1
+          fi
+          echo "Updater signing is configured."
+
   build:
+    needs: preflight
     strategy:
       fail-fast: false
       matrix:
@@ -42,6 +69,10 @@ jobs:
 
     runs-on: ${{ matrix.platform }}
     name: Build (${{ matrix.name }})
+
+    # Needed only when publishing to a release; harmless otherwise.
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -80,15 +111,48 @@ jobs:
       - name: Install frontend dependencies
         run: bun install
 
-      # ── Build ──────────────────────────────────────────────────
+      # ── Resolve the release tag, if any ────────────────────────
+      # Empty for a plain build; tauri-action then skips release publishing.
+      - name: Resolve release tag
+        id: tag
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.inputs.release_tag }}" ]; then
+            echo "value=${{ github.event.inputs.release_tag }}" >> "$GITHUB_OUTPUT"
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "value=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── Build (and publish, on a tag) ──────────────────────────
+      #
+      # tauri-action is given the release details rather than a separate release
+      # job doing it, because it is what generates and merges `latest.json` — the
+      # manifest the updater polls. Each matrix job appends its own platform entry
+      # to the same draft release. Hand-assembling that file is easy to get subtly
+      # wrong, and a wrong manifest means every installed client fails to update.
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signs the updater manifest. This is the updater's OWN keypair and is
+          # unrelated to OS code signing — in-app updates work fine on unsigned
+          # builds. Generate with:
+          #   bun run tauri signer generate -w ~/.tauri/julide.key
+          # then set these two repo secrets and paste the public key into
+          # tauri.conf.json under plugins.updater.pubkey.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           args: --target ${{ matrix.target }} ${{ matrix.cargo_features }}
+          tagName: ${{ steps.tag.outputs.value }}
+          releaseName: julIDE ${{ steps.tag.outputs.value }}
+          releaseDraft: true
+          includeUpdaterJson: true
 
-      # ── Upload artifacts ───────────────────────────────────────
+      # ── Also keep the installers as workflow artifacts ─────────
+      # Useful for non-tag builds, and for grabbing a build without publishing.
       - name: Upload build artifacts (Linux)
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
@@ -119,43 +183,3 @@ jobs:
             src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
             src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app
           if-no-files-found: error
-
-  # ── GitHub Release ───────────────────────────────────────────
-  # Runs when a v* tag is pushed, or on a manual dispatch that supplies a tag.
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.release_tag != ''
-
-    permissions:
-      contents: write
-
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
-
-      - name: List artifacts
-        run: find artifacts -type f | head -50
-
-      - name: Resolve release tag
-        id: tag
-        run: |
-          if [ -n "${{ github.event.inputs.release_tag }}" ]; then
-            echo "value=${{ github.event.inputs.release_tag }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.tag.outputs.value }}
-          name: julIDE ${{ steps.tag.outputs.value }}
-          draft: true
-          generate_release_notes: true
-          files: artifacts/**/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

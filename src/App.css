@@ -3372,3 +3372,243 @@ button, input, select {
   border-color: var(--accent-red);
   color: var(--accent-red);
 }
+
+/* ─── Workspace trust dialog ─────────────────────────────────────────────── */
+
+.trust-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trust-dialog {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  width: 560px;
+  max-width: calc(100vw - 48px);
+  max-height: 80vh;
+  overflow: auto;
+  padding: 20px 24px;
+  color: var(--text-primary);
+  font-size: 13px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.trust-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.trust-header h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.trust-icon {
+  color: var(--accent-red);
+  flex-shrink: 0;
+}
+
+.trust-subtitle {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.trust-body {
+  margin: 0 0 16px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.trust-section {
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.trust-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Host commands are the ones that actually escape the container. */
+.trust-section.host h3 {
+  color: var(--accent-red);
+  background: rgba(203, 60, 51, 0.1);
+}
+
+.trust-risk-badge {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--accent-red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.trust-section ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.trust-section li {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.trust-section li:last-child {
+  border-bottom: none;
+}
+
+.trust-phase {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 11px;
+  margin-bottom: 3px;
+}
+
+.trust-command {
+  display: block;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.trust-note {
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.trust-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.trust-footer button {
+  padding: 6px 16px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.trust-footer button:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-light);
+}
+
+/* Trusting is the risky action, so it is not styled as the happy path. */
+.trust-footer .btn-danger {
+  background: transparent;
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+}
+
+.trust-footer .btn-danger:hover {
+  background: var(--accent-red);
+  color: #fff;
+}
+
+/* ─── Update banner ──────────────────────────────────────────────────────── */
+
+.update-banner {
+  position: fixed;
+  right: 16px;
+  bottom: 40px;
+  z-index: 1900;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 520px;
+  padding: 10px 12px 10px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+}
+
+.update-banner-text {
+  flex: 1;
+  line-height: 1.5;
+}
+
+.update-banner-reason {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.update-banner-error {
+  display: block;
+  margin-top: 3px;
+  color: var(--accent-red);
+  font-size: 11px;
+}
+
+.update-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.update-banner-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 4px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.update-banner-actions button:hover {
+  background: var(--accent-hover);
+}
+
+.update-banner-dismiss {
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  padding: 4px !important;
+}
+
+.update-banner-dismiss:hover {
+  background: var(--bg-hover) !important;
+  color: var(--text-primary) !important;
+}

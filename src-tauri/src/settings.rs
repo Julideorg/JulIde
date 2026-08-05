@@ -45,10 +45,22 @@ pub struct Settings {
     pub lsp_backend: String,
     #[serde(default = "default_true")]
     pub start_maximized: bool,
+    /// Sidebar width in pixels. Persisted so a resized layout survives a restart.
+    #[serde(default = "default_sidebar_width")]
+    pub sidebar_width: u32,
+    /// Bottom panel height in pixels.
+    #[serde(default = "default_bottom_panel_height")]
+    pub bottom_panel_height: u32,
 }
 
 fn default_font_size() -> u32 {
     14
+}
+fn default_sidebar_width() -> u32 {
+    240
+}
+fn default_bottom_panel_height() -> u32 {
+    200
 }
 fn default_pluto_port() -> u32 {
     3000
@@ -101,6 +113,8 @@ impl Default for Settings {
             julia_path: String::new(),
             lsp_backend: default_lsp_backend(),
             start_maximized: default_true(),
+            sidebar_width: default_sidebar_width(),
+            bottom_panel_height: default_bottom_panel_height(),
         }
     }
 }
@@ -108,6 +122,20 @@ impl Default for Settings {
 fn settings_path() -> PathBuf {
     let config = dirs_next::config_dir().unwrap_or_else(|| PathBuf::from("."));
     config.join("julide").join("settings.json")
+}
+
+/// True once tauri-plugin-window-state has stored a geometry for this app.
+///
+/// Used to stop `start_maximized` from stomping on a window size the user chose:
+/// the setting should describe the *first* launch, not override every later one.
+pub fn has_saved_window_state() -> bool {
+    let Some(dir) = dirs_next::config_dir() else {
+        return false;
+    };
+    // The plugin writes this next to the app's other config, keyed by identifier.
+    dir.join("com.ofek.julide")
+        .join(".window-state.json")
+        .exists()
 }
 
 #[tauri::command]
@@ -166,6 +194,24 @@ mod tests {
         assert_eq!(s.pluto_port, 3000);
         assert_eq!(s.lsp_backend, "languageserver");
         assert!(s.recent_workspaces.is_empty());
+    }
+
+    #[test]
+    fn layout_fields_default_when_absent() {
+        // Settings files written before layout persistence existed must still load.
+        let json = r#"{"fontSize": 16}"#;
+        let s: Settings = serde_json::from_str(json).unwrap();
+        assert_eq!(s.font_size, 16);
+        assert_eq!(s.sidebar_width, default_sidebar_width());
+        assert_eq!(s.bottom_panel_height, default_bottom_panel_height());
+    }
+
+    #[test]
+    fn layout_fields_serialise_as_camel_case() {
+        // The TS Settings interface reads sidebarWidth / bottomPanelHeight.
+        let json = serde_json::to_string(&Settings::default()).unwrap();
+        assert!(json.contains("sidebarWidth"), "got: {json}");
+        assert!(json.contains("bottomPanelHeight"), "got: {json}");
     }
 
     #[test]

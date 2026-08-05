@@ -9,12 +9,15 @@ mod git_gitlab;
 mod git_provider;
 mod julia;
 mod lsp;
+mod menu;
 mod plugins;
 mod pluto;
 mod pty;
 mod search;
 mod settings;
 mod sync;
+mod trust;
+mod updater;
 mod watcher;
 
 use julia::new_julia_state;
@@ -31,14 +34,42 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(new_julia_state())
+        // Builder::setup takes a single closure — a second call replaces the first,
+        // so everything that runs at startup belongs in here.
         .setup(|app| {
+            // Desktop only: on mobile the platform store handles updates.
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            {
+                app.handle()
+                    .plugin(tauri_plugin_updater::Builder::new().build())?;
+                // Only used to restart after an update has been staged.
+                app.handle().plugin(tauri_plugin_process::init())?;
+
+                // Restores the window's size and position from the previous run.
+                // Registered here rather than at the top so it applies before the
+                // maximize decision below.
+                app.handle()
+                    .plugin(tauri_plugin_window_state::Builder::default().build())?;
+            }
+
+            // Native application menu. On macOS this is also what provides the
+            // standard Edit menu, and therefore working system clipboard shortcuts.
+            let menu = crate::menu::build(app.handle())?;
+            app.set_menu(menu)?;
+
             let settings = crate::settings::settings_load();
-            if settings.start_maximized {
+            // Only force-maximize on a first run. Once the window-state plugin has
+            // a saved geometry, honouring `start_maximized` unconditionally would
+            // override whatever size the user actually left the window at.
+            if settings.start_maximized && !crate::settings::has_saved_window_state() {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.maximize();
                 }
             }
             Ok(())
+        })
+        .on_menu_event(|app, event| {
+            crate::menu::on_menu_event(app, event.id().as_ref());
         })
         .invoke_handler(tauri::generate_handler![
             // File system
@@ -104,6 +135,8 @@ pub fn run() {
             settings::settings_save,
             settings::settings_add_recent_workspace,
             settings::settings_remove_recent_workspace,
+            // Updater
+            updater::updater_install_capability,
             // Git
             git::git_is_repo,
             git::git_branch_current,
@@ -165,6 +198,9 @@ pub fn run() {
             container::container_exec,
             container::devcontainer_detect,
             container::devcontainer_load_config,
+            container::devcontainer_trust_status,
+            container::devcontainer_trust_grant,
+            container::devcontainer_trust_revoke,
             container::devcontainer_up,
             container::devcontainer_stop,
             container::devcontainer_rebuild,

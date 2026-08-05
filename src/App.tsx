@@ -14,6 +14,8 @@ import { WelcomeScreen } from "./components/Welcome/WelcomeScreen";
 import { JuliaSetupDialog } from "./components/Welcome/JuliaSetupDialog";
 import { PluginPanel } from "./components/Plugin/PluginPanel";
 import { PluginConsentDialog } from "./components/Plugin/PluginConsentDialog";
+import { WorkspaceTrustDialog } from "./components/Container/WorkspaceTrustDialog";
+import { UpdateBanner } from "./components/Update/UpdateBanner";
 import { useSettingsStore } from "./stores/useSettingsStore";
 import { useIdeStore } from "./stores/useIdeStore";
 import { usePluginStore } from "./stores/usePluginStore";
@@ -51,6 +53,16 @@ export default function App() {
   useEffect(() => {
     loadSettings();
   }, [loadSettings]);
+
+  // Restore the persisted layout once settings arrive. Runs on the load
+  // transition only, so it never fights an in-progress drag.
+  const settingsLoaded = useSettingsStore((s) => s.loaded);
+  useEffect(() => {
+    if (!settingsLoaded) return;
+    const { sidebarWidth: w, bottomPanelHeight: h } = useSettingsStore.getState().settings;
+    if (w) setSidebarWidth(w);
+    if (h) setBottomPanelHeight(h);
+  }, [settingsLoaded, setSidebarWidth, setBottomPanelHeight]);
   const setProblems = useIdeStore((s) => s.setProblems);
   const setPlutoStatus = useIdeStore((s) => s.setPlutoStatus);
   const setFileTree = useIdeStore((s) => s.setFileTree);
@@ -381,10 +393,22 @@ useEffect(() => {
       }
     };
     const onMouseUp = () => {
+      const wasDragging =
+        isDraggingBottomRef.current || isDraggingSidebarRef.current;
       isDraggingBottomRef.current = false;
       isDraggingSidebarRef.current = false;
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
+
+      // Persist on drag end, not on every mousemove: a single write per gesture
+      // instead of one per pixel.
+      if (wasDragging) {
+        const s = useIdeStore.getState();
+        void useSettingsStore.getState().updateSettings({
+          sidebarWidth: s.sidebarWidth,
+          bottomPanelHeight: s.bottomPanelHeight,
+        });
+      }
     };
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
@@ -524,6 +548,8 @@ useEffect(() => {
       <BestieTemplateDialog />
       <JuliaSetupDialog />
       <PluginConsentDialog />
+      <WorkspaceTrustDialog />
+      <UpdateBanner />
     </div>
   );
 }

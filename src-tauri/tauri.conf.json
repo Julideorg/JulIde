@@ -53,9 +53,21 @@
       }
     }
   },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/sinisterMage/julide/releases/latest/download/latest.json"
+      ],
+      "pubkey": "REPLACE_WITH_UPDATER_PUBLIC_KEY",
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "category": "DeveloperTool",
     "publisher": "Ofek Bickel",
     "homepage": "https://github.com/sinisterMage/julide",

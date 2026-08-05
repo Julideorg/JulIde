@@ -332,6 +332,49 @@ All stores use Zustand with Immer middleware for immutable updates with mutable 
 
 ---
 
+## Cutting a release
+
+The updater verifies releases with its own signing key. This is **separate from OS code
+signing** — in-app updates work fine on unsigned builds, so this key is required even
+though julIDE ships unsigned binaries today.
+
+### One-time setup
+
+```bash
+bun run tauri signer generate -w ~/.tauri/julide.key
+```
+
+1. Add repo secrets `TAURI_SIGNING_PRIVATE_KEY` (the contents of `~/.tauri/julide.key`)
+   and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
+2. Paste the printed **public** key into `src-tauri/tauri.conf.json` under
+   `plugins.updater.pubkey`, replacing `REPLACE_WITH_UPDATER_PUBLIC_KEY`.
+
+Until both are done, the `preflight` job in `.github/workflows/build.yml` fails a tag
+build on purpose — `bundle.createUpdaterArtifacts` is enabled, and publishing a release
+whose manifest is unsigned would silently break updates for everyone already installed.
+
+> **Back up `~/.tauri/julide.key`.** Losing it means existing installs can no longer
+> verify updates, and every user has to reinstall by hand.
+
+### Releasing
+
+```bash
+bun run bump-version 0.2.0   # syncs package.json, Cargo.toml, tauri.conf.json
+bun run check:versions       # confirms all three agree
+git commit -am "Release v0.2.0"
+git tag v0.2.0 && git push --tags
+```
+
+The tag triggers `.github/workflows/build.yml`, which builds all four targets, publishes a
+**draft** GitHub release, and generates the `latest.json` manifest the updater polls.
+Review the draft, then publish it.
+
+Version numbers in the manifests must stay plain `major.minor.patch` — Tauri rejects
+pre-release suffixes in `tauri.conf.json`. Tag as `v0.2.0-rc1` if you need one; the CI
+check accepts a tag whose base version matches the manifests.
+
+---
+
 ## Questions?
 
 If something is unclear, open an issue or start a discussion. We're happy to help you get started.

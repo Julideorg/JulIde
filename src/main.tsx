@@ -8,6 +8,7 @@ import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
 import { registerBuiltinContributions } from "./services/builtinContributions";
 import { installGlobalErrorHandlers } from "./services/globalErrorHandler";
+import { installMenuCommandListener } from "./services/menuCommands";
 import { pluginHost } from "./services/pluginHost";
 
 // Fix clipboard access (e.g. Monaco's context-menu Paste) before anything
@@ -25,6 +26,10 @@ registerBuiltinContributions().then(() => {
       <App />
     </ErrorBoundary>,
   );
+
+  // The native menu dispatches into the command registry, so this has to come
+  // after registerBuiltinContributions().
+  installMenuCommandListener().catch(console.error);
 
   // Discover and activate plugins after the UI is rendered
   pluginHost.discoverAndLoadAll().catch(console.warn);

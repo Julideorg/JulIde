@@ -23,6 +23,10 @@ export interface Settings {
   juliaPath: string;
   lspBackend: string;
   startMaximized: boolean;
+  /** Sidebar width in px — persisted so a resized layout survives a restart. */
+  sidebarWidth: number;
+  /** Bottom panel height in px. */
+  bottomPanelHeight: number;
 }
 
 interface SettingsStore {
@@ -55,6 +59,8 @@ const defaultSettings: Settings = {
   juliaPath: "",
   lspBackend: "languageserver",
   startMaximized: true,
+  sidebarWidth: 240,
+  bottomPanelHeight: 220,
 };
 
 export const useSettingsStore = create<SettingsStore>()(
