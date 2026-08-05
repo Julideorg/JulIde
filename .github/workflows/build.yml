@@ -155,7 +155,7 @@ jobs:
       # Useful for non-tag builds, and for grabbing a build without publishing.
       - name: Upload build artifacts (Linux)
         if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: julide-${{ matrix.name }}
           path: |
@@ -166,7 +166,7 @@ jobs:
 
       - name: Upload build artifacts (Windows)
         if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: julide-${{ matrix.name }}
           path: |
@@ -176,7 +176,7 @@ jobs:
 
       - name: Upload build artifacts (macOS)
         if: runner.os == 'macOS'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: julide-${{ matrix.name }}
           path: |
