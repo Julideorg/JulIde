@@ -58,7 +58,7 @@
       "endpoints": [
         "https://github.com/sinisterMage/julide/releases/latest/download/latest.json"
       ],
-      "pubkey": "REPLACE_WITH_UPDATER_PUBLIC_KEY",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDYwRjEzRjU4MURFQTREODUKUldTRlRlb2RXRC94WUFXbTc2NHlkMU93UTJtQjlyaW9RN21OS0tlM1dWVzlqZWNqeUFwY042cnMK",
       "windows": {
         "installMode": "passive"
       }
@@ -83,7 +83,20 @@
     ],
     "linux": {
       "deb": {
-        "depends": ["libwebkit2gtk-4.1-0", "libgtk-3-0"]
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libgtk-3-0"
+        ],
+        "desktopTemplate": "julide.desktop",
+        "files": {
+          "/usr/share/metainfo/com.ofek.julide.metainfo.xml": "julide.metainfo.xml"
+        }
+      },
+      "rpm": {
+        "desktopTemplate": "julide.desktop",
+        "files": {
+          "/usr/share/metainfo/com.ofek.julide.metainfo.xml": "julide.metainfo.xml"
+        }
       }
     }
   }

@@ -129,7 +129,7 @@ export function ContainerPanel() {
 
   const handleContainerAction = async (
     action: "start" | "stop" | "restart" | "remove",
-    id: string
+    id: string,
   ) => {
     try {
       if (action === "remove") {
@@ -152,10 +152,10 @@ export function ContainerPanel() {
       state === "running"
         ? "container-badge-running"
         : state === "building" || state === "starting"
-        ? "container-badge-building"
-        : state === "exited" || state === "stopped"
-        ? "container-badge-stopped"
-        : "container-badge-other";
+          ? "container-badge-building"
+          : state === "exited" || state === "stopped"
+            ? "container-badge-stopped"
+            : "container-badge-other";
     return <span className={`container-badge ${cls}`}>{state}</span>;
   };
 
@@ -173,6 +173,7 @@ export function ContainerPanel() {
             className="container-refresh-btn"
             onClick={refreshContainers}
             title="Refresh"
+            aria-label="Refresh"
           >
             <RefreshCw size={12} />
           </button>
@@ -188,8 +189,7 @@ export function ContainerPanel() {
 
       {!runtimeDetected && (
         <div className="container-empty">
-          No container runtime detected. Install Docker or Podman to use dev
-          containers.
+          No container runtime detected. Install Docker or Podman to use dev containers.
         </div>
       )}
 
@@ -205,17 +205,13 @@ export function ContainerPanel() {
               {devcontainerConfig.name && (
                 <div className="container-config-row">
                   <span className="container-config-label">Name:</span>
-                  <span className="container-config-value">
-                    {devcontainerConfig.name}
-                  </span>
+                  <span className="container-config-value">{devcontainerConfig.name}</span>
                 </div>
               )}
               {devcontainerConfig.image && (
                 <div className="container-config-row">
                   <span className="container-config-label">Image:</span>
-                  <span className="container-config-value">
-                    {devcontainerConfig.image}
-                  </span>
+                  <span className="container-config-value">{devcontainerConfig.image}</span>
                 </div>
               )}
               {devcontainerConfig.build?.dockerfile && (
@@ -226,15 +222,14 @@ export function ContainerPanel() {
                   </span>
                 </div>
               )}
-              {devcontainerConfig.forwardPorts &&
-                devcontainerConfig.forwardPorts.length > 0 && (
-                  <div className="container-config-row">
-                    <span className="container-config-label">Ports:</span>
-                    <span className="container-config-value">
-                      {devcontainerConfig.forwardPorts.join(", ")}
-                    </span>
-                  </div>
-                )}
+              {devcontainerConfig.forwardPorts && devcontainerConfig.forwardPorts.length > 0 && (
+                <div className="container-config-row">
+                  <span className="container-config-label">Ports:</span>
+                  <span className="container-config-value">
+                    {devcontainerConfig.forwardPorts.join(", ")}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
@@ -263,10 +258,7 @@ export function ContainerPanel() {
                 >
                   <RefreshCw size={12} /> Rebuild
                 </button>
-                <button
-                  className="container-action-btn container-btn-danger"
-                  onClick={handleDown}
-                >
+                <button className="container-action-btn container-btn-danger" onClick={handleDown}>
                   <Trash2 size={12} /> Remove
                 </button>
               </>
@@ -284,8 +276,8 @@ export function ContainerPanel() {
 
       {runtimeDetected && !devcontainerDetected && (
         <div className="container-empty">
-          No <code>.devcontainer/devcontainer.json</code> found in workspace.
-          Create one to get started.
+          No <code>.devcontainer/devcontainer.json</code> found in workspace. Create one to get
+          started.
         </div>
       )}
 
@@ -295,16 +287,10 @@ export function ContainerPanel() {
             className="container-section-header container-section-toggle"
             onClick={() => setContainersExpanded(!containersExpanded)}
           >
-            {containersExpanded ? (
-              <ChevronDown size={12} />
-            ) : (
-              <ChevronRight size={12} />
-            )}
+            {containersExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
             <span>All Containers</span>
             {containers.length > 0 && (
-              <span className="container-section-count">
-                {containers.length}
-              </span>
+              <span className="container-section-count">{containers.length}</span>
             )}
           </div>
 
@@ -316,9 +302,7 @@ export function ContainerPanel() {
               {containers.map((c) => (
                 <div key={c.id} className="container-item">
                   <div className="container-item-info">
-                    <span className="container-item-name">
-                      {c.name || c.id.slice(0, 12)}
-                    </span>
+                    <span className="container-item-name">{c.name || c.id.slice(0, 12)}</span>
                     <span className="container-item-image">{c.image}</span>
                   </div>
                   <div className="container-item-right">
@@ -329,6 +313,7 @@ export function ContainerPanel() {
                           className="container-item-btn"
                           onClick={() => handleContainerAction("stop", c.id)}
                           title="Stop"
+                          aria-label="Stop"
                         >
                           <Square size={11} />
                         </button>
@@ -337,6 +322,7 @@ export function ContainerPanel() {
                           className="container-item-btn"
                           onClick={() => handleContainerAction("start", c.id)}
                           title="Start"
+                          aria-label="Start"
                         >
                           <Play size={11} />
                         </button>
@@ -345,6 +331,7 @@ export function ContainerPanel() {
                         className="container-item-btn container-item-btn-danger"
                         onClick={() => handleContainerAction("remove", c.id)}
                         title="Remove"
+                        aria-label="Remove"
                       >
                         <Trash2 size={11} />
                       </button>

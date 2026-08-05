@@ -26,7 +26,10 @@ export function Breadcrumb() {
   }, [dropdown]);
 
   // Find the active tab
-  const activeTab = useMemo(() => openTabs.find((t) => t.id === activeTabId), [openTabs, activeTabId]);
+  const activeTab = useMemo(
+    () => openTabs.find((t) => t.id === activeTabId),
+    [openTabs, activeTabId],
+  );
 
   // Memoize path segments to avoid string splitting on every render tick
   const segments = useMemo(() => {
@@ -47,10 +50,9 @@ export function Breadcrumb() {
     const dirPath = `${workspacePath}/${dirSegments.join("/")}`;
 
     try {
-      const tree = await invoke<{ children?: Array<{ name: string; path: string; is_dir: boolean }> }>(
-        "fs_get_tree",
-        { path: dirPath }
-      );
+      const tree = await invoke<{
+        children?: Array<{ name: string; path: string; is_dir: boolean }>;
+      }>("fs_get_tree", { path: dirPath });
       const siblings = (tree.children ?? [])
         .filter((c) => !c.is_dir)
         .map((c) => c.name)

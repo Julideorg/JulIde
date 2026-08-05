@@ -33,12 +33,17 @@ interface SettingsStore {
   settings: Settings;
   loaded: boolean;
   settingsOpen: boolean;
+  /** Non-empty when the last save failed, so the UI can say so. */
+  saveError: string;
   setSettingsOpen: (open: boolean) => void;
   loadSettings: () => Promise<void>;
   updateSettings: (partial: Partial<Settings>) => Promise<void>;
+  /** Write pending changes immediately instead of waiting for the debounce. */
+  flushSettings: () => Promise<void>;
+  resetSettings: () => Promise<void>;
 }
 
-const defaultSettings: Settings = {
+export const defaultSettings: Settings = {
   fontSize: 14,
   fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Noto Sans Mono', monospace",
   tabSize: 4,
@@ -63,40 +68,87 @@ const defaultSettings: Settings = {
   bottomPanelHeight: 220,
 };
 
+/**
+ * Settings are written to disk on a short debounce.
+ *
+ * The panel calls updateSettings on every keystroke, so an un-debounced save meant
+ * roughly twenty disk writes and IPC round-trips to type a font name. The in-memory
+ * state still updates immediately — only the persistence is deferred.
+ */
+const SAVE_DEBOUNCE_MS = 300;
+
 export const useSettingsStore = create<SettingsStore>()(
-  immer((set, get) => ({
-    settings: { ...defaultSettings },
-    loaded: false,
-    settingsOpen: false,
-    setSettingsOpen: (open) =>
-      set((s) => {
-        s.settingsOpen = open;
-      }),
-    loadSettings: async () => {
+  immer((set, get) => {
+    let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const persist = async () => {
+      saveTimer = null;
       try {
-        const settings = await invoke<Settings>("settings_load");
-        set((s) => {
-          s.settings = { ...defaultSettings, ...settings };
-          s.loaded = true;
-        });
+        await invoke("settings_save", { settings: get().settings });
+        if (get().saveError) {
+          set((s) => {
+            s.saveError = "";
+          });
+        }
       } catch (e) {
-        console.error("Failed to load settings:", e);
-        set((s) => {
-          s.loaded = true;
-        });
-      }
-    },
-    updateSettings: async (partial) => {
-      const current = get().settings;
-      const updated = { ...current, ...partial };
-      set((s) => {
-        Object.assign(s.settings, partial);
-      });
-      try {
-        await invoke("settings_save", { settings: updated });
-      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
         console.error("Failed to save settings:", e);
+        // Previously swallowed: a read-only config dir silently discarded every
+        // preference the user set, with no indication anything was wrong.
+        set((s) => {
+          s.saveError = message;
+        });
       }
-    },
-  }))
+    };
+
+    return {
+      settings: { ...defaultSettings },
+      loaded: false,
+      settingsOpen: false,
+      saveError: "",
+      setSettingsOpen: (open) =>
+        set((s) => {
+          s.settingsOpen = open;
+        }),
+      loadSettings: async () => {
+        try {
+          const settings = await invoke<Settings>("settings_load");
+          set((s) => {
+            s.settings = { ...defaultSettings, ...settings };
+            s.loaded = true;
+          });
+        } catch (e) {
+          console.error("Failed to load settings:", e);
+          set((s) => {
+            s.loaded = true;
+          });
+        }
+      },
+      updateSettings: async (partial) => {
+        set((s) => {
+          Object.assign(s.settings, partial);
+        });
+        if (saveTimer) clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => void persist(), SAVE_DEBOUNCE_MS);
+      },
+
+      flushSettings: async () => {
+        if (saveTimer) {
+          clearTimeout(saveTimer);
+          saveTimer = null;
+        }
+        await persist();
+      },
+
+      resetSettings: async () => {
+        set((s) => {
+          // recentWorkspaces is history, not a preference — resetting preferences
+          // should not also erase the list of projects you have opened.
+          const recents = s.settings.recentWorkspaces;
+          s.settings = { ...defaultSettings, recentWorkspaces: recents };
+        });
+        await get().flushSettings();
+      },
+    };
+  }),
 );

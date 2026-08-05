@@ -119,8 +119,50 @@ impl Default for Settings {
     }
 }
 
+impl Settings {
+    /// Bring out-of-range values back into a usable range.
+    ///
+    /// The UI enforces min/max on its inputs, but `settings.json` is a plain file a
+    /// user can hand-edit — and a `fontSize` of 99999 or a `plutoPort` of 0 renders
+    /// the app unusable with no obvious way back. Clamping on both load and save
+    /// makes a bad value self-healing rather than a trap.
+    pub fn clamped(mut self) -> Self {
+        self.font_size = self.font_size.clamp(6, 72);
+        self.terminal_font_size = self.terminal_font_size.clamp(6, 72);
+        self.tab_size = self.tab_size.clamp(1, 16);
+        // Port 0 means "any port" to the OS but breaks the URL julIDE builds;
+        // ports below 1024 need privileges we do not have.
+        self.pluto_port = self.pluto_port.clamp(1024, 65535);
+        self.sidebar_width = self.sidebar_width.clamp(150, 800);
+        self.bottom_panel_height = self.bottom_panel_height.clamp(80, 1200);
+
+        if !matches!(
+            self.word_wrap.as_str(),
+            "off" | "on" | "wordWrapColumn" | "bounded"
+        ) {
+            self.word_wrap = default_word_wrap();
+        }
+        if !matches!(self.theme.as_str(), "julide-dark" | "julide-light") {
+            self.theme = default_theme();
+        }
+        if !matches!(
+            self.container_runtime.as_str(),
+            "auto" | "docker" | "podman"
+        ) {
+            self.container_runtime = default_container_runtime();
+        }
+        if !matches!(self.lsp_backend.as_str(), "languageserver" | "jetls") {
+            self.lsp_backend = default_lsp_backend();
+        }
+
+        // A recent list that grew unbounded through hand-editing would slow startup.
+        self.recent_workspaces.truncate(10);
+        self
+    }
+}
+
 fn settings_path() -> PathBuf {
-    let config = dirs_next::config_dir().unwrap_or_else(|| PathBuf::from("."));
+    let config = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
     config.join("julide").join("settings.json")
 }
 
@@ -129,7 +171,7 @@ fn settings_path() -> PathBuf {
 /// Used to stop `start_maximized` from stomping on a window size the user chose:
 /// the setting should describe the *first* launch, not override every later one.
 pub fn has_saved_window_state() -> bool {
-    let Some(dir) = dirs_next::config_dir() else {
+    let Some(dir) = dirs::config_dir() else {
         return false;
     };
     // The plugin writes this next to the app's other config, keyed by identifier.
@@ -142,7 +184,9 @@ pub fn has_saved_window_state() -> bool {
 pub fn settings_load() -> Settings {
     let path = settings_path();
     if let Ok(content) = fs::read_to_string(&path) {
-        serde_json::from_str(&content).unwrap_or_default()
+        serde_json::from_str::<Settings>(&content)
+            .unwrap_or_default()
+            .clamped()
     } else {
         Settings::default()
     }
@@ -150,12 +194,18 @@ pub fn settings_load() -> Settings {
 
 #[tauri::command]
 pub fn settings_save(settings: Settings) -> Result<(), String> {
+    let settings = settings.clamped();
     let path = settings_path();
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
     let content = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
-    fs::write(&path, content).map_err(|e| e.to_string())
+    // Write to a temporary file and rename over the target, so an interrupted write
+    // (crash, full disk, power loss) cannot leave a truncated settings.json behind —
+    // which on next launch would silently reset every preference.
+    let tmp = path.with_extension("json.tmp");
+    fs::write(&tmp, content).map_err(|e| e.to_string())?;
+    fs::rename(&tmp, &path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -212,6 +262,103 @@ mod tests {
         let json = serde_json::to_string(&Settings::default()).unwrap();
         assert!(json.contains("sidebarWidth"), "got: {json}");
         assert!(json.contains("bottomPanelHeight"), "got: {json}");
+    }
+
+    // ── clamped() ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn clamped_brings_absurd_sizes_back_into_range() {
+        let s = Settings {
+            font_size: 99999,
+            terminal_font_size: 0,
+            tab_size: 0,
+            ..Default::default()
+        }
+        .clamped();
+        assert_eq!(s.font_size, 72);
+        assert_eq!(s.terminal_font_size, 6);
+        assert_eq!(s.tab_size, 1);
+    }
+
+    #[test]
+    fn clamped_rejects_unusable_pluto_ports() {
+        // 0 means "any port" to the OS, but julIDE builds a URL from this value.
+        assert_eq!(
+            Settings {
+                pluto_port: 0,
+                ..Default::default()
+            }
+            .clamped()
+            .pluto_port,
+            1024
+        );
+        assert_eq!(
+            Settings {
+                pluto_port: 999_999,
+                ..Default::default()
+            }
+            .clamped()
+            .pluto_port,
+            65535
+        );
+    }
+
+    #[test]
+    fn clamped_falls_back_on_unknown_enum_values() {
+        let s = Settings {
+            theme: "hot-pink".into(),
+            word_wrap: "sideways".into(),
+            container_runtime: "containerd".into(),
+            lsp_backend: "nonesuch".into(),
+            ..Default::default()
+        }
+        .clamped();
+        assert_eq!(s.theme, default_theme());
+        assert_eq!(s.word_wrap, default_word_wrap());
+        assert_eq!(s.container_runtime, default_container_runtime());
+        assert_eq!(s.lsp_backend, default_lsp_backend());
+    }
+
+    #[test]
+    fn clamped_keeps_valid_values_untouched() {
+        let original = Settings {
+            font_size: 15,
+            theme: "julide-light".into(),
+            word_wrap: "on".into(),
+            container_runtime: "podman".into(),
+            lsp_backend: "jetls".into(),
+            pluto_port: 3000,
+            ..Default::default()
+        };
+        let clamped = original.clone().clamped();
+        assert_eq!(clamped.font_size, 15);
+        assert_eq!(clamped.theme, "julide-light");
+        assert_eq!(clamped.word_wrap, "on");
+        assert_eq!(clamped.container_runtime, "podman");
+        assert_eq!(clamped.lsp_backend, "jetls");
+        assert_eq!(clamped.pluto_port, 3000);
+    }
+
+    #[test]
+    fn clamped_caps_the_recent_workspace_list() {
+        let s = Settings {
+            recent_workspaces: (0..50).map(|i| format!("/w{i}")).collect(),
+            ..Default::default()
+        }
+        .clamped();
+        assert_eq!(s.recent_workspaces.len(), 10);
+    }
+
+    #[test]
+    fn clamped_bounds_panel_sizes() {
+        let s = Settings {
+            sidebar_width: 5,
+            bottom_panel_height: 99999,
+            ..Default::default()
+        }
+        .clamped();
+        assert_eq!(s.sidebar_width, 150);
+        assert_eq!(s.bottom_panel_height, 1200);
     }
 
     #[test]

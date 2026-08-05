@@ -49,20 +49,20 @@ The two layers communicate via Tauri's IPC mechanism: the frontend calls Rust fu
 
 ### System Requirements
 
-| Platform | Minimum | Recommended |
-|----------|---------|-------------|
-| **macOS** | 10.15+ (Catalina) | 13+ (Ventura) |
-| **Linux** | Ubuntu 20.04+ / Fedora 35+ | Ubuntu 22.04+ |
-| **Windows** | Windows 10 (1803+) | Windows 11 |
+| Platform    | Minimum                    | Recommended   |
+| ----------- | -------------------------- | ------------- |
+| **macOS**   | 10.15+ (Catalina)          | 13+ (Ventura) |
+| **Linux**   | Ubuntu 20.04+ / Fedora 35+ | Ubuntu 22.04+ |
+| **Windows** | Windows 10 (1803+)         | Windows 11    |
 
 ### Dependencies
 
-| Tool | Purpose | Install |
-|------|---------|---------|
-| Rust (stable) | Build the Tauri backend | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
-| Bun | Frontend package manager and script runner | `curl -fsSL https://bun.sh/install \| bash` |
-| Julia 1.6+ | The language julIDE supports | [julialang.org/downloads](https://julialang.org/downloads/) |
-| Tauri CLI v2 | Build tool for Tauri apps | `cargo install tauri-cli --version "^2"` |
+| Tool          | Purpose                                    | Install                                                           |
+| ------------- | ------------------------------------------ | ----------------------------------------------------------------- |
+| Rust (stable) | Build the Tauri backend                    | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
+| Bun           | Frontend package manager and script runner | `curl -fsSL https://bun.sh/install \| bash`                       |
+| Julia 1.6+    | The language julIDE supports               | [julialang.org/downloads](https://julialang.org/downloads/)       |
+| Tauri CLI v2  | Build tool for Tauri apps                  | `cargo install tauri-cli --version "^2"`                          |
 
 #### Linux-specific system packages
 
@@ -199,6 +199,7 @@ App.tsx
 Two Zustand stores with Immer middleware:
 
 **`useIdeStore`** — Runtime state:
+
 - `workspacePath`, `fileTree` — Current workspace
 - `openTabs`, `activeTabId` — Editor tabs
 - `splitTabId`, `splitEditorOpen` — Split editor
@@ -218,11 +219,13 @@ Two Zustand stores with Immer middleware:
 - `gitProvider` — Detected git provider for the current repo
 
 **`useSettingsStore`** — Persisted state:
+
 - `settings` — Font size, theme, tab size, word wrap, minimap, etc.
 - `loaded` — Whether settings have been loaded from disk
 - `settingsOpen` — Whether the settings panel is visible
 
 **`usePluginStore`** — Plugin contribution registry:
+
 - `commands` — Map of registered command contributions
 - `sidebarPanels` — Array of registered sidebar panel contributions
 - `bottomPanels` — Array of registered bottom panel contributions
@@ -231,16 +234,16 @@ Two Zustand stores with Immer middleware:
 
 ### Key Frontend Libraries
 
-| Library | Version | Purpose |
-|---------|---------|---------|
-| `@monaco-editor/react` | 4.7.0 | React wrapper for Monaco Editor |
-| `monaco-editor` | 0.55.1 | Code editor engine |
-| `@xterm/xterm` | 6.0.0 | Terminal emulator |
-| `@xterm/addon-fit` | 0.11.0 | Auto-resize terminal to container |
-| `@xterm/addon-web-links` | 0.12.0 | Clickable URLs in terminal |
-| `zustand` | 5.0.12 | State management |
-| `immer` | 11.1.4 | Immutable state updates |
-| `lucide-react` | 0.577.0 | Icons |
+| Library                  | Version | Purpose                           |
+| ------------------------ | ------- | --------------------------------- |
+| `@monaco-editor/react`   | 4.7.0   | React wrapper for Monaco Editor   |
+| `monaco-editor`          | 0.55.1  | Code editor engine                |
+| `@xterm/xterm`           | 6.0.0   | Terminal emulator                 |
+| `@xterm/addon-fit`       | 0.11.0  | Auto-resize terminal to container |
+| `@xterm/addon-web-links` | 0.12.0  | Clickable URLs in terminal        |
+| `zustand`                | 5.0.12  | State management                  |
+| `immer`                  | 11.1.4  | Immutable state updates           |
+| `lucide-react`           | 0.577.0 | Icons                             |
 
 ---
 
@@ -248,26 +251,26 @@ Two Zustand stores with Immer middleware:
 
 Each Rust module in `src-tauri/src/` handles one domain:
 
-| Module | Responsibility |
-|--------|---------------|
-| `lib.rs` | Tauri builder, plugin registration, command handler registration |
-| `julia.rs` | Find Julia, run scripts, precompile, clean, Pkg.add/rm |
-| `lsp.rs` | Spawn LanguageServer.jl, JSON-RPC protocol over stdio |
-| `pty.rs` | Manage PTY sessions for the interactive terminal |
-| `debugger.rs` | Spawn Debugger.jl, send step/continue commands, parse output |
-| `fs.rs` | File tree, read/write/create/delete/rename, native dialogs |
-| `git.rs` | All git operations via libgit2 (status, stage, commit, diff, branches, remotes, stash, push, pull, fetch, merge) |
-| `git_auth.rs` | Store and retrieve PAT tokens via OS keychain (`keyring` crate) |
-| `git_provider.rs` | `GitProvider` trait, provider detection, and dispatch commands for PRs, issues, CI |
-| `git_github.rs` | GitHub REST API implementation of `GitProvider` |
-| `git_gitlab.rs` | GitLab REST API implementation of `GitProvider` |
-| `git_gitea.rs` | Gitea REST API implementation of `GitProvider` |
-| `container.rs` | Docker/Podman runtime detection, container lifecycle, devcontainer.json support |
-| `plugins.rs` | Scan `~/.julide/plugins/` for plugin manifests, read plugin entry points |
-| `search.rs` | Walk workspace tree, regex match file contents |
-| `watcher.rs` | Watch workspace for external file changes |
-| `settings.rs` | Load/save JSON settings to the platform config directory |
-| `pluto.rs` | Spawn Pluto.jl server, extract URL, open in Tauri webview |
+| Module            | Responsibility                                                                                                   |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `lib.rs`          | Tauri builder, plugin registration, command handler registration                                                 |
+| `julia.rs`        | Find Julia, run scripts, precompile, clean, Pkg.add/rm                                                           |
+| `lsp.rs`          | Spawn LanguageServer.jl, JSON-RPC protocol over stdio                                                            |
+| `pty.rs`          | Manage PTY sessions for the interactive terminal                                                                 |
+| `debugger.rs`     | Spawn Debugger.jl, send step/continue commands, parse output                                                     |
+| `fs.rs`           | File tree, read/write/create/delete/rename, native dialogs                                                       |
+| `git.rs`          | All git operations via libgit2 (status, stage, commit, diff, branches, remotes, stash, push, pull, fetch, merge) |
+| `git_auth.rs`     | Store and retrieve PAT tokens via OS keychain (`keyring` crate)                                                  |
+| `git_provider.rs` | `GitProvider` trait, provider detection, and dispatch commands for PRs, issues, CI                               |
+| `git_github.rs`   | GitHub REST API implementation of `GitProvider`                                                                  |
+| `git_gitlab.rs`   | GitLab REST API implementation of `GitProvider`                                                                  |
+| `git_gitea.rs`    | Gitea REST API implementation of `GitProvider`                                                                   |
+| `container.rs`    | Docker/Podman runtime detection, container lifecycle, devcontainer.json support                                  |
+| `plugins.rs`      | Scan `~/.julide/plugins/` for plugin manifests, read plugin entry points                                         |
+| `search.rs`       | Walk workspace tree, regex match file contents                                                                   |
+| `watcher.rs`      | Watch workspace for external file changes                                                                        |
+| `settings.rs`     | Load/save JSON settings to the platform config directory                                                         |
+| `pluto.rs`        | Spawn Pluto.jl server, extract URL, open in Tauri webview                                                        |
 
 ### Shared State
 
@@ -281,26 +284,26 @@ Each Rust module in `src-tauri/src/` handles one domain:
 
 ### Cargo Dependencies
 
-| Crate | Version | Purpose |
-|-------|---------|---------|
-| `tauri` | 2 | Desktop app framework |
-| `tokio` | 1 (full) | Async runtime for spawning processes |
-| `portable-pty` | 0.8 | Cross-platform PTY for terminal |
-| `git2` | 0.19 | libgit2 bindings for git operations |
-| `serde` / `serde_json` | 1 | Serialization for IPC |
-| `walkdir` | 2 | Recursive directory traversal |
-| `regex` | 1 | Regular expression matching in search |
-| `glob` | 0.3 | File glob pattern matching |
-| `notify` | 7 | File system change notifications |
-| `once_cell` | 1 | Lazy static initialization |
-| `uuid` | 1 | Unique ID generation |
-| `dirs-next` | 2 | Platform config directory paths |
-| `reqwest` | 0.12 | HTTP client for git provider API calls (GitHub/GitLab/Gitea) |
-| `keyring` | 3 | OS keychain access for storing PAT tokens |
-| `url` | 2 | URL parsing for git remote URL handling |
-| `async-trait` | 0.1 | Async trait support for the `GitProvider` trait |
-| `tauri-plugin-dialog` | 2 | Native file/folder open/save dialogs |
-| `libc` | 0.2 | Unix signal handling (SIGTERM) |
+| Crate                  | Version  | Purpose                                                      |
+| ---------------------- | -------- | ------------------------------------------------------------ |
+| `tauri`                | 2        | Desktop app framework                                        |
+| `tokio`                | 1 (full) | Async runtime for spawning processes                         |
+| `portable-pty`         | 0.8      | Cross-platform PTY for terminal                              |
+| `git2`                 | 0.19     | libgit2 bindings for git operations                          |
+| `serde` / `serde_json` | 1        | Serialization for IPC                                        |
+| `walkdir`              | 2        | Recursive directory traversal                                |
+| `regex`                | 1        | Regular expression matching in search                        |
+| `glob`                 | 0.3      | File glob pattern matching                                   |
+| `notify`               | 7        | File system change notifications                             |
+| `once_cell`            | 1        | Lazy static initialization                                   |
+| `uuid`                 | 1        | Unique ID generation                                         |
+| `dirs-next`            | 2        | Platform config directory paths                              |
+| `reqwest`              | 0.12     | HTTP client for git provider API calls (GitHub/GitLab/Gitea) |
+| `keyring`              | 3        | OS keychain access for storing PAT tokens                    |
+| `url`                  | 2        | URL parsing for git remote URL handling                      |
+| `async-trait`          | 0.1      | Async trait support for the `GitProvider` trait              |
+| `tauri-plugin-dialog`  | 2        | Native file/folder open/save dialogs                         |
+| `libc`                 | 0.2      | Unix signal handling (SIGTERM)                               |
 
 ---
 
@@ -333,134 +336,134 @@ const unlisten = await listen<PayloadType>("event-name", (event) => {
 
 ### Event Catalog
 
-| Event | Payload | Source |
-|-------|---------|--------|
-| `julia-output` | `{ kind, text, exit_code? }` | `julia.rs` — script stdout/stderr/done |
-| `pty-output` | `{ session_id, data }` | `pty.rs` — terminal output |
-| `lsp-status` | `{ status, message? }` | `lsp.rs` — LSP lifecycle |
-| `lsp-notification` | `{ method, params, id? }` | `lsp.rs` — LSP push notifications |
-| `debug-stopped` | `{ file, line, reason }` | `debugger.rs` — breakpoint hit |
-| `debug-output` | `{ kind, text }` | `debugger.rs` — debugger stdout |
-| `debug-variables` | `{ variables[] }` | `debugger.rs` — variable values |
-| `fs-changed` | `{ path, kind }` | `watcher.rs` — file create/modify/remove |
-| `pluto-status` | `{ status, message? }` | `pluto.rs` — Pluto server lifecycle |
-| `container-status` | `{ status, message?, container_id? }` | `container.rs` — Container state change |
-| `container-output` | `{ kind, text, exit_code? }` | `container.rs` — Container build/run/log output |
+| Event              | Payload                               | Source                                          |
+| ------------------ | ------------------------------------- | ----------------------------------------------- |
+| `julia-output`     | `{ kind, text, exit_code? }`          | `julia.rs` — script stdout/stderr/done          |
+| `pty-output`       | `{ session_id, data }`                | `pty.rs` — terminal output                      |
+| `lsp-status`       | `{ status, message? }`                | `lsp.rs` — LSP lifecycle                        |
+| `lsp-notification` | `{ method, params, id? }`             | `lsp.rs` — LSP push notifications               |
+| `debug-stopped`    | `{ file, line, reason }`              | `debugger.rs` — breakpoint hit                  |
+| `debug-output`     | `{ kind, text }`                      | `debugger.rs` — debugger stdout                 |
+| `debug-variables`  | `{ variables[] }`                     | `debugger.rs` — variable values                 |
+| `fs-changed`       | `{ path, kind }`                      | `watcher.rs` — file create/modify/remove        |
+| `pluto-status`     | `{ status, message? }`                | `pluto.rs` — Pluto server lifecycle             |
+| `container-status` | `{ status, message?, container_id? }` | `container.rs` — Container state change         |
+| `container-output` | `{ kind, text, exit_code? }`          | `container.rs` — Container build/run/log output |
 
 ### Command Catalog
 
-| Command | Module | Description |
-|---------|--------|-------------|
-| `fs_get_tree` | `fs.rs` | Get recursive file tree for a path |
-| `fs_read_file` | `fs.rs` | Read file contents |
-| `fs_write_file` | `fs.rs` | Write file contents |
-| `fs_create_file` | `fs.rs` | Create empty file |
-| `fs_create_dir` | `fs.rs` | Create directory |
-| `fs_delete_entry` | `fs.rs` | Delete file or directory |
-| `fs_rename` | `fs.rs` | Rename/move file or directory |
-| `fs_exists` | `fs.rs` | Check if path exists |
-| `dialog_open_file` | `fs.rs` | Native file open dialog |
-| `dialog_open_folder` | `fs.rs` | Native folder open dialog |
-| `dialog_save_file` | `fs.rs` | Native file save dialog |
-| `dialog_pick_executable` | `fs.rs` | Native file picker dialog for executables |
-| `julia_get_version` | `julia.rs` | Get Julia version string |
-| `julia_list_environments` | `julia.rs` | List available Julia environments |
-| `julia_run` | `julia.rs` | Run a Julia script file |
-| `julia_precompile` | `julia.rs` | Precompile project packages |
-| `julia_clean` | `julia.rs` | Remove Manifest.toml and cache |
-| `julia_kill` | `julia.rs` | Kill running Julia process |
-| `julia_set_path` | `julia.rs` | Manually set Julia binary path |
-| `julia_eval` | `julia.rs` | Evaluate arbitrary Julia code in a workspace context |
-| `julia_set_path` | `julia.rs` | Manually override the Julia binary path |
-| `julia_pkg_add` | `julia.rs` | Add a Julia package via Pkg.jl |
-| `julia_pkg_rm` | `julia.rs` | Remove a Julia package via Pkg.jl |
-| `pty_create` | `pty.rs` | Create a new PTY terminal session |
-| `pty_write` | `pty.rs` | Send data to PTY stdin |
-| `pty_resize` | `pty.rs` | Resize PTY dimensions |
-| `pty_close` | `pty.rs` | Close a PTY session |
-| `lsp_start` | `lsp.rs` | Start the Julia Language Server |
-| `lsp_stop` | `lsp.rs` | Stop the Language Server |
-| `lsp_send_request` | `lsp.rs` | Send a JSON-RPC request to LSP |
-| `lsp_send_notification` | `lsp.rs` | Send a JSON-RPC notification |
-| `lsp_send_response` | `lsp.rs` | Respond to a server-initiated request |
-| `debug_start` | `debugger.rs` | Start debugging a file |
-| `debug_continue` | `debugger.rs` | Continue execution |
-| `debug_step_over` | `debugger.rs` | Step over current line |
-| `debug_step_into` | `debugger.rs` | Step into function call |
-| `debug_step_out` | `debugger.rs` | Step out of current function |
-| `debug_stop` | `debugger.rs` | Stop debugging |
-| `debug_set_breakpoint` | `debugger.rs` | Add a breakpoint |
-| `debug_remove_breakpoint` | `debugger.rs` | Remove a breakpoint |
-| `debug_get_breakpoints` | `debugger.rs` | List all breakpoints |
-| `debug_get_variables` | `debugger.rs` | Get current scope variables |
-| `git_is_repo` | `git.rs` | Check if workspace is a git repo |
-| `git_branch_current` | `git.rs` | Get current branch name |
-| `git_branches` | `git.rs` | List local branches |
-| `git_status` | `git.rs` | Get changed files with status |
-| `git_diff` | `git.rs` | Get unified diff for a file |
-| `git_stage` | `git.rs` | Stage files |
-| `git_unstage` | `git.rs` | Unstage files |
-| `git_commit` | `git.rs` | Commit staged changes |
-| `git_log` | `git.rs` | Get recent commit history |
-| `git_checkout_branch` | `git.rs` | Switch branches |
-| `git_remotes` | `git.rs` | List all remotes with URLs |
-| `git_remote_url` | `git.rs` | Get URL for a specific remote |
-| `git_branch_create` | `git.rs` | Create a new branch (optionally checkout) |
-| `git_branch_delete` | `git.rs` | Delete a local branch |
-| `git_merge` | `git.rs` | Merge a branch into HEAD |
-| `git_stash_save` | `git.rs` | Stash working directory changes |
-| `git_stash_list` | `git.rs` | List all stash entries |
-| `git_stash_pop` | `git.rs` | Pop a stash entry by index |
-| `git_fetch` | `git.rs` | Fetch from a remote |
-| `git_push` | `git.rs` | Push a branch to a remote |
-| `git_pull` | `git.rs` | Pull (fetch + merge) from a remote |
-| `git_ahead_behind` | `git.rs` | Count commits ahead/behind upstream |
-| `git_show_file_at_head` | `git.rs` | Get file contents at HEAD (used by diff viewer) |
-| `git_blame_file` | `git.rs` | Get per-line blame information for a file |
-| `git_auth_save_token` | `git_auth.rs` | Store a PAT in the OS keychain |
-| `git_auth_get_token` | `git_auth.rs` | Retrieve a stored PAT |
-| `git_auth_remove_token` | `git_auth.rs` | Remove a stored PAT |
-| `git_auth_list_accounts` | `git_auth.rs` | List configured provider accounts |
-| `git_provider_detect` | `git_provider.rs` | Detect provider from remote URL |
-| `git_provider_repo_info` | `git_provider.rs` | Get repository metadata from provider API |
-| `git_provider_list_prs` | `git_provider.rs` | List pull/merge requests |
-| `git_provider_create_pr` | `git_provider.rs` | Create a pull/merge request |
-| `git_provider_merge_pr` | `git_provider.rs` | Merge a pull/merge request |
-| `git_provider_list_issues` | `git_provider.rs` | List issues |
-| `git_provider_create_issue` | `git_provider.rs` | Create an issue |
-| `git_provider_ci_status` | `git_provider.rs` | Get CI/CD pipeline status |
-| `plugin_get_dir` | `plugins.rs` | Get the plugins directory path |
-| `plugin_scan` | `plugins.rs` | Scan for installed plugins and return manifests |
-| `plugin_read_entry` | `plugins.rs` | Read a plugin's entry point source code |
-| `container_detect_runtime` | `container.rs` | Auto-detect Docker or Podman |
-| `container_set_runtime` | `container.rs` | Manually set container runtime |
-| `container_list` | `container.rs` | List running containers |
-| `container_list_images` | `container.rs` | List container images |
-| `container_inspect` | `container.rs` | Inspect a container (JSON) |
-| `container_start` | `container.rs` | Start a stopped container |
-| `container_stop` | `container.rs` | Stop a running container |
-| `container_restart` | `container.rs` | Restart a container |
-| `container_remove` | `container.rs` | Remove a container |
-| `container_logs` | `container.rs` | Stream container logs via events |
-| `container_pull_image` | `container.rs` | Pull a container image |
-| `container_exec` | `container.rs` | Execute a command in a container |
-| `devcontainer_detect` | `container.rs` | Check if workspace has devcontainer.json |
-| `devcontainer_load_config` | `container.rs` | Parse and return devcontainer.json |
-| `devcontainer_up` | `container.rs` | Build and start a dev container |
-| `devcontainer_stop` | `container.rs` | Stop the active dev container |
-| `devcontainer_rebuild` | `container.rs` | Rebuild and restart the dev container |
-| `devcontainer_down` | `container.rs` | Stop and remove the dev container |
-| `container_pty_create` | `container.rs` | Create a PTY session inside a container |
-| `container_julia_run` | `container.rs` | Run a Julia script inside the container |
-| `fs_search_files` | `search.rs` | Search file contents across workspace |
-| `fs_replace_in_files` | `search.rs` | Replace matched text across workspace files |
-| `watcher_start` | `watcher.rs` | Start watching workspace for changes |
-| `watcher_stop` | `watcher.rs` | Stop file watching |
-| `settings_load` | `settings.rs` | Load settings from disk |
-| `settings_save` | `settings.rs` | Save settings to disk |
-| `settings_add_recent_workspace` | `settings.rs` | Add path to recent workspaces list |
-| `pluto_open` | `pluto.rs` | Open a .jl file as a Pluto notebook |
-| `pluto_stop` | `pluto.rs` | Stop the Pluto server |
+| Command                         | Module            | Description                                          |
+| ------------------------------- | ----------------- | ---------------------------------------------------- |
+| `fs_get_tree`                   | `fs.rs`           | Get recursive file tree for a path                   |
+| `fs_read_file`                  | `fs.rs`           | Read file contents                                   |
+| `fs_write_file`                 | `fs.rs`           | Write file contents                                  |
+| `fs_create_file`                | `fs.rs`           | Create empty file                                    |
+| `fs_create_dir`                 | `fs.rs`           | Create directory                                     |
+| `fs_delete_entry`               | `fs.rs`           | Delete file or directory                             |
+| `fs_rename`                     | `fs.rs`           | Rename/move file or directory                        |
+| `fs_exists`                     | `fs.rs`           | Check if path exists                                 |
+| `dialog_open_file`              | `fs.rs`           | Native file open dialog                              |
+| `dialog_open_folder`            | `fs.rs`           | Native folder open dialog                            |
+| `dialog_save_file`              | `fs.rs`           | Native file save dialog                              |
+| `dialog_pick_executable`        | `fs.rs`           | Native file picker dialog for executables            |
+| `julia_get_version`             | `julia.rs`        | Get Julia version string                             |
+| `julia_list_environments`       | `julia.rs`        | List available Julia environments                    |
+| `julia_run`                     | `julia.rs`        | Run a Julia script file                              |
+| `julia_precompile`              | `julia.rs`        | Precompile project packages                          |
+| `julia_clean`                   | `julia.rs`        | Remove Manifest.toml and cache                       |
+| `julia_kill`                    | `julia.rs`        | Kill running Julia process                           |
+| `julia_set_path`                | `julia.rs`        | Manually set Julia binary path                       |
+| `julia_eval`                    | `julia.rs`        | Evaluate arbitrary Julia code in a workspace context |
+| `julia_set_path`                | `julia.rs`        | Manually override the Julia binary path              |
+| `julia_pkg_add`                 | `julia.rs`        | Add a Julia package via Pkg.jl                       |
+| `julia_pkg_rm`                  | `julia.rs`        | Remove a Julia package via Pkg.jl                    |
+| `pty_create`                    | `pty.rs`          | Create a new PTY terminal session                    |
+| `pty_write`                     | `pty.rs`          | Send data to PTY stdin                               |
+| `pty_resize`                    | `pty.rs`          | Resize PTY dimensions                                |
+| `pty_close`                     | `pty.rs`          | Close a PTY session                                  |
+| `lsp_start`                     | `lsp.rs`          | Start the Julia Language Server                      |
+| `lsp_stop`                      | `lsp.rs`          | Stop the Language Server                             |
+| `lsp_send_request`              | `lsp.rs`          | Send a JSON-RPC request to LSP                       |
+| `lsp_send_notification`         | `lsp.rs`          | Send a JSON-RPC notification                         |
+| `lsp_send_response`             | `lsp.rs`          | Respond to a server-initiated request                |
+| `debug_start`                   | `debugger.rs`     | Start debugging a file                               |
+| `debug_continue`                | `debugger.rs`     | Continue execution                                   |
+| `debug_step_over`               | `debugger.rs`     | Step over current line                               |
+| `debug_step_into`               | `debugger.rs`     | Step into function call                              |
+| `debug_step_out`                | `debugger.rs`     | Step out of current function                         |
+| `debug_stop`                    | `debugger.rs`     | Stop debugging                                       |
+| `debug_set_breakpoint`          | `debugger.rs`     | Add a breakpoint                                     |
+| `debug_remove_breakpoint`       | `debugger.rs`     | Remove a breakpoint                                  |
+| `debug_get_breakpoints`         | `debugger.rs`     | List all breakpoints                                 |
+| `debug_get_variables`           | `debugger.rs`     | Get current scope variables                          |
+| `git_is_repo`                   | `git.rs`          | Check if workspace is a git repo                     |
+| `git_branch_current`            | `git.rs`          | Get current branch name                              |
+| `git_branches`                  | `git.rs`          | List local branches                                  |
+| `git_status`                    | `git.rs`          | Get changed files with status                        |
+| `git_diff`                      | `git.rs`          | Get unified diff for a file                          |
+| `git_stage`                     | `git.rs`          | Stage files                                          |
+| `git_unstage`                   | `git.rs`          | Unstage files                                        |
+| `git_commit`                    | `git.rs`          | Commit staged changes                                |
+| `git_log`                       | `git.rs`          | Get recent commit history                            |
+| `git_checkout_branch`           | `git.rs`          | Switch branches                                      |
+| `git_remotes`                   | `git.rs`          | List all remotes with URLs                           |
+| `git_remote_url`                | `git.rs`          | Get URL for a specific remote                        |
+| `git_branch_create`             | `git.rs`          | Create a new branch (optionally checkout)            |
+| `git_branch_delete`             | `git.rs`          | Delete a local branch                                |
+| `git_merge`                     | `git.rs`          | Merge a branch into HEAD                             |
+| `git_stash_save`                | `git.rs`          | Stash working directory changes                      |
+| `git_stash_list`                | `git.rs`          | List all stash entries                               |
+| `git_stash_pop`                 | `git.rs`          | Pop a stash entry by index                           |
+| `git_fetch`                     | `git.rs`          | Fetch from a remote                                  |
+| `git_push`                      | `git.rs`          | Push a branch to a remote                            |
+| `git_pull`                      | `git.rs`          | Pull (fetch + merge) from a remote                   |
+| `git_ahead_behind`              | `git.rs`          | Count commits ahead/behind upstream                  |
+| `git_show_file_at_head`         | `git.rs`          | Get file contents at HEAD (used by diff viewer)      |
+| `git_blame_file`                | `git.rs`          | Get per-line blame information for a file            |
+| `git_auth_save_token`           | `git_auth.rs`     | Store a PAT in the OS keychain                       |
+| `git_auth_get_token`            | `git_auth.rs`     | Retrieve a stored PAT                                |
+| `git_auth_remove_token`         | `git_auth.rs`     | Remove a stored PAT                                  |
+| `git_auth_list_accounts`        | `git_auth.rs`     | List configured provider accounts                    |
+| `git_provider_detect`           | `git_provider.rs` | Detect provider from remote URL                      |
+| `git_provider_repo_info`        | `git_provider.rs` | Get repository metadata from provider API            |
+| `git_provider_list_prs`         | `git_provider.rs` | List pull/merge requests                             |
+| `git_provider_create_pr`        | `git_provider.rs` | Create a pull/merge request                          |
+| `git_provider_merge_pr`         | `git_provider.rs` | Merge a pull/merge request                           |
+| `git_provider_list_issues`      | `git_provider.rs` | List issues                                          |
+| `git_provider_create_issue`     | `git_provider.rs` | Create an issue                                      |
+| `git_provider_ci_status`        | `git_provider.rs` | Get CI/CD pipeline status                            |
+| `plugin_get_dir`                | `plugins.rs`      | Get the plugins directory path                       |
+| `plugin_scan`                   | `plugins.rs`      | Scan for installed plugins and return manifests      |
+| `plugin_read_entry`             | `plugins.rs`      | Read a plugin's entry point source code              |
+| `container_detect_runtime`      | `container.rs`    | Auto-detect Docker or Podman                         |
+| `container_set_runtime`         | `container.rs`    | Manually set container runtime                       |
+| `container_list`                | `container.rs`    | List running containers                              |
+| `container_list_images`         | `container.rs`    | List container images                                |
+| `container_inspect`             | `container.rs`    | Inspect a container (JSON)                           |
+| `container_start`               | `container.rs`    | Start a stopped container                            |
+| `container_stop`                | `container.rs`    | Stop a running container                             |
+| `container_restart`             | `container.rs`    | Restart a container                                  |
+| `container_remove`              | `container.rs`    | Remove a container                                   |
+| `container_logs`                | `container.rs`    | Stream container logs via events                     |
+| `container_pull_image`          | `container.rs`    | Pull a container image                               |
+| `container_exec`                | `container.rs`    | Execute a command in a container                     |
+| `devcontainer_detect`           | `container.rs`    | Check if workspace has devcontainer.json             |
+| `devcontainer_load_config`      | `container.rs`    | Parse and return devcontainer.json                   |
+| `devcontainer_up`               | `container.rs`    | Build and start a dev container                      |
+| `devcontainer_stop`             | `container.rs`    | Stop the active dev container                        |
+| `devcontainer_rebuild`          | `container.rs`    | Rebuild and restart the dev container                |
+| `devcontainer_down`             | `container.rs`    | Stop and remove the dev container                    |
+| `container_pty_create`          | `container.rs`    | Create a PTY session inside a container              |
+| `container_julia_run`           | `container.rs`    | Run a Julia script inside the container              |
+| `fs_search_files`               | `search.rs`       | Search file contents across workspace                |
+| `fs_replace_in_files`           | `search.rs`       | Replace matched text across workspace files          |
+| `watcher_start`                 | `watcher.rs`      | Start watching workspace for changes                 |
+| `watcher_stop`                  | `watcher.rs`      | Stop file watching                                   |
+| `settings_load`                 | `settings.rs`     | Load settings from disk                              |
+| `settings_save`                 | `settings.rs`     | Save settings to disk                                |
+| `settings_add_recent_workspace` | `settings.rs`     | Add path to recent workspaces list                   |
+| `pluto_open`                    | `pluto.rs`        | Open a .jl file as a Pluto notebook                  |
+| `pluto_stop`                    | `pluto.rs`        | Stop the Pluto server                                |
 
 ---
 
@@ -486,18 +489,18 @@ Monaco Editor (frontend)
 
 ### Supported LSP features
 
-| Feature | LSP Method | Monaco Provider |
-|---------|-----------|----------------|
-| Autocompletion | `textDocument/completion` | `CompletionItemProvider` |
-| Hover | `textDocument/hover` | `HoverProvider` |
-| Go to Definition | `textDocument/definition` | `DefinitionProvider` |
-| Find References | `textDocument/references` | `ReferenceProvider` |
-| Signature Help | `textDocument/signatureHelp` | `SignatureHelpProvider` |
-| Diagnostics | `textDocument/publishDiagnostics` | Markers via `setMonacoMarkers` |
-| Document Symbols | `textDocument/documentSymbol` | Available via `LspClient` |
-| Workspace Symbols | `workspace/symbol` | Available via `LspClient` |
-| Inlay Hints | `textDocument/inlayHint` | `InlayHintsProvider` |
-| Semantic Tokens | `textDocument/semanticTokens/full` | `DocumentSemanticTokensProvider` |
+| Feature           | LSP Method                         | Monaco Provider                  |
+| ----------------- | ---------------------------------- | -------------------------------- |
+| Autocompletion    | `textDocument/completion`          | `CompletionItemProvider`         |
+| Hover             | `textDocument/hover`               | `HoverProvider`                  |
+| Go to Definition  | `textDocument/definition`          | `DefinitionProvider`             |
+| Find References   | `textDocument/references`          | `ReferenceProvider`              |
+| Signature Help    | `textDocument/signatureHelp`       | `SignatureHelpProvider`          |
+| Diagnostics       | `textDocument/publishDiagnostics`  | Markers via `setMonacoMarkers`   |
+| Document Symbols  | `textDocument/documentSymbol`      | Available via `LspClient`        |
+| Workspace Symbols | `workspace/symbol`                 | Available via `LspClient`        |
+| Inlay Hints       | `textDocument/inlayHint`           | `InlayHintsProvider`             |
+| Semantic Tokens   | `textDocument/semanticTokens/full` | `DocumentSemanticTokensProvider` |
 
 ### Document Lifecycle
 
@@ -525,6 +528,7 @@ The result is cached in a lazy static for subsequent calls.
 ### Script Execution
 
 `julia_run` spawns a Julia process with:
+
 - A custom MIME display helper prepended to the script
 - `--project=<workspace>` if a workspace is open
 - stdout/stderr streamed line-by-line via `julia-output` events
@@ -568,6 +572,7 @@ The backend stores sessions in a `HashMap<String, PtySession>`. The frontend man
 ### Revise.jl Integration
 
 When `reviseEnabled` is true:
+
 - On terminal creation, `using Revise\n` is injected after a 2.5s delay.
 - On file save, `Revise.revise()\n` is sent to the main terminal PTY.
 
@@ -586,6 +591,7 @@ include("file.jl")
 ```
 
 Communication happens via stdin/stdout:
+
 - **Step commands** (`c` for continue, `n` for next, `s` for step in, `f` for finish) are written to stdin.
 - **Stopped events** are parsed from stdout when the debugger pauses.
 - **Variable inspection** uses `varinfo()` output.
@@ -605,28 +611,28 @@ All git operations use the `git2` Rust crate (libgit2 bindings) — no shell dep
 
 ### Supported Operations
 
-| Operation | Command | Description |
-|-----------|---------|-------------|
-| Status | `git_status` | Modified, added, deleted, untracked files |
-| Stage | `git_stage` | Add files to index |
-| Unstage | `git_unstage` | Reset index entry to HEAD |
-| Commit | `git_commit` | Create commit from staged changes |
-| Diff | `git_diff` | Unified diff (index to workdir) |
-| Log | `git_log` | Recent commits with message, author, time |
-| Branches | `git_branches` | List local branches |
-| Checkout | `git_checkout_branch` | Switch branches |
-| Create branch | `git_branch_create` | Create a new branch (with optional checkout) |
-| Delete branch | `git_branch_delete` | Delete a local branch |
-| Merge | `git_merge` | Merge a branch (fast-forward or normal, with conflict detection) |
-| Stash save | `git_stash_save` | Save uncommitted changes to stash |
-| Stash list | `git_stash_list` | List all stash entries |
-| Stash pop | `git_stash_pop` | Apply and remove a stash entry |
-| Fetch | `git_fetch` | Fetch from a remote |
-| Push | `git_push` | Push a branch to a remote |
-| Pull | `git_pull` | Pull (fetch + fast-forward/merge) from a remote |
-| Ahead/Behind | `git_ahead_behind` | Count commits ahead/behind the upstream branch |
-| Remotes | `git_remotes` | List all remotes with URLs |
-| Remote URL | `git_remote_url` | Get the URL of a specific remote |
+| Operation     | Command               | Description                                                      |
+| ------------- | --------------------- | ---------------------------------------------------------------- |
+| Status        | `git_status`          | Modified, added, deleted, untracked files                        |
+| Stage         | `git_stage`           | Add files to index                                               |
+| Unstage       | `git_unstage`         | Reset index entry to HEAD                                        |
+| Commit        | `git_commit`          | Create commit from staged changes                                |
+| Diff          | `git_diff`            | Unified diff (index to workdir)                                  |
+| Log           | `git_log`             | Recent commits with message, author, time                        |
+| Branches      | `git_branches`        | List local branches                                              |
+| Checkout      | `git_checkout_branch` | Switch branches                                                  |
+| Create branch | `git_branch_create`   | Create a new branch (with optional checkout)                     |
+| Delete branch | `git_branch_delete`   | Delete a local branch                                            |
+| Merge         | `git_merge`           | Merge a branch (fast-forward or normal, with conflict detection) |
+| Stash save    | `git_stash_save`      | Save uncommitted changes to stash                                |
+| Stash list    | `git_stash_list`      | List all stash entries                                           |
+| Stash pop     | `git_stash_pop`       | Apply and remove a stash entry                                   |
+| Fetch         | `git_fetch`           | Fetch from a remote                                              |
+| Push          | `git_push`            | Push a branch to a remote                                        |
+| Pull          | `git_pull`            | Pull (fetch + fast-forward/merge) from a remote                  |
+| Ahead/Behind  | `git_ahead_behind`    | Count commits ahead/behind the upstream branch                   |
+| Remotes       | `git_remotes`         | List all remotes with URLs                                       |
+| Remote URL    | `git_remote_url`      | Get the URL of a specific remote                                 |
 
 ### Frontend
 
@@ -646,34 +652,36 @@ All git operations use the `git2` Rust crate (libgit2 bindings) — no shell dep
 The IDE supports browsing PRs, issues, and CI status for repositories hosted on GitHub, GitLab, or Gitea (including self-hosted instances).
 
 **Architecture:**
+
 - `git_provider.rs` defines a `GitProvider` async trait with methods for repo info, PRs, issues, and CI checks.
 - `git_github.rs`, `git_gitlab.rs`, and `git_gitea.rs` implement this trait using `reqwest` HTTP calls against each platform's REST API.
 - Provider detection is automatic based on the `origin` remote URL.
 
 **Provider Commands:**
 
-| Command | Description |
-|---------|-------------|
-| `git_provider_detect` | Detect provider from remote URL |
-| `git_provider_repo_info` | Get repository metadata from provider API |
-| `git_provider_list_prs` | List pull/merge requests |
-| `git_provider_create_pr` | Create a pull/merge request |
-| `git_provider_merge_pr` | Merge a pull/merge request |
-| `git_provider_list_issues` | List issues |
-| `git_provider_create_issue` | Create an issue |
-| `git_provider_ci_status` | Get CI/CD pipeline status |
+| Command                     | Description                               |
+| --------------------------- | ----------------------------------------- |
+| `git_provider_detect`       | Detect provider from remote URL           |
+| `git_provider_repo_info`    | Get repository metadata from provider API |
+| `git_provider_list_prs`     | List pull/merge requests                  |
+| `git_provider_create_pr`    | Create a pull/merge request               |
+| `git_provider_merge_pr`     | Merge a pull/merge request                |
+| `git_provider_list_issues`  | List issues                               |
+| `git_provider_create_issue` | Create an issue                           |
+| `git_provider_ci_status`    | Get CI/CD pipeline status                 |
 
 ### Authentication
 
 `git_auth.rs` uses the OS keychain (`keyring` crate) to securely store personal access tokens per provider. Tokens are used for:
+
 1. HTTPS push/pull/fetch operations (via `git2` credential callbacks)
 2. REST API calls to GitHub/GitLab/Gitea
 
-| Command | Description |
-|---------|-------------|
-| `git_auth_save_token` | Store a PAT in the OS keychain |
-| `git_auth_get_token` | Retrieve a stored PAT |
-| `git_auth_remove_token` | Remove a stored PAT |
+| Command                  | Description                       |
+| ------------------------ | --------------------------------- |
+| `git_auth_save_token`    | Store a PAT in the OS keychain    |
+| `git_auth_get_token`     | Retrieve a stored PAT             |
+| `git_auth_remove_token`  | Remove a stored PAT               |
 | `git_auth_list_accounts` | List configured provider accounts |
 
 ---
@@ -698,11 +706,11 @@ The IDE supports browsing PRs, issues, and CI status for repositories hosted on 
 
 ### Storage Location
 
-| Platform | Path |
-|----------|------|
-| Linux | `~/.config/julide/settings.json` |
-| macOS | `~/Library/Application Support/julide/settings.json` |
-| Windows | `%APPDATA%/julide/settings.json` |
+| Platform | Path                                                 |
+| -------- | ---------------------------------------------------- |
+| Linux    | `~/.config/julide/settings.json`                     |
+| macOS    | `~/Library/Application Support/julide/settings.json` |
+| Windows  | `%APPDATA%/julide/settings.json`                     |
 
 ### Schema
 
@@ -739,6 +747,7 @@ Missing fields use defaults. The file is created on first save.
 ### Architecture
 
 Themes are defined in `src/themes/themes.ts`. Each theme provides:
+
 - A **Monaco editor theme** (token colors, editor background, cursor color, etc.)
 - A **CSS class** applied to the root element
 - A **terminal color scheme**
@@ -747,14 +756,14 @@ Themes are defined in `src/themes/themes.ts`. Each theme provides:
 
 All UI colors use CSS custom properties defined in `:root` (dark) and `.theme-light` (light override). Key variables:
 
-| Variable | Dark | Light |
-|----------|------|-------|
-| `--bg-primary` | `#1e1e1e` | `#ffffff` |
+| Variable         | Dark      | Light     |
+| ---------------- | --------- | --------- |
+| `--bg-primary`   | `#1e1e1e` | `#ffffff` |
 | `--bg-secondary` | `#252526` | `#f3f3f3` |
 | `--text-primary` | `#cccccc` | `#1e1e1e` |
-| `--accent` | `#9558B2` | `#7B3F9E` |
+| `--accent`       | `#9558B2` | `#7B3F9E` |
 | `--accent-green` | `#389826` | `#2B7F1C` |
-| `--accent-red` | `#CB3C33` | `#C93020` |
+| `--accent-red`   | `#CB3C33` | `#C93020` |
 
 ### Adding a New Theme
 
@@ -782,11 +791,11 @@ bun run tauri build
 
 Output in `src-tauri/target/release/bundle/`:
 
-| Platform | Formats |
-|----------|---------|
-| macOS | `.dmg`, `.app` |
-| Windows | `.msi`, `.exe` (NSIS) |
-| Linux | `.deb`, `.AppImage`, `.rpm` |
+| Platform | Formats                     |
+| -------- | --------------------------- |
+| macOS    | `.dmg`, `.app`              |
+| Windows  | `.msi`, `.exe` (NSIS)       |
+| Linux    | `.deb`, `.AppImage`, `.rpm` |
 
 ### CI/CD
 
@@ -795,6 +804,7 @@ The GitHub Actions workflow at `.github/workflows/build.yml` builds for all plat
 ### Bundle Configuration
 
 Configured in `src-tauri/tauri.conf.json`:
+
 - **Product name**: julide
 - **Identifier**: com.ofek.julide
 - **Window**: 1400x900px default, 800x600px minimum
@@ -811,6 +821,7 @@ julIDE supports the [Development Containers](https://containers.dev/) specificat
 ### Runtime Detection
 
 `container.rs` auto-detects Docker or Podman by searching the system PATH. The order is:
+
 1. Shell `which docker` / `which podman`
 2. Common binary paths (`/usr/bin/`, `/usr/local/bin/`, `/opt/homebrew/bin/`)
 3. Platform-specific paths (e.g., Docker Desktop on macOS/Windows)
@@ -819,18 +830,19 @@ The detected runtime is cached. Users can override it via the `containerRuntime`
 
 ### DevContainer Lifecycle
 
-| Phase | Command | Description |
-|-------|---------|-------------|
-| Detect | `devcontainer_detect` | Check for `.devcontainer/devcontainer.json` |
-| Load | `devcontainer_load_config` | Parse and validate the config file |
-| Build & Start | `devcontainer_up` | Build image (if needed) and start container with mounts, ports, env vars |
-| Stop | `devcontainer_stop` | Stop the running dev container |
-| Rebuild | `devcontainer_rebuild` | Tear down, rebuild image, and restart |
-| Tear down | `devcontainer_down` | Stop and remove the dev container and associated resources |
+| Phase         | Command                    | Description                                                              |
+| ------------- | -------------------------- | ------------------------------------------------------------------------ |
+| Detect        | `devcontainer_detect`      | Check for `.devcontainer/devcontainer.json`                              |
+| Load          | `devcontainer_load_config` | Parse and validate the config file                                       |
+| Build & Start | `devcontainer_up`          | Build image (if needed) and start container with mounts, ports, env vars |
+| Stop          | `devcontainer_stop`        | Stop the running dev container                                           |
+| Rebuild       | `devcontainer_rebuild`     | Tear down, rebuild image, and restart                                    |
+| Tear down     | `devcontainer_down`        | Stop and remove the dev container and associated resources               |
 
 ### Container Management
 
 Beyond dev containers, the IDE provides general container management:
+
 - **List containers** and **images** from the sidebar Container panel
 - **Start / stop / restart / remove** containers
 - **Pull images** with streamed progress output
@@ -844,22 +856,22 @@ Beyond dev containers, the IDE provides general container management:
 
 ### Settings
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `containerRuntime` | `auto` | `auto`, `docker`, or `podman` |
-| `containerRemoteHost` | `""` | Remote Docker/Podman host URL (e.g., `ssh://user@host`) |
-| `containerAutoDetect` | `true` | Automatically detect devcontainer.json on workspace open |
-| `displayForwarding` | `true` | Forward X11/Wayland display into containers |
-| `gpuPassthrough` | `false` | Pass GPU devices into containers |
-| `selinuxLabel` | `true` | Apply SELinux `:z` labels to bind mounts |
-| `persistJuliaPackages` | `true` | Mount a persistent volume for Julia packages across rebuilds |
+| Setting                | Default | Description                                                  |
+| ---------------------- | ------- | ------------------------------------------------------------ |
+| `containerRuntime`     | `auto`  | `auto`, `docker`, or `podman`                                |
+| `containerRemoteHost`  | `""`    | Remote Docker/Podman host URL (e.g., `ssh://user@host`)      |
+| `containerAutoDetect`  | `true`  | Automatically detect devcontainer.json on workspace open     |
+| `displayForwarding`    | `true`  | Forward X11/Wayland display into containers                  |
+| `gpuPassthrough`       | `false` | Pass GPU devices into containers                             |
+| `selinuxLabel`         | `true`  | Apply SELinux `:z` labels to bind mounts                     |
+| `persistJuliaPackages` | `true`  | Mount a persistent volume for Julia packages across rebuilds |
 
 ### Events
 
-| Event | Payload | Description |
-|-------|---------|-------------|
+| Event              | Payload                               | Description                                                               |
+| ------------------ | ------------------------------------- | ------------------------------------------------------------------------- |
 | `container-status` | `{ status, message?, container_id? }` | Container state transitions (building, starting, running, stopped, error) |
-| `container-output` | `{ kind, text, exit_code? }` | Build/run output stream (stdout, stderr, done) |
+| `container-output` | `{ kind, text, exit_code? }`          | Build/run output stream (stdout, stderr, done)                            |
 
 ---
 
@@ -901,14 +913,14 @@ Plugins are installed in `~/.julide/plugins/`. Each plugin lives in its own subd
 
 When a plugin is activated, it receives a `PluginContext` object with the following namespaces:
 
-| Namespace | Methods |
-|-----------|---------|
-| `commands` | `register(id, label, handler)`, `execute(id)` |
-| `ui` | `registerSidebarPanel()`, `registerBottomPanel()`, `registerStatusBarItem()`, `registerToolbarButton()`, `showNotification()` |
-| `workspace` | `getPath()`, `readFile()`, `writeFile()`, `onDidChangeFiles()` |
-| `editor` | `getActiveFilePath()`, `getSelectedText()` |
-| `ipc` | `invoke(command, args)`, `listen(event, callback)` |
-| `log` | `info()`, `warn()`, `error()` |
+| Namespace   | Methods                                                                                                                       |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `commands`  | `register(id, label, handler)`, `execute(id)`                                                                                 |
+| `ui`        | `registerSidebarPanel()`, `registerBottomPanel()`, `registerStatusBarItem()`, `registerToolbarButton()`, `showNotification()` |
+| `workspace` | `getPath()`, `readFile()`, `writeFile()`, `onDidChangeFiles()`                                                                |
+| `editor`    | `getActiveFilePath()`, `getSelectedText()`                                                                                    |
+| `ipc`       | `invoke(command, args)`, `listen(event, callback)`                                                                            |
+| `log`       | `info()`, `warn()`, `error()`                                                                                                 |
 
 All registrations return a `Disposable` that is automatically cleaned up when the plugin is deactivated.
 
@@ -934,11 +946,11 @@ Plugin Discovery (pluginHost.ts)
 
 ### Backend Commands
 
-| Command | Description |
-|---------|-------------|
-| `plugin_get_dir` | Returns the plugins directory path (creates it if missing) |
-| `plugin_scan` | Scans for plugins and returns their manifests |
-| `plugin_read_entry` | Reads the JavaScript entry point of a plugin |
+| Command             | Description                                                |
+| ------------------- | ---------------------------------------------------------- |
+| `plugin_get_dir`    | Returns the plugins directory path (creates it if missing) |
+| `plugin_scan`       | Scans for plugins and returns their manifests              |
+| `plugin_read_entry` | Reads the JavaScript entry point of a plugin               |
 
 ---
 
@@ -949,6 +961,7 @@ Plugin Discovery (pluginHost.ts)
 `bun run tauri dev` may show a blank/white window or crash on certain Wayland setups. This is an upstream issue in the WebKitGTK / wry rendering layer used by Tauri, not a julIDE bug. It primarily affects systems running NVIDIA proprietary drivers under Wayland, where the DMA-BUF renderer fails to allocate GPU buffers. Some tiling Wayland compositors (e.g. Hyprland, Sway) are also known to be affected.
 
 **Workarounds:**
+
 - Disable the DMA-BUF renderer to fall back to shared memory buffers:
   ```bash
   WEBKIT_DISABLE_DMABUF_RENDERER=1 bun run tauri dev

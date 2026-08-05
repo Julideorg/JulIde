@@ -13,7 +13,7 @@ import type { FileNode, JuliaOutputEvent } from "../types";
 // but we reference them here to register sidebar/bottom panels.
 // We use dynamic imports to avoid circular dependency issues.
 
-let _componentCache: Record<string, React.ComponentType> = {};
+const _componentCache: Record<string, React.ComponentType> = {};
 
 async function getComponent(name: string): Promise<React.ComponentType> {
   if (_componentCache[name]) return _componentCache[name];
@@ -98,21 +98,15 @@ export async function registerBuiltinContributions() {
 
   // ─── Sidebar Panels ─────────────────────────────────────────────────────────
 
-  const [
-    FileExplorer,
-    SearchPanel,
-    GitPanel,
-    ContainerPanel,
-    OutlinePanel,
-    VariableExplorer,
-  ] = await Promise.all([
-    getComponent("FileExplorer"),
-    getComponent("SearchPanel"),
-    getComponent("GitPanel"),
-    getComponent("ContainerPanel"),
-    getComponent("OutlinePanel"),
-    getComponent("VariableExplorer"),
-  ]);
+  const [FileExplorer, SearchPanel, GitPanel, ContainerPanel, OutlinePanel, VariableExplorer] =
+    await Promise.all([
+      getComponent("FileExplorer"),
+      getComponent("SearchPanel"),
+      getComponent("GitPanel"),
+      getComponent("ContainerPanel"),
+      getComponent("OutlinePanel"),
+      getComponent("VariableExplorer"),
+    ]);
 
   store.registerSidebarPanel({
     id: "files",
@@ -295,8 +289,7 @@ function registerBuiltinCommands() {
     id: "edit.find-replace",
     label: "Find and Replace",
     shortcut: "⌘H",
-    execute: () =>
-      ide().editorInstance?.getAction("editor.action.startFindReplaceAction")?.run(),
+    execute: () => ide().editorInstance?.getAction("editor.action.startFindReplaceAction")?.run(),
   });
 
   store.registerCommand({
@@ -434,7 +427,10 @@ function registerBuiltinCommands() {
 
       s.clearOutput();
       s.setActiveBottomPanel("output");
-      s.appendOutput({ kind: "info", text: `Creating project "${packageName}" in ${parentDir}...` });
+      s.appendOutput({
+        kind: "info",
+        text: `Creating project "${packageName}" in ${parentDir}...`,
+      });
 
       const unlisten = await listen<JuliaOutputEvent>("julia-output", async (event) => {
         if (event.payload.kind === "done") {
@@ -477,7 +473,10 @@ function registerBuiltinCommands() {
 
       s.clearOutput();
       s.setActiveBottomPanel("output");
-      s.appendOutput({ kind: "info", text: `Creating project "${data.packageName}" with BestieTemplate in ${parentDir}...` });
+      s.appendOutput({
+        kind: "info",
+        text: `Creating project "${data.packageName}" with BestieTemplate in ${parentDir}...`,
+      });
 
       const unlisten = await listen<JuliaOutputEvent>("julia-output", async (event) => {
         if (event.payload.kind === "done") {
@@ -609,7 +608,11 @@ function registerBuiltinCommands() {
       if (!s.workspacePath || !s.gitBranch) return;
       s.setGitIsSyncing(true);
       try {
-        await invoke("git_push", { workspacePath: s.workspacePath, remote: "origin", branch: s.gitBranch });
+        await invoke("git_push", {
+          workspacePath: s.workspacePath,
+          remote: "origin",
+          branch: s.gitBranch,
+        });
         await s.refreshGit();
       } catch (e) {
         s.appendOutput({ kind: "stderr", text: `Git push failed: ${e}` });
@@ -628,7 +631,11 @@ function registerBuiltinCommands() {
       if (!s.workspacePath || !s.gitBranch) return;
       s.setGitIsSyncing(true);
       try {
-        await invoke("git_pull", { workspacePath: s.workspacePath, remote: "origin", branch: s.gitBranch });
+        await invoke("git_pull", {
+          workspacePath: s.workspacePath,
+          remote: "origin",
+          branch: s.gitBranch,
+        });
         await s.refreshGit();
       } catch (e) {
         s.appendOutput({ kind: "stderr", text: `Git pull failed: ${e}` });

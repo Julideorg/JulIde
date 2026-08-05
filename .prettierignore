@@ -1,0 +1,7 @@
+dist
+node_modules
+src-tauri/target
+src-tauri/gen
+bun.lock
+# Generated from JuliaLang's symbol tables — 3,800 lines, never hand-edited.
+src/components/Editor/latexUnicode.ts

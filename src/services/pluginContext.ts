@@ -124,9 +124,13 @@ export function createPluginContext(
         let unlisten: (() => void) | null = null;
         listen<{ path: string; kind: string }>("fs-changed", (e) => {
           callback([e.payload.path]);
-        }).then((fn) => { unlisten = fn; });
+        }).then((fn) => {
+          unlisten = fn;
+        });
         return track({
-          dispose: () => { unlisten?.(); },
+          dispose: () => {
+            unlisten?.();
+          },
         });
       },
     },
@@ -152,9 +156,13 @@ export function createPluginContext(
       },
       listen(event: string, callback: (payload: unknown) => void): Disposable {
         let unlisten: (() => void) | null = null;
-        listen(event, (e) => callback(e.payload)).then((fn) => { unlisten = fn; });
+        listen(event, (e) => callback(e.payload)).then((fn) => {
+          unlisten = fn;
+        });
         return track({
-          dispose: () => { unlisten?.(); },
+          dispose: () => {
+            unlisten?.();
+          },
         });
       },
     },
@@ -185,7 +193,11 @@ export function createPluginContext(
     context,
     disposeAll: () => {
       for (const d of disposables) {
-        try { d.dispose(); } catch { /* ignore */ }
+        try {
+          d.dispose();
+        } catch {
+          /* ignore */
+        }
       }
       disposables.length = 0;
     },

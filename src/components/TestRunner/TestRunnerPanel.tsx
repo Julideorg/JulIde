@@ -74,7 +74,17 @@ export function TestRunnerPanel() {
       }
       if (kind === "done") {
         const parsed = parseTestOutput(lines);
-        setResults(parsed.length > 0 ? parsed : [{ name: "Tests completed", status: "pass", message: "No structured output detected" }]);
+        setResults(
+          parsed.length > 0
+            ? parsed
+            : [
+                {
+                  name: "Tests completed",
+                  status: "pass",
+                  message: "No structured output detected",
+                },
+              ],
+        );
         const passCount = parsed.filter((r) => r.status === "pass").length;
         const failCount = parsed.filter((r) => r.status === "fail" || r.status === "error").length;
         setSummary(`${passCount} passed, ${failCount} failed`);
@@ -103,6 +113,7 @@ export function TestRunnerPanel() {
           onClick={runTests}
           disabled={running || !workspacePath}
           title="Run Tests"
+          aria-label="Run Tests"
         >
           {running ? <RefreshCw size={13} className="spinning" /> : <Play size={13} />}
           <span>Run Tests</span>
@@ -114,7 +125,13 @@ export function TestRunnerPanel() {
         {results.map((r, i) => (
           <div key={i} className={`test-result-item test-result-${r.status}`}>
             <span className="test-result-icon">
-              {r.status === "pass" ? "✓" : r.status === "fail" ? "✕" : r.status === "running" ? "..." : "!"}
+              {r.status === "pass"
+                ? "✓"
+                : r.status === "fail"
+                  ? "✕"
+                  : r.status === "running"
+                    ? "..."
+                    : "!"}
             </span>
             <span className="test-result-name">{r.name}</span>
             {r.message && <span className="test-result-message">{r.message}</span>}
@@ -125,7 +142,9 @@ export function TestRunnerPanel() {
       {output.length > 0 && (
         <div className="test-runner-output">
           {output.map((line, i) => (
-            <div key={i} className="test-output-line">{line}</div>
+            <div key={i} className="test-output-line">
+              {line}
+            </div>
           ))}
         </div>
       )}

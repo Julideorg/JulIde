@@ -51,7 +51,9 @@ describe("commands", () => {
   test("execute calls the registered handler", async () => {
     const { context } = createPluginContext("test-plugin");
     let called = false;
-    context.commands.register("action", "Action", () => { called = true; });
+    context.commands.register("action", "Action", () => {
+      called = true;
+    });
 
     await context.commands.execute("test-plugin.action");
 
@@ -227,9 +229,7 @@ describe("ipc permission enforcement", () => {
     invokeHandlers.set("fs_read_file", () => "contents");
     const { context } = createPluginContext("p", ["workspace:read"]);
 
-    await expect(context.ipc.invoke("fs_read_file", { path: "/a.jl" })).resolves.toBe(
-      "contents",
-    );
+    await expect(context.ipc.invoke("fs_read_file", { path: "/a.jl" })).resolves.toBe("contents");
   });
 
   test("invoke rejects an ungranted command without reaching the backend", async () => {
@@ -239,9 +239,9 @@ describe("ipc permission enforcement", () => {
     });
     const { context } = createPluginContext("p", ["workspace:read"]);
 
-    await expect(context.ipc.invoke("fs_write_file", { path: "/a.jl", content: "x" })).rejects.toThrow(
-      /workspace:write/,
-    );
+    await expect(
+      context.ipc.invoke("fs_write_file", { path: "/a.jl", content: "x" }),
+    ).rejects.toThrow(/workspace:write/);
     expect(reached).toBe(false);
   });
 

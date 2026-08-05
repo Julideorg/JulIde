@@ -2,8 +2,6 @@ import { useEffect, useRef } from "react";
 
 import { Trash2 } from "lucide-react";
 import { useIdeStore } from "../../stores/useIdeStore";
- "../../types";
-
 
 export function OutputPanel() {
   const output = useIdeStore((s) => s.output);
@@ -21,6 +19,7 @@ export function OutputPanel() {
           className="output-clear-btn"
           onClick={clearOutput}
           title="Clear output"
+          aria-label="Clear output"
         >
           <Trash2 size={13} />
         </button>
@@ -31,7 +30,7 @@ export function OutputPanel() {
             <div key={line.id} className={`output-line output-${line.kind}`}>
               <span className="output-text">{line.text}</span>
             </div>
-          )
+          ),
         )}
         <div ref={bottomRef} />
       </div>

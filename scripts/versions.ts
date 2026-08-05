@@ -69,10 +69,7 @@ export async function writeVersions(version: string): Promise<void> {
 
   // tauri.conf.json — same approach.
   const confText = await Bun.file(TAURI_CONF).text();
-  await Bun.write(
-    TAURI_CONF,
-    confText.replace(/^(\s*"version"\s*:\s*)"[^"]+"/m, `$1"${version}"`),
-  );
+  await Bun.write(TAURI_CONF, confText.replace(/^(\s*"version"\s*:\s*)"[^"]+"/m, `$1"${version}"`));
 
   // Cargo.toml — only the first `version` after `[package]`.
   const cargoText = await Bun.file(CARGO_TOML).text();

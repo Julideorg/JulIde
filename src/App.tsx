@@ -24,9 +24,14 @@ import { setMonacoMarkers } from "./lsp/juliaProviders";
 import type { JuliaOutputEvent } from "./types";
 import { parseMimeLine } from "./utils/juliaOutput";
 import type { LspPublishDiagnosticsParams } from "./lsp/LspClient";
-import type { ContainerOutputEvent, ContainerState, ContainerStatusEvent, DevContainerConfig, Problem } from "./types";
+import type {
+  ContainerOutputEvent,
+  ContainerState,
+  ContainerStatusEvent,
+  DevContainerConfig,
+  Problem,
+} from "./types";
 import "./App.css";
-
 
 export default function App() {
   const activeBottomPanel = useIdeStore((s) => s.activeBottomPanel);
@@ -79,7 +84,9 @@ export default function App() {
     return () => {
       invoke("watcher_stop").catch(console.error);
     };
-  }, [workspacePath]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Zustand actions are stable, so refreshGit is deliberately not a dep: including
+    // it would not change behaviour, and the watcher must restart only on workspace change.
+  }, [workspacePath]); // eslint-disable-line react-hooks/exhaustive-deps -- see above
 
   // Handle fs-changed events: refresh tree, reload open file content
   useEffect(() => {
@@ -97,7 +104,9 @@ export default function App() {
         try {
           const tree = await invoke<import("./types").FileNode>("fs_get_tree", { path: wp });
           setFileTree(tree);
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }, 500);
 
       // Also debounce git state refresh
@@ -111,14 +120,18 @@ export default function App() {
         const state = useIdeStore.getState();
         const tab = state.openTabs.find((t) => t.path === e.payload.path);
         if (tab && !tab.isDirty) {
-          invoke<string>("fs_read_file", { path: tab.path }).then((content) => {
-            if (content !== tab.content) {
-              state.updateTabContent(tab.id, content, false);
-            }
-          }).catch(() => {});
+          invoke<string>("fs_read_file", { path: tab.path })
+            .then((content) => {
+              if (content !== tab.content) {
+                state.updateTabContent(tab.id, content, false);
+              }
+            })
+            .catch(() => {});
         }
       }
-    }).then((fn) => { unlisten = fn; });
+    }).then((fn) => {
+      unlisten = fn;
+    });
 
     return () => {
       unlisten?.();
@@ -137,16 +150,15 @@ export default function App() {
     return () => {
       lspClient.stop().catch(console.error);
     };
-  }, [workspacePath]); // eslint-disable-line react-hooks/exhaustive-deps
+    // setLspStatus is a stable store action; restarting the language server on any
+    // other change would be wrong — it must track the workspace only.
+  }, [workspacePath]); // eslint-disable-line react-hooks/exhaustive-deps -- see above
 
   // Mirror Rust lsp-status events into the store
   useEffect(() => {
     let unlisten: (() => void) | null = null;
     listen<{ status: string; message?: string; backend?: string }>("lsp-status", (e) => {
-      setLspStatus(
-        e.payload.status as "off" | "starting" | "ready" | "error",
-        e.payload.message
-      );
+      setLspStatus(e.payload.status as "off" | "starting" | "ready" | "error", e.payload.message);
       if (e.payload.backend) {
         setLspBackend(e.payload.backend);
       }
@@ -156,7 +168,9 @@ export default function App() {
     return () => {
       unlisten?.();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // Mount-only: one backend event subscription for the app's lifetime. Store
+    // setters in the body are stable, so re-subscribing would only churn listeners.
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- see above
 
   // Mirror Rust pluto-status events into the store and open split view
   useEffect(() => {
@@ -199,7 +213,9 @@ export default function App() {
     return () => {
       unlisten?.();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // Mount-only: one backend event subscription for the app's lifetime. Store
+    // setters in the body are stable, so re-subscribing would only churn listeners.
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- see above
 
   // Mirror container-status events into the store
   useEffect(() => {
@@ -220,7 +236,7 @@ export default function App() {
     return () => {
       unlisten?.();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Mirror container-output events into the store
   useEffect(() => {
@@ -237,59 +253,57 @@ export default function App() {
     return () => {
       unlisten?.();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
-// Mirror julia-output events into the store
-useEffect(() => {
-  let unlisten: (() => void) | null = null;
+  // Mirror julia-output events into the store
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
 
-  listen<JuliaOutputEvent>("julia-output", (event) => {
-   
-    const { kind, text, exit_code } = event.payload;
-    const store = useIdeStore.getState();
+    listen<JuliaOutputEvent>("julia-output", (event) => {
+      const { kind, text, exit_code } = event.payload;
+      const store = useIdeStore.getState();
 
-    if (kind === "done") {
-      store.setIsRunning(false);
-      store.appendOutput({
-        kind: "info",
-        text: `Process exited with code ${exit_code ?? -1}`,
-      });
-      return;
-    }
-
-    if (kind === "stdout") {
-      const mime = parseMimeLine(text);
-
-      if (mime) {
+      if (kind === "done") {
+        store.setIsRunning(false);
         store.appendOutput({
-          kind: "stdout",
-          text: "",
-          mime,
+          kind: "info",
+          text: `Process exited with code ${exit_code ?? -1}`,
         });
-      } else {
+        return;
+      }
+
+      if (kind === "stdout") {
+        const mime = parseMimeLine(text);
+
+        if (mime) {
+          store.appendOutput({
+            kind: "stdout",
+            text: "",
+            mime,
+          });
+        } else {
+          store.appendOutput({
+            kind: "stdout",
+            text,
+          });
+        }
+        return;
+      }
+
+      if (kind === "stderr") {
         store.appendOutput({
-          kind: "stdout",
+          kind: "stderr",
           text,
         });
       }
-      return;
-    }
+    }).then((fn) => {
+      unlisten = fn;
+    });
 
-    if (kind === "stderr") {
-      store.appendOutput({
-        kind: "stderr",
-        text,
-      });
-    }
-  }).then((fn) => {
-    unlisten = fn;
-  });
-
-  return () => {
-    unlisten?.();
-  };
-}, []);
-
+    return () => {
+      unlisten?.();
+    };
+  }, []);
 
   // Auto-detect devcontainer.json when workspace opens
   useEffect(() => {
@@ -321,15 +335,16 @@ useEffect(() => {
         file: filePath,
         line: d.range.start.line + 1,
         col: d.range.start.character + 1,
-        severity:
-          d.severity === 1 ? "error" : d.severity === 2 ? "warning" : "info",
+        severity: d.severity === 1 ? "error" : d.severity === 2 ? "warning" : "info",
         message: d.message,
       }));
       setProblems([...otherProblems, ...newProblems]);
       setMonacoMarkers(uri, diagnostics);
     });
     return unsubscribe;
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // Mount-only: a single LSP diagnostics subscription. It reads the latest problems
+    // via useIdeStore.getState() rather than closing over them, so it needs no deps.
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- see above
 
   const isDraggingBottomRef = useRef(false);
   const isDraggingSidebarRef = useRef(false);
@@ -363,21 +378,27 @@ useEffect(() => {
     return () => window.removeEventListener("keydown", handler);
   }, [setActiveBottomPanel, setActiveSidebarView]);
 
-  const onBottomDragStart = useCallback((e: React.MouseEvent) => {
-    isDraggingBottomRef.current = true;
-    dragStartYRef.current = e.clientY;
-    dragStartHRef.current = bottomPanelHeight;
-    document.body.style.cursor = "row-resize";
-    document.body.style.userSelect = "none";
-  }, [bottomPanelHeight]);
+  const onBottomDragStart = useCallback(
+    (e: React.MouseEvent) => {
+      isDraggingBottomRef.current = true;
+      dragStartYRef.current = e.clientY;
+      dragStartHRef.current = bottomPanelHeight;
+      document.body.style.cursor = "row-resize";
+      document.body.style.userSelect = "none";
+    },
+    [bottomPanelHeight],
+  );
 
-  const onSidebarDragStart = useCallback((e: React.MouseEvent) => {
-    isDraggingSidebarRef.current = true;
-    dragStartXRef.current = e.clientX;
-    dragStartWRef.current = sidebarWidth;
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-  }, [sidebarWidth]);
+  const onSidebarDragStart = useCallback(
+    (e: React.MouseEvent) => {
+      isDraggingSidebarRef.current = true;
+      dragStartXRef.current = e.clientX;
+      dragStartWRef.current = sidebarWidth;
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    },
+    [sidebarWidth],
+  );
 
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
@@ -393,8 +414,7 @@ useEffect(() => {
       }
     };
     const onMouseUp = () => {
-      const wasDragging =
-        isDraggingBottomRef.current || isDraggingSidebarRef.current;
+      const wasDragging = isDraggingBottomRef.current || isDraggingSidebarRef.current;
       isDraggingBottomRef.current = false;
       isDraggingSidebarRef.current = false;
       document.body.style.cursor = "";
@@ -478,10 +498,7 @@ useEffect(() => {
         )}
 
         {/* Bottom panel resize handle */}
-        <div
-          className="bottom-panel-resize-handle"
-          onMouseDown={onBottomDragStart}
-        />
+        <div className="bottom-panel-resize-handle" onMouseDown={onBottomDragStart} />
 
         {/* Bottom panel */}
         <div className="ide-bottom-panel" style={{ height: bottomPanelHeight }}>
@@ -499,10 +516,13 @@ useEffect(() => {
                 {panel.id === "debug" && debug.isDebugging && (
                   <span className="tab-badge debug-badge">●</span>
                 )}
-                {panel.badge && panel.id !== "problems" && panel.id !== "debug" && (() => {
-                  const val = panel.badge!();
-                  return val != null ? <span className="tab-badge">{val}</span> : null;
-                })()}
+                {panel.badge &&
+                  panel.id !== "problems" &&
+                  panel.id !== "debug" &&
+                  (() => {
+                    const val = panel.badge!();
+                    return val != null ? <span className="tab-badge">{val}</span> : null;
+                  })()}
               </button>
             ))}
           </div>

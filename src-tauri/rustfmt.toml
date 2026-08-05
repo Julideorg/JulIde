@@ -1,0 +1,9 @@
+# Defaults, pinned explicitly so `cargo fmt --check` in CI cannot drift with the
+# toolchain. Everything here is already rustfmt's default; stating it means an
+# upstream change of default shows up as a deliberate decision rather than a
+# surprise CI failure.
+edition = "2021"
+max_width = 100
+tab_spaces = 4
+newline_style = "Unix"
+use_field_init_shorthand = true

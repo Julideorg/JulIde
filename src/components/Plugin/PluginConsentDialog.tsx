@@ -37,8 +37,7 @@ export function PluginConsentDialog() {
           <div>
             <h2 id="plugin-consent-title">Allow &ldquo;{pending.displayName}&rdquo;?</h2>
             <p className="plugin-consent-subtitle">
-              Plugin <code>{pending.pluginId}</code> v{pending.version} wants these
-              permissions.
+              Plugin <code>{pending.pluginId}</code> v{pending.version} wants these permissions.
             </p>
           </div>
         </header>
@@ -69,8 +68,8 @@ export function PluginConsentDialog() {
         )}
 
         <p className="plugin-consent-note">
-          Plugins are unsigned code that runs inside julIDE. Only allow plugins you
-          trust. You can revoke this later in Settings &rarr; Plugins.
+          Plugins are unsigned code that runs inside julIDE. Only allow plugins you trust. You can
+          revoke this later in Settings &rarr; Plugins.
         </p>
 
         <footer className="plugin-consent-footer">

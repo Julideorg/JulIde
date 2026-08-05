@@ -234,7 +234,7 @@ pub async fn lsp_start(app: tauri::AppHandle, workspace_path: String) -> Result<
     // Build the LSP server command based on the chosen backend
     let mut cmd = if backend == "jetls" {
         // ── JETLS.jl ────────────────────────────────────────────────────
-        let home = dirs_next::home_dir().ok_or("Cannot determine home directory")?;
+        let home = dirs::home_dir().ok_or("Cannot determine home directory")?;
         let jetls_bin = if cfg!(windows) {
             home.join(".julia").join("bin").join("jetls.bat")
         } else {

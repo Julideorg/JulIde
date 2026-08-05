@@ -9,7 +9,7 @@ export interface Keybinding {
 export const DEFAULT_KEYBINDINGS: Record<string, Keybinding> = {
   "command-palette": { key: "P", ctrlOrCmd: true, shift: true, label: "⌘⇧P" },
   "quick-open": { key: "p", ctrlOrCmd: true, label: "⌘P" },
-  "find": { key: "f", ctrlOrCmd: true, label: "⌘F" },
+  find: { key: "f", ctrlOrCmd: true, label: "⌘F" },
   "find-replace": { key: "h", ctrlOrCmd: true, label: "⌘H" },
   "global-search": { key: "F", ctrlOrCmd: true, shift: true, label: "⌘⇧F" },
   "toggle-terminal": { key: "`", ctrlOrCmd: true, label: "⌃`" },

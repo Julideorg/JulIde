@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AppStream metadata.
+
+  Required for Flathub, and what makes julIDE appear with a description and
+  screenshots in GNOME Software / KDE Discover rather than as a bare binary.
+
+  Validate with: appstreamcli validate src-tauri/julide.metainfo.xml
+-->
+<component type="desktop-application">
+  <id>com.ofek.julide</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+
+  <name>julIDE</name>
+  <summary>A modern IDE for the Julia programming language</summary>
+
+  <description>
+    <p>
+      julIDE is a desktop IDE for Julia. It pairs a Monaco-based editor with
+      language intelligence from LanguageServer.jl, an integrated REPL, and a
+      debugger, so an entire Julia workflow fits in one window.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Monaco editor with Julia syntax highlighting, snippets, and LaTeX-to-Unicode input</li>
+      <li>Autocompletion, hover docs, go-to-definition, and inline diagnostics via LanguageServer.jl</li>
+      <li>Interactive REPL with full PTY emulation and multiple terminal sessions</li>
+      <li>Step-through debugging with breakpoints and variable inspection via Debugger.jl</li>
+      <li>Inline plots and rich output — PNG, SVG, and HTML</li>
+      <li>Code cells: run a block with Ctrl+Enter and see the result inline</li>
+      <li>Variable explorer, package manager, and environment switching</li>
+      <li>Git integration via libgit2, with GitHub, GitLab, and Gitea support</li>
+      <li>Dev container support for Docker and Podman</li>
+      <li>Pluto.jl reactive notebooks</li>
+    </ul>
+    <p>
+      Julia itself is not bundled and must be installed separately.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">julide.desktop</launchable>
+
+  <url type="homepage">https://github.com/sinisterMage/julide</url>
+  <url type="bugtracker">https://github.com/sinisterMage/julide/issues</url>
+  <url type="vcs-browser">https://github.com/sinisterMage/julide</url>
+
+  <developer id="com.ofek">
+    <name>Ofek Bickel</name>
+  </developer>
+
+  <categories>
+    <category>Development</category>
+    <category>IDE</category>
+  </categories>
+
+  <keywords>
+    <keyword>julia</keyword>
+    <keyword>ide</keyword>
+    <keyword>editor</keyword>
+    <keyword>repl</keyword>
+    <keyword>scientific</keyword>
+  </keywords>
+
+  <provides>
+    <binary>julide</binary>
+    <!--
+      Declared here (rather than the deprecated <mimetypes> tag) so julIDE can be
+      offered as a handler for .jl files. The .desktop entry carries the matching
+      MimeType= line.
+    -->
+    <mediatype>text/x-julia</mediatype>
+  </provides>
+
+  <content_rating type="oars-1.1" />
+
+  <releases>
+    <release version="0.1.0" date="2026-03-27">
+      <description>
+        <p>Beta releases. See the GitHub releases page for details.</p>
+      </description>
+    </release>
+  </releases>
+</component>

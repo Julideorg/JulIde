@@ -37,7 +37,7 @@ export function GitPRsTab() {
 
   useEffect(() => {
     fetchPRs();
-  }, [workspacePath, filter]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [workspacePath, filter]); // eslint-disable-line react-hooks/exhaustive-deps -- fetchPRs is redefined every render, so listing it would refetch in a loop
 
   const createPR = async () => {
     if (!workspacePath || !newPr.title.trim()) return;
@@ -81,10 +81,20 @@ export function GitPRsTab() {
             <option value="closed">Closed</option>
             <option value="all">All</option>
           </select>
-          <button className="git-file-action" onClick={() => setCreating(!creating)} title="Create PR">
+          <button
+            className="git-file-action"
+            onClick={() => setCreating(!creating)}
+            title="Create PR"
+            aria-label="Create PR"
+          >
             <Plus size={12} />
           </button>
-          <button className="git-file-action" onClick={fetchPRs} title="Refresh">
+          <button
+            className="git-file-action"
+            onClick={fetchPRs}
+            title="Refresh"
+            aria-label="Refresh"
+          >
             <RefreshCw size={12} />
           </button>
         </div>
@@ -115,7 +125,9 @@ export function GitPRsTab() {
               onChange={(e) => setNewPr({ ...newPr, source: e.target.value })}
             >
               {gitBranches.map((b) => (
-                <option key={b} value={b}>{b}</option>
+                <option key={b} value={b}>
+                  {b}
+                </option>
               ))}
             </select>
             <span className="git-pr-arrow">→</span>
@@ -138,9 +150,13 @@ export function GitPRsTab() {
       )}
 
       {loading ? (
-        <div className="git-panel-empty"><p>Loading...</p></div>
+        <div className="git-panel-empty">
+          <p>Loading...</p>
+        </div>
       ) : prs.length === 0 ? (
-        <div className="git-panel-empty"><p>No pull requests</p></div>
+        <div className="git-panel-empty">
+          <p>No pull requests</p>
+        </div>
       ) : (
         <div className="git-pr-list">
           {prs.map((pr) => (
@@ -153,13 +169,16 @@ export function GitPRsTab() {
               </div>
               <div className="git-pr-item-meta">
                 <span>{pr.author}</span>
-                <span>{pr.sourceBranch} → {pr.targetBranch}</span>
+                <span>
+                  {pr.sourceBranch} → {pr.targetBranch}
+                </span>
               </div>
               <div className="git-pr-item-actions">
                 <button
                   className="git-file-action"
                   onClick={() => openExternal(pr.url).catch(console.error)}
                   title="Open in browser"
+                  aria-label="Open in browser"
                 >
                   <ExternalLink size={12} />
                 </button>
@@ -168,6 +187,7 @@ export function GitPRsTab() {
                     className="git-file-action"
                     onClick={() => mergePR(pr.number)}
                     title="Merge"
+                    aria-label="Merge"
                   >
                     <GitMerge size={12} />
                   </button>

@@ -60,6 +60,7 @@ export function GitBranchesTab() {
           className="git-file-action"
           onClick={() => setCreating(!creating)}
           title="Create Branch"
+          aria-label="Create Branch"
         >
           <Plus size={12} />
         </button>
@@ -76,7 +77,10 @@ export function GitBranchesTab() {
             onChange={(e) => setNewBranchName(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") createBranch();
-              if (e.key === "Escape") { setCreating(false); setNewBranchName(""); }
+              if (e.key === "Escape") {
+                setCreating(false);
+                setNewBranchName("");
+              }
             }}
             autoFocus
           />
@@ -85,6 +89,7 @@ export function GitBranchesTab() {
             onClick={createBranch}
             disabled={!newBranchName.trim()}
             title="Create"
+            aria-label="Create"
           >
             <Check size={12} />
           </button>
@@ -100,14 +105,16 @@ export function GitBranchesTab() {
           >
             <GitBranch size={13} />
             <span className="git-branch-item-name">{branch}</span>
-            {branch === gitBranch && (
-              <span className="git-branch-current-badge">current</span>
-            )}
+            {branch === gitBranch && <span className="git-branch-current-badge">current</span>}
             {branch !== gitBranch && (
               <button
                 className="git-file-action"
-                onClick={(e) => { e.stopPropagation(); deleteBranch(branch); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteBranch(branch);
+                }}
                 title="Delete branch"
+                aria-label="Delete branch"
               >
                 <Trash2 size={12} />
               </button>

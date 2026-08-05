@@ -1,0 +1,6 @@
+# Pin the toolchain so contributors and CI format and lint identically.
+# `cargo fmt`/`clippy` output differs between Rust releases, which otherwise shows
+# up as spurious CI failures on unrelated PRs.
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]

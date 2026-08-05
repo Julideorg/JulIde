@@ -26,3 +26,6 @@ dist-ssr
 .claude-*
 # Local dev shell (personal, not project config)
 shell.nix
+
+# Storybook build output
+storybook-static

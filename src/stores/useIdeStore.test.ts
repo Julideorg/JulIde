@@ -13,7 +13,7 @@ function makeTab(overrides: Partial<EditorTab> = {}): EditorTab {
     id: "tab-1",
     path: "/test/file.jl",
     name: "file.jl",
-    content: "println(\"hello\")",
+    content: 'println("hello")',
     isDirty: false,
     language: "julia",
     ...overrides,
@@ -238,7 +238,9 @@ describe("refreshGit", () => {
     invokeHandlers.set("git_branches", () => ["main", "dev"]);
     invokeHandlers.set("git_status", () => []);
     invokeHandlers.set("git_provider_detect", () => "github");
-    invokeHandlers.set("git_remotes", () => [{ name: "origin", url: "https://github.com/user/repo" }]);
+    invokeHandlers.set("git_remotes", () => [
+      { name: "origin", url: "https://github.com/user/repo" },
+    ]);
     invokeHandlers.set("git_stash_list", () => []);
     invokeHandlers.set("git_ahead_behind", () => [2, 1]);
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useModalA11y } from "../../hooks/useModalA11y";
 import { create } from "zustand";
 
 interface InputDialogState {
@@ -40,8 +41,7 @@ export function showInputDialog(opts: InputDialogOptions): Promise<string | null
 }
 
 export function InputDialog() {
-  const { open, title, placeholder, defaultValue, validate, resolve } =
-    useInputDialogStore();
+  const { open, title, placeholder, defaultValue, validate, resolve } = useInputDialogStore();
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -91,11 +91,21 @@ export function InputDialog() {
     [submit, close],
   );
 
+  // Traps Tab inside the dialog and restores focus to wherever it was on close.
+  const dialogRef = useModalA11y<HTMLDivElement>(open, { skipInitialFocus: true });
+
   if (!open) return null;
 
   return (
     <div className="input-dialog-overlay" onClick={() => close(null)}>
-      <div className="input-dialog" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={dialogRef}
+        className="input-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Input"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="input-dialog-title">{title}</div>
         <input
           ref={inputRef}
@@ -110,16 +120,10 @@ export function InputDialog() {
         />
         {error && <div className="input-dialog-error">{error}</div>}
         <div className="input-dialog-actions">
-          <button
-            className="input-dialog-btn"
-            onClick={() => close(null)}
-          >
+          <button className="input-dialog-btn" onClick={() => close(null)}>
             Cancel
           </button>
-          <button
-            className="input-dialog-btn primary"
-            onClick={submit}
-          >
+          <button className="input-dialog-btn primary" onClick={submit}>
             Create
           </button>
         </div>

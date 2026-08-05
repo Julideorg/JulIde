@@ -40,9 +40,7 @@ describe("permission catalog", () => {
 
 describe("assertCommandAllowed", () => {
   test("allows a command covered by a granted permission", () => {
-    expect(() =>
-      assertCommandAllowed("p", "fs_read_file", ["workspace:read"]),
-    ).not.toThrow();
+    expect(() => assertCommandAllowed("p", "fs_read_file", ["workspace:read"])).not.toThrow();
   });
 
   test("rejects a command whose permission was not granted", () => {
@@ -70,10 +68,13 @@ describe("assertCommandAllowed", () => {
   });
 
   test("plugin-management commands are never reachable, even with everything granted", () => {
-    for (const cmd of ["plugin_scan", "plugin_read_entry", "plugin_get_dir", "plugin_grants_save"]) {
-      expect(() => assertCommandAllowed("p", cmd, ALL_PERMISSIONS), cmd).toThrow(
-        /may never call/,
-      );
+    for (const cmd of [
+      "plugin_scan",
+      "plugin_read_entry",
+      "plugin_get_dir",
+      "plugin_grants_save",
+    ]) {
+      expect(() => assertCommandAllowed("p", cmd, ALL_PERMISSIONS), cmd).toThrow(/may never call/);
     }
   });
 
@@ -81,19 +82,35 @@ describe("assertCommandAllowed", () => {
     const all = ALL_PERMISSIONS;
     // Arbitrary shell execution.
     expect(() =>
-      assertCommandAllowed("p", "container_exec", all.filter((p) => p !== "containers")),
+      assertCommandAllowed(
+        "p",
+        "container_exec",
+        all.filter((p) => p !== "containers"),
+      ),
     ).toThrow();
     // Plaintext access tokens.
     expect(() =>
-      assertCommandAllowed("p", "git_auth_get_token", all.filter((p) => p !== "git:credentials")),
+      assertCommandAllowed(
+        "p",
+        "git_auth_get_token",
+        all.filter((p) => p !== "git:credentials"),
+      ),
     ).toThrow();
     // Typing into a live shell.
     expect(() =>
-      assertCommandAllowed("p", "pty_write", all.filter((p) => p !== "terminal")),
+      assertCommandAllowed(
+        "p",
+        "pty_write",
+        all.filter((p) => p !== "terminal"),
+      ),
     ).toThrow();
     // Repointing the Julia interpreter at an arbitrary binary.
     expect(() =>
-      assertCommandAllowed("p", "julia_set_path", all.filter((p) => p !== "julia:configure")),
+      assertCommandAllowed(
+        "p",
+        "julia_set_path",
+        all.filter((p) => p !== "julia:configure"),
+      ),
     ).toThrow();
   });
 

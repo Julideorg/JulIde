@@ -77,10 +77,14 @@ describe("getSignatureHelp", () => {
 describe("onNotification", () => {
   test("returns unlisten function that removes handler", () => {
     let callCount = 0;
-    const handler = () => { callCount++; };
+    const handler = () => {
+      callCount++;
+    };
 
     const unlisten = lspClient.onNotification(handler);
     unlisten();
+    // The point of the test: after unlisten, the handler must not fire again.
+    expect(callCount).toBe(0);
 
     // Handler was removed — we can't easily verify this without triggering a notification,
     // but at least we verify the API contract works

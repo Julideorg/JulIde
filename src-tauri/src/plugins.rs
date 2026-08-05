@@ -60,7 +60,7 @@ fn validate_plugin_name(name: &str) -> Result<(), String> {
 }
 
 fn plugins_dir() -> PathBuf {
-    let home = dirs_next::home_dir().unwrap_or_else(|| PathBuf::from("."));
+    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
     home.join(".julide").join("plugins")
 }
 
@@ -145,7 +145,7 @@ pub fn plugin_read_entry(plugin_name: String) -> Result<String, String> {
 }
 
 fn grants_path() -> PathBuf {
-    let config = dirs_next::config_dir().unwrap_or_else(|| PathBuf::from("."));
+    let config = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
     config.join("julide").join("plugin-grants.json")
 }
 

@@ -1,0 +1,71 @@
+name: Bug report
+description: Something in julIDE is not working
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please do **not** use this form for security issues —
+        see [SECURITY.md](https://github.com/sinisterMage/julide/blob/master/SECURITY.md).
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a folder with …
+        2. Press …
+        3. …
+    validations:
+      required: true
+
+  - type: input
+    id: julide-version
+    attributes:
+      label: julIDE version
+      description: Help → About, or the version on the release you downloaded.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: How did you install julIDE?
+      options:
+        - AppImage (Linux)
+        - .deb (Linux)
+        - .rpm (Linux)
+        - .msi or .exe (Windows)
+        - .dmg (macOS)
+        - Built from source
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "Ubuntu 24.04 / Windows 11 / macOS 15.2"
+    validations:
+      required: true
+
+  - type: input
+    id: julia-version
+    attributes:
+      label: Julia version
+      description: Output of `julia --version`, or "not installed".
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output panel / errors
+      description: Anything from the Output panel or an error dialog. Pasted as text, please.
+      render: text

@@ -108,8 +108,8 @@ export function JuliaSetupDialog() {
         {!juliaReady ? (
           <>
             <p className="julia-setup-body">
-              julIDE runs your code with a Julia installation on this machine — it does not
-              bundle one. Install Julia, or point julIDE at an existing install.
+              julIDE runs your code with a Julia installation on this machine — it does not bundle
+              one. Install Julia, or point julIDE at an existing install.
             </p>
             {error && <p className="julia-setup-error">{error}</p>}
 
@@ -152,8 +152,8 @@ export function JuliaSetupDialog() {
         ) : (
           <>
             <p className="julia-setup-body">
-              Found <strong>{version}</strong>. These optional packages unlock the rest of
-              julIDE — install any you want now, or skip and add them later.
+              Found <strong>{version}</strong>. These optional packages unlock the rest of julIDE —
+              install any you want now, or skip and add them later.
             </p>
 
             <ul className="julia-setup-packages">

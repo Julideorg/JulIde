@@ -1,0 +1,23 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=julIDE
+GenericName=Julia IDE
+Comment=A modern IDE for the Julia programming language
+Exec=julide %F
+Icon=julide
+Terminal=false
+Categories=Development;IDE;
+Keywords=julia;ide;editor;repl;notebook;scientific;
+StartupNotify=true
+StartupWMClass=julide
+# Lets julIDE be set as the default handler for Julia sources. text/x-julia is
+# registered by shared-mime-info; the .jl glob is declared in julide.metainfo.xml
+# for distributions whose shared-mime-info predates it.
+MimeType=text/x-julia;inode/directory;
+
+Actions=new-window;
+
+[Desktop Action new-window]
+Name=New Window
+Exec=julide

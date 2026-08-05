@@ -1,0 +1,13 @@
+{
+  // The main tsconfig excludes tests, stories, and the Storybook/script configs, so
+  // roughly a thousand lines of code were never type-checked at all. This config
+  // covers exactly that gap; CI runs both.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["bun"],
+    // Stories and .storybook/* are authored against Storybook's types.
+    "skipLibCheck": true
+  },
+  "include": ["src", "scripts", ".storybook"],
+  "exclude": []
+}

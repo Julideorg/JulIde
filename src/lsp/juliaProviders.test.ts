@@ -96,10 +96,7 @@ describe("flattenHoverContents", () => {
   });
 
   test("handles mixed array", () => {
-    const result = flattenHoverContents([
-      "Documentation:",
-      { language: "julia", value: "x = 1" },
-    ]);
+    const result = flattenHoverContents(["Documentation:", { language: "julia", value: "x = 1" }]);
     expect(result).toBe("Documentation:\n\nx = 1");
   });
 

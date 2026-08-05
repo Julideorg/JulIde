@@ -163,6 +163,7 @@ export function Toolbar() {
         <button
           className="toolbar-btn btn-icon"
           title="Open Folder"
+          aria-label="Open Folder"
           onClick={handleOpenFolder}
         >
           <FolderOpen size={16} />
@@ -175,6 +176,7 @@ export function Toolbar() {
             className="toolbar-btn btn-danger"
             onClick={handleStop}
             title="Stop"
+            aria-label="Stop"
           >
             <Square size={15} />
             <span>Stop</span>
@@ -184,6 +186,7 @@ export function Toolbar() {
             className="toolbar-btn btn-run"
             onClick={handleRun}
             title="Run (Ctrl+F5)"
+            aria-label="Run (Ctrl+F5)"
             disabled={!activeTab}
           >
             <Play size={15} />
@@ -196,6 +199,7 @@ export function Toolbar() {
           onClick={handlePrecompile}
           disabled={isRunning}
           title="Precompile project"
+          aria-label="Precompile project"
         >
           <Zap size={15} />
           <span>Precompile</span>
@@ -206,6 +210,7 @@ export function Toolbar() {
           onClick={handleClean}
           disabled={isRunning}
           title="Clean build artifacts"
+          aria-label="Clean build artifacts"
         >
           <Trash2 size={15} />
           <span>Clean</span>
@@ -219,6 +224,7 @@ export function Toolbar() {
               className="toolbar-btn btn-debug"
               onClick={handleDebugContinue}
               title="Continue (F5)"
+              aria-label="Continue (F5)"
             >
               <Play size={14} />
             </button>
@@ -226,6 +232,7 @@ export function Toolbar() {
               className="toolbar-btn"
               onClick={handleStepOver}
               title="Step Over (F10)"
+              aria-label="Step Over (F10)"
             >
               <StepForward size={14} />
             </button>
@@ -233,6 +240,7 @@ export function Toolbar() {
               className="toolbar-btn"
               onClick={handleStepInto}
               title="Step Into (F11)"
+              aria-label="Step Into (F11)"
             >
               <CornerDownRight size={14} />
             </button>
@@ -240,6 +248,7 @@ export function Toolbar() {
               className="toolbar-btn"
               onClick={handleStepOut}
               title="Step Out (Shift+F11)"
+              aria-label="Step Out (Shift+F11)"
             >
               <CornerUpLeft size={14} />
             </button>
@@ -247,6 +256,7 @@ export function Toolbar() {
               className="toolbar-btn btn-danger"
               onClick={handleDebugStop}
               title="Stop Debug"
+              aria-label="Stop Debug"
             >
               <Square size={14} />
             </button>
@@ -257,6 +267,7 @@ export function Toolbar() {
             onClick={handleDebug}
             disabled={!activeTab || isRunning}
             title="Debug (F5)"
+            aria-label="Debug (F5)"
           >
             <Bug size={15} />
             <span>Debug</span>
@@ -268,7 +279,11 @@ export function Toolbar() {
         <button
           className={`toolbar-btn ${reviseEnabled ? "btn-revise-on" : "btn-revise"}`}
           onClick={() => setReviseEnabled(!reviseEnabled)}
-          title={reviseEnabled ? "Revise.jl hot-reload enabled (click to disable)" : "Enable Revise.jl hot-reload"}
+          title={
+            reviseEnabled
+              ? "Revise.jl hot-reload enabled (click to disable)"
+              : "Enable Revise.jl hot-reload"
+          }
         >
           <RefreshCw size={15} />
           <span>Revise</span>
@@ -278,6 +293,7 @@ export function Toolbar() {
           className="toolbar-btn btn-pluto"
           onClick={handleOpenPluto}
           title="Open Pluto notebook server"
+          aria-label="Open Pluto notebook server"
         >
           <BookOpen size={15} />
           <span>Pluto</span>
@@ -290,7 +306,8 @@ export function Toolbar() {
               className="toolbar-btn btn-container"
               onClick={async () => {
                 if (!workspacePath) return;
-                const { useSettingsStore: settingsStore } = await import("../../stores/useSettingsStore");
+                const { useSettingsStore: settingsStore } =
+                  await import("../../stores/useSettingsStore");
                 const s = settingsStore.getState().settings;
                 clearOutput();
                 setActiveBottomPanel("container-logs");
@@ -306,6 +323,7 @@ export function Toolbar() {
                 }
               }}
               title="Reopen in Dev Container"
+              aria-label="Reopen in Dev Container"
             >
               <Container size={15} />
               <span>Container</span>
@@ -351,7 +369,9 @@ export function Toolbar() {
           onChange={(e) => setJuliaEnv(e.target.value)}
         >
           {availableEnvs.map((env) => (
-            <option key={env} value={env}>{env}</option>
+            <option key={env} value={env}>
+              {env}
+            </option>
           ))}
         </select>
       </div>

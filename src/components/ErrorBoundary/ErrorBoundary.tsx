@@ -84,8 +84,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           <h1 className="error-boundary-title">Something went wrong</h1>
           <p className="error-boundary-message">{error.message}</p>
           <p className="error-boundary-hint">
-            Your open files are saved on disk. Reloading the window usually recovers the
-            session — if it keeps happening, copy the details and open an issue.
+            Your open files are saved on disk. Reloading the window usually recovers the session —
+            if it keeps happening, copy the details and open an issue.
           </p>
           <div className="error-boundary-actions">
             <button type="button" onClick={() => window.location.reload()}>

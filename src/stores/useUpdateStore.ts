@@ -13,13 +13,7 @@ export interface InstallCapability {
 }
 
 export type UpdatePhase =
-  | "idle"
-  | "checking"
-  | "available"
-  | "downloading"
-  | "ready"
-  | "upToDate"
-  | "error";
+  "idle" | "checking" | "available" | "downloading" | "ready" | "upToDate" | "error";
 
 interface UpdateStore {
   phase: UpdatePhase;

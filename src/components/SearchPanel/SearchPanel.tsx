@@ -54,14 +54,17 @@ export function SearchPanel() {
     if (!query.trim() || !workspacePath) return;
     setReplaceMessage("");
     try {
-      const [filesModified, totalReplacements] = await invoke<[number, number]>("fs_replace_in_files", {
-        workspace: workspacePath,
-        query,
-        replacement: replaceQuery,
-        isRegex: useRegex,
-        caseSensitive,
-        fileGlob: normalizeGlob(fileFilter),
-      });
+      const [filesModified, totalReplacements] = await invoke<[number, number]>(
+        "fs_replace_in_files",
+        {
+          workspace: workspacePath,
+          query,
+          replacement: replaceQuery,
+          isRegex: useRegex,
+          caseSensitive,
+          fileGlob: normalizeGlob(fileFilter),
+        },
+      );
       setReplaceMessage(`Replaced ${totalReplacements} occurrences in ${filesModified} files`);
       // Re-run search to update results
       doSearch();
@@ -141,7 +144,12 @@ export function SearchPanel() {
               onKeyDown={handleKeyDown}
             />
             {query && (
-              <button className="search-clear-btn" onClick={clearSearch} title="Clear">
+              <button
+                className="search-clear-btn"
+                onClick={clearSearch}
+                title="Clear"
+                aria-label="Clear"
+              >
                 <X size={12} />
               </button>
             )}
@@ -152,6 +160,7 @@ export function SearchPanel() {
             className={`search-option-btn ${showReplace ? "active" : ""}`}
             onClick={() => setShowReplace(!showReplace)}
             title="Toggle Replace"
+            aria-label="Toggle Replace"
           >
             <Replace size={13} />
           </button>
@@ -162,13 +171,16 @@ export function SearchPanel() {
                 placeholder="Replace..."
                 value={replaceQuery}
                 onChange={(e) => setReplaceQuery(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") doReplace(); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") doReplace();
+                }}
               />
               <button
                 className="search-replace-btn"
                 onClick={doReplace}
                 disabled={!query.trim() || searchResults.length === 0}
                 title="Replace All"
+                aria-label="Replace All"
               >
                 Replace All
               </button>
@@ -181,6 +193,7 @@ export function SearchPanel() {
             className={`search-option-btn ${caseSensitive ? "active" : ""}`}
             onClick={() => setCaseSensitive(!caseSensitive)}
             title="Match Case"
+            aria-label="Match Case"
           >
             Aa
           </button>
@@ -188,6 +201,7 @@ export function SearchPanel() {
             className={`search-option-btn ${useRegex ? "active" : ""}`}
             onClick={() => setUseRegex(!useRegex)}
             title="Use Regular Expression"
+            aria-label="Use Regular Expression"
           >
             .*
           </button>
@@ -201,9 +215,7 @@ export function SearchPanel() {
       </div>
 
       <div className="search-results">
-        {isSearching && (
-          <div className="search-status">Searching...</div>
-        )}
+        {isSearching && <div className="search-status">Searching...</div>}
 
         {!isSearching && searchResults.length === 0 && query && (
           <div className="search-status">No results found</div>
@@ -245,10 +257,7 @@ function SearchFileGroup({
 
   return (
     <div className="search-file-group">
-      <div
-        className="search-file-header"
-        onClick={() => setCollapsed(!collapsed)}
-      >
+      <div className="search-file-header" onClick={() => setCollapsed(!collapsed)}>
         <span className="search-file-toggle">{collapsed ? "▶" : "▼"}</span>
         <span className="search-file-name">{relativePath.split(/[/\\]/).pop()}</span>
         <span className="search-file-path">{relativePath}</span>

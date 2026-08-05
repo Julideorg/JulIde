@@ -1,0 +1,11 @@
+# Default owner for everything.
+*   @sinisterMage
+
+# Security-sensitive areas — please request a review even for small changes.
+/src-tauri/src/trust.rs           @sinisterMage
+/src-tauri/src/git_auth.rs        @sinisterMage
+/src-tauri/src/plugins.rs         @sinisterMage
+/src-tauri/capabilities/          @sinisterMage
+/src-tauri/tauri.conf.json        @sinisterMage
+/src/services/pluginPermissions.ts @sinisterMage
+/.github/workflows/               @sinisterMage

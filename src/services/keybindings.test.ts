@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { matchesKeybinding, getKeybindingLabel, DEFAULT_KEYBINDINGS, type Keybinding } from "./keybindings";
+import {
+  matchesKeybinding,
+  getKeybindingLabel,
+  DEFAULT_KEYBINDINGS,
+  type Keybinding,
+} from "./keybindings";
 
 // Helper to create a synthetic KeyboardEvent-like object
 function fakeEvent(overrides: Partial<KeyboardEvent> = {}): KeyboardEvent {
@@ -34,7 +39,9 @@ describe("matchesKeybinding", () => {
 
   test("matches shift binding when shiftKey pressed", () => {
     const shiftBinding: Keybinding = { key: "P", ctrlOrCmd: true, shift: true, label: "⌘⇧P" };
-    expect(matchesKeybinding(fakeEvent({ key: "P", ctrlKey: true, shiftKey: true }), shiftBinding)).toBe(true);
+    expect(
+      matchesKeybinding(fakeEvent({ key: "P", ctrlKey: true, shiftKey: true }), shiftBinding),
+    ).toBe(true);
   });
 
   test("fails shift binding when shiftKey not pressed", () => {
@@ -44,7 +51,9 @@ describe("matchesKeybinding", () => {
 
   test("matches alt binding when altKey pressed", () => {
     const altBinding: Keybinding = { key: "a", ctrlOrCmd: true, alt: true, label: "⌘⌥A" };
-    expect(matchesKeybinding(fakeEvent({ key: "a", ctrlKey: true, altKey: true }), altBinding)).toBe(true);
+    expect(
+      matchesKeybinding(fakeEvent({ key: "a", ctrlKey: true, altKey: true }), altBinding),
+    ).toBe(true);
   });
 
   test("fails alt binding when altKey not pressed", () => {
@@ -59,7 +68,9 @@ describe("matchesKeybinding", () => {
 
   test("extra modifiers do not prevent match (no negative checks for unspecified modifiers)", () => {
     // If binding only requires ctrlOrCmd but user also holds shift, it still matches
-    expect(matchesKeybinding(fakeEvent({ key: "p", ctrlKey: true, shiftKey: true }), binding)).toBe(true);
+    expect(matchesKeybinding(fakeEvent({ key: "p", ctrlKey: true, shiftKey: true }), binding)).toBe(
+      true,
+    );
   });
 });
 

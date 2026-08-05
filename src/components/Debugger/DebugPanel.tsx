@@ -14,7 +14,10 @@ export function DebugPanel() {
 
     const setup = async () => {
       const u1 = await listen<DebugOutputEvent>("debug-output", (e) => {
-        appendOutput({ kind: e.payload.kind as "stdout" | "stderr" | "info", text: e.payload.text });
+        appendOutput({
+          kind: e.payload.kind as "stdout" | "stderr" | "info",
+          text: e.payload.text,
+        });
       });
 
       const u2 = await listen<DebugStoppedEvent>("debug-stopped", (e) => {
@@ -50,7 +53,9 @@ export function DebugPanel() {
     <div className="debug-panel">
       <div className="debug-status">
         {debug.isPaused ? (
-          <span className="debug-paused">⏸ Paused at {debug.currentFile}:{debug.currentLine}</span>
+          <span className="debug-paused">
+            ⏸ Paused at {debug.currentFile}:{debug.currentLine}
+          </span>
         ) : (
           <span className="debug-running">▶ Running...</span>
         )}
@@ -110,9 +115,12 @@ function BreakpointsList() {
             className="bp-remove"
             onClick={() => {
               removeBreakpoint(bp.file, bp.line);
-              invoke("debug_remove_breakpoint", { file: bp.file, line: bp.line }).catch(console.error);
+              invoke("debug_remove_breakpoint", { file: bp.file, line: bp.line }).catch(
+                console.error,
+              );
             }}
             title="Remove breakpoint"
+            aria-label="Remove breakpoint"
           >
             ×
           </button>

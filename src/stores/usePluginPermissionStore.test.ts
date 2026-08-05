@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import {
-  computeManifestHash,
-  usePluginPermissionStore,
-} from "./usePluginPermissionStore";
+import { computeManifestHash, usePluginPermissionStore } from "./usePluginPermissionStore";
 import { invokeHandlers, resetTauriMocks } from "../__test__/tauriMock";
 
 const BASE = { name: "p", version: "1.0.0", main: "index.js", permissions: ["workspace:read"] };
@@ -31,12 +28,8 @@ describe("computeManifestHash", () => {
   });
 
   test("changes when the version or entry point changes", () => {
-    expect(computeManifestHash({ ...BASE, version: "1.0.1" })).not.toBe(
-      computeManifestHash(BASE),
-    );
-    expect(computeManifestHash({ ...BASE, main: "evil.js" })).not.toBe(
-      computeManifestHash(BASE),
-    );
+    expect(computeManifestHash({ ...BASE, version: "1.0.1" })).not.toBe(computeManifestHash(BASE));
+    expect(computeManifestHash({ ...BASE, main: "evil.js" })).not.toBe(computeManifestHash(BASE));
   });
 });
 

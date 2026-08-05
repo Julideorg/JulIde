@@ -97,7 +97,7 @@ export function TerminalPanel() {
     if (useIdeStore.getState().terminalSessions.length > 0) return;
     const id = `terminal-${++termCounter}`;
     addTerminalSession({ id, name: "Terminal 1" });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- mount-only: creates the first terminal once, guarded by a length check
 
   // Create xterm instances for sessions that don't have one, and re-attach
   // surviving instances after a remount.
@@ -110,8 +110,7 @@ export function TerminalPanel() {
         // Remounted: reparent the wrapper — buffer and PTY stay intact.
         if (existing.wrapper.parentElement !== containerRef.current) {
           containerRef.current.appendChild(existing.wrapper);
-          existing.wrapper.style.display =
-            session.id === activeTerminalId ? "block" : "none";
+          existing.wrapper.style.display = session.id === activeTerminalId ? "block" : "none";
           setTimeout(() => fitAndResize(session.id), 50);
         }
         continue;
@@ -186,17 +185,17 @@ export function TerminalPanel() {
           term.writeln(`\x1b[31mFailed to start terminal: ${e}\x1b[0m`);
         }
 
-        instance.unlisten = await listen<PtyOutputEvent>("pty-output", (event) => {
+        instance.unlisten = (await listen<PtyOutputEvent>("pty-output", (event) => {
           if (event.payload.session_id === sessionId) {
             term.write(event.payload.data);
           }
-        }) as unknown as () => void;
+        })) as unknown as () => void;
       };
 
       setup();
       setTimeout(() => fitAndResize(sessionId), 100);
     }
-  }, [sessions, activeTerminalId, workspacePath]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sessions, activeTerminalId, workspacePath]);
 
   // Show/hide terminals when active tab changes
   useEffect(() => {
@@ -235,17 +234,20 @@ export function TerminalPanel() {
     addTerminalSession({ id, name: `Terminal ${num}` });
   }, [addTerminalSession]);
 
-  const closeTerminal = useCallback((id: string) => {
-    const inst = termInstances.get(id);
-    if (inst) {
-      inst.unlisten?.();
-      inst.terminal.dispose();
-      termInstances.delete(id);
-      inst.wrapper.remove();
-    }
-    invoke("pty_close", { sessionId: id }).catch(() => {});
-    removeTerminalSession(id);
-  }, [removeTerminalSession]);
+  const closeTerminal = useCallback(
+    (id: string) => {
+      const inst = termInstances.get(id);
+      if (inst) {
+        inst.unlisten?.();
+        inst.terminal.dispose();
+        termInstances.delete(id);
+        inst.wrapper.remove();
+      }
+      invoke("pty_close", { sessionId: id }).catch(() => {});
+      removeTerminalSession(id);
+    },
+    [removeTerminalSession],
+  );
 
   // Inject `using Revise` whenever toggle is turned on
   const reviseEnabled = useIdeStore((s) => s.reviseEnabled);
@@ -282,14 +284,22 @@ export function TerminalPanel() {
             {sessions.length > 1 && (
               <button
                 className="terminal-tab-close"
-                onClick={(e) => { e.stopPropagation(); closeTerminal(s.id); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  closeTerminal(s.id);
+                }}
               >
                 <X size={10} />
               </button>
             )}
           </div>
         ))}
-        <button className="terminal-add-btn" onClick={addNewTerminal} title="New Terminal">
+        <button
+          className="terminal-add-btn"
+          onClick={addNewTerminal}
+          title="New Terminal"
+          aria-label="New Terminal"
+        >
           <Plus size={13} />
         </button>
       </div>

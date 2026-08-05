@@ -26,7 +26,7 @@ export function PlotPane() {
       (line) =>
         line.timestamp > clearedTimestamp &&
         line.mime &&
-        (line.mime.type.startsWith("image/") || line.mime.type === "text/html")
+        (line.mime.type.startsWith("image/") || line.mime.type === "text/html"),
     );
   }, [output, clearedTimestamp]);
 
@@ -104,6 +104,7 @@ export function PlotPane() {
             onClick={goPrev}
             disabled={currentIndex <= 0}
             title="Previous plot"
+            aria-label="Previous plot"
           >
             <ChevronLeft size={14} />
           </button>
@@ -112,6 +113,7 @@ export function PlotPane() {
             onClick={goNext}
             disabled={currentIndex >= plotLines.length - 1}
             title="Next plot"
+            aria-label="Next plot"
           >
             <ChevronRight size={14} />
           </button>
@@ -126,6 +128,7 @@ export function PlotPane() {
             className="plot-pane-btn"
             onClick={clearPlots}
             title="Clear plots"
+            aria-label="Clear plots"
           >
             <Trash2 size={13} />
           </button>
@@ -136,7 +139,9 @@ export function PlotPane() {
         {plotLines.length === 0 ? (
           <div className="plot-pane-empty">
             <p>No plots yet</p>
-            <p className="plot-pane-hint">Run Julia code that generates plots (Plots.jl, Makie.jl, etc.)</p>
+            <p className="plot-pane-hint">
+              Run Julia code that generates plots (Plots.jl, Makie.jl, etc.)
+            </p>
           </div>
         ) : plotData ? (
           <div className="plot-pane-display">

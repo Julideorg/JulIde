@@ -59,17 +59,103 @@ describe("loadSettings", () => {
 });
 
 describe("updateSettings", () => {
-  test("updates in-memory settings and calls settings_save", async () => {
+  test("updates in-memory settings immediately", async () => {
+    invokeHandlers.set("settings_save", () => undefined);
+
+    await useSettingsStore.getState().updateSettings({ fontSize: 20 });
+
+    // The in-memory value must be live at once — only the disk write is deferred.
+    expect(useSettingsStore.getState().settings.fontSize).toBe(20);
+  });
+
+  test("persists after the debounce elapses", async () => {
     let savedSettings: any = null;
     invokeHandlers.set("settings_save", (args: any) => {
       savedSettings = args?.settings;
     });
 
     await useSettingsStore.getState().updateSettings({ fontSize: 20 });
+    expect(savedSettings).toBeNull();
 
-    expect(useSettingsStore.getState().settings.fontSize).toBe(20);
-    expect(savedSettings).toBeDefined();
+    await new Promise((r) => setTimeout(r, 400));
+    expect(savedSettings).not.toBeNull();
     expect(savedSettings.fontSize).toBe(20);
+  });
+
+  test("coalesces a burst of edits into one write", async () => {
+    // The settings panel calls updateSettings on every keystroke; typing a font
+    // family used to mean ~20 disk writes and IPC round-trips.
+    let saveCount = 0;
+    invokeHandlers.set("settings_save", () => {
+      saveCount++;
+    });
+
+    for (const size of [15, 16, 17, 18, 19, 20]) {
+      await useSettingsStore.getState().updateSettings({ fontSize: size });
+    }
+
+    await new Promise((r) => setTimeout(r, 400));
+    expect(saveCount).toBe(1);
+    expect(useSettingsStore.getState().settings.fontSize).toBe(20);
+  });
+
+  test("flushSettings writes without waiting for the debounce", async () => {
+    let savedSettings: any = null;
+    invokeHandlers.set("settings_save", (args: any) => {
+      savedSettings = args?.settings;
+    });
+
+    await useSettingsStore.getState().updateSettings({ tabSize: 8 });
+    await useSettingsStore.getState().flushSettings();
+
+    expect(savedSettings).not.toBeNull();
+    expect(savedSettings.tabSize).toBe(8);
+  });
+
+  test("records a save failure instead of swallowing it", async () => {
+    // A read-only config dir used to silently discard every preference.
+    invokeHandlers.set("settings_save", () => {
+      throw new Error("permission denied");
+    });
+
+    await useSettingsStore.getState().updateSettings({ fontSize: 20 });
+    await useSettingsStore.getState().flushSettings();
+
+    expect(useSettingsStore.getState().saveError).toContain("permission denied");
+  });
+
+  test("clears the save error once a later write succeeds", async () => {
+    invokeHandlers.set("settings_save", () => {
+      throw new Error("permission denied");
+    });
+    await useSettingsStore.getState().updateSettings({ fontSize: 20 });
+    await useSettingsStore.getState().flushSettings();
+    expect(useSettingsStore.getState().saveError).not.toBe("");
+
+    invokeHandlers.set("settings_save", () => undefined);
+    await useSettingsStore.getState().updateSettings({ fontSize: 21 });
+    await useSettingsStore.getState().flushSettings();
+    expect(useSettingsStore.getState().saveError).toBe("");
+  });
+});
+
+describe("resetSettings", () => {
+  test("restores defaults but keeps recent workspaces", async () => {
+    invokeHandlers.set("settings_save", () => undefined);
+
+    await useSettingsStore.getState().updateSettings({
+      fontSize: 30,
+      theme: "julide-light",
+      recentWorkspaces: ["/a", "/b"],
+    });
+
+    await useSettingsStore.getState().resetSettings();
+
+    const s = useSettingsStore.getState().settings;
+    expect(s.fontSize).toBe(14);
+    expect(s.theme).toBe("julide-dark");
+    // Recents are history, not a preference — resetting must not erase them.
+    expect(s.recentWorkspaces).toEqual(["/a", "/b"]);
   });
 });
 

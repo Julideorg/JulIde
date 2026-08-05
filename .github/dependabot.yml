@@ -1,0 +1,50 @@
+version: 2
+
+updates:
+  # Rust dependencies
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Tauri's crates move in lockstep; separate PRs for each would not build.
+      tauri:
+        patterns:
+          - "tauri"
+          - "tauri-*"
+      patch-and-minor:
+        update-types:
+          - patch
+          - minor
+
+  # Frontend dependencies
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      tauri-js:
+        patterns:
+          - "@tauri-apps/*"
+      storybook:
+        patterns:
+          - "storybook"
+          - "@storybook/*"
+      eslint-and-prettier:
+        patterns:
+          - "eslint*"
+          - "@eslint/*"
+          - "typescript-eslint"
+          - "prettier*"
+      patch-and-minor:
+        update-types:
+          - patch
+          - minor
+
+  # The workflows themselves
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

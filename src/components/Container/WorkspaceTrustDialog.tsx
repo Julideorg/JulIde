@@ -38,9 +38,9 @@ export function WorkspaceTrustDialog() {
         </header>
 
         <p className="trust-body">
-          This folder&rsquo;s <code>devcontainer.json</code> declares commands that will run
-          when the dev container starts. Review them before continuing — a repository you
-          did not write can put anything here.
+          This folder&rsquo;s <code>devcontainer.json</code> declares commands that will run when
+          the dev container starts. Review them before continuing — a repository you did not write
+          can put anything here.
         </p>
 
         {hostCommands.length > 0 && (
@@ -77,8 +77,8 @@ export function WorkspaceTrustDialog() {
         )}
 
         <p className="trust-note">
-          Your choice is remembered for this folder. If <code>devcontainer.json</code> changes
-          later — including on a branch you pull — you will be asked again.
+          Your choice is remembered for this folder. If <code>devcontainer.json</code> changes later
+          — including on a branch you pull — you will be asked again.
         </p>
 
         <footer className="trust-footer">

@@ -41,12 +41,24 @@ export async function invoke(command: string, _args?: Record<string, unknown>): 
 export async function open() {}
 export async function save() {}
 export async function message() {}
-export async function ask() { return false; }
-export async function confirm() { return false; }
-export async function readTextFile() { return ""; }
+export async function ask() {
+  return false;
+}
+export async function confirm() {
+  return false;
+}
+export async function readTextFile() {
+  return "";
+}
 export async function writeTextFile() {}
-export async function exists() { return false; }
+export async function exists() {
+  return false;
+}
 export class Command {
-  static sidecar() { return new Command(); }
-  async execute() { return { code: 0, stdout: "", stderr: "" }; }
+  static sidecar() {
+    return new Command();
+  }
+  async execute() {
+    return { code: 0, stdout: "", stderr: "" };
+  }
 }

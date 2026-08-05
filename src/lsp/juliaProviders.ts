@@ -17,9 +17,10 @@ export function setMonacoInstance(m: typeof Monaco): void {
 // ── Coordinate conversion helpers ─────────────────────────────────────────────
 
 /** LSP 0-based position → Monaco 1-based IRange start */
-export function lspRangeToMonaco(
-  range: { start: { line: number; character: number }; end: { line: number; character: number } }
-): Monaco.IRange {
+export function lspRangeToMonaco(range: {
+  start: { line: number; character: number };
+  end: { line: number; character: number };
+}): Monaco.IRange {
   return {
     startLineNumber: range.start.line + 1,
     startColumn: range.start.character + 1,
@@ -31,16 +32,16 @@ export function lspRangeToMonaco(
 // ── LSP CompletionItemKind → Monaco CompletionItemKind mapping ────────────────
 
 export const LSP_KIND: Record<number, number> = {
-  1:  17, // Text
-  2:  0,  // Method
-  3:  1,  // Function
-  4:  3,  // Constructor
-  5:  4,  // Field
-  6:  5,  // Variable
-  7:  6,  // Class
-  8:  7,  // Interface
-  9:  8,  // Module
-  10: 9,  // Property
+  1: 17, // Text
+  2: 0, // Method
+  3: 1, // Function
+  4: 3, // Constructor
+  5: 4, // Field
+  6: 5, // Variable
+  7: 6, // Class
+  8: 7, // Interface
+  9: 8, // Module
+  10: 9, // Property
   11: 10, // Unit
   12: 11, // Value
   13: 12, // Enum
@@ -56,23 +57,26 @@ export const LSP_KIND: Record<number, number> = {
 
 // ── Severity mapping ──────────────────────────────────────────────────────────
 
-function lspSeverityToMonaco(
-  monaco: typeof Monaco,
-  severity?: number
-): Monaco.MarkerSeverity {
+function lspSeverityToMonaco(monaco: typeof Monaco, severity?: number): Monaco.MarkerSeverity {
   switch (severity) {
-    case 1: return monaco.MarkerSeverity.Error;
-    case 2: return monaco.MarkerSeverity.Warning;
-    case 3: return monaco.MarkerSeverity.Info;
-    case 4: return monaco.MarkerSeverity.Hint;
-    default: return monaco.MarkerSeverity.Error;
+    case 1:
+      return monaco.MarkerSeverity.Error;
+    case 2:
+      return monaco.MarkerSeverity.Warning;
+    case 3:
+      return monaco.MarkerSeverity.Info;
+    case 4:
+      return monaco.MarkerSeverity.Hint;
+    default:
+      return monaco.MarkerSeverity.Error;
   }
 }
 
 // ── Hover content normalization ───────────────────────────────────────────────
 
 export function flattenHoverContents(
-  contents: string | { kind: string; value: string } | Array<string | { language: string; value: string }>
+  contents:
+    string | { kind: string; value: string } | Array<string | { language: string; value: string }>,
 ): string {
   if (typeof contents === "string") return contents;
   if (Array.isArray(contents)) {
@@ -107,7 +111,7 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
         const items = await lspClient.getCompletions(
           uri,
           position.lineNumber - 1,
-          position.column - 1
+          position.column - 1,
         );
         const word = model.getWordUntilPosition(position);
         const range: Monaco.IRange = {
@@ -119,21 +123,18 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
         return {
           suggestions: items.map((item) => ({
             label: item.label,
-            kind:
-              LSP_KIND[item.kind ?? 1] ??
-              monaco.languages.CompletionItemKind.Text,
+            kind: LSP_KIND[item.kind ?? 1] ?? monaco.languages.CompletionItemKind.Text,
             detail: item.detail,
             documentation:
               typeof item.documentation === "object"
                 ? { value: item.documentation.value }
                 : item.documentation
-                ? { value: item.documentation }
-                : undefined,
+                  ? { value: item.documentation }
+                  : undefined,
             insertText: item.insertText ?? item.label,
             insertTextRules:
               item.insertTextFormat === 2
-                ? monaco.languages.CompletionItemInsertTextRule
-                    .InsertAsSnippet
+                ? monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet
                 : undefined,
             range,
           })),
@@ -149,11 +150,7 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
     provideHover: async (model, position) => {
       const uri = `file://${model.uri.path}`;
       try {
-        const hover = await lspClient.getHover(
-          uri,
-          position.lineNumber - 1,
-          position.column - 1
-        );
+        const hover = await lspClient.getHover(uri, position.lineNumber - 1, position.column - 1);
         if (!hover) return null;
         return {
           contents: [{ value: flattenHoverContents(hover.contents) }],
@@ -173,7 +170,7 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
         const locations = await lspClient.getDefinition(
           uri,
           position.lineNumber - 1,
-          position.column - 1
+          position.column - 1,
         );
         return locations.map((loc) => ({
           uri: monaco.Uri.parse(loc.uri),
@@ -195,7 +192,7 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
         const help = await lspClient.getSignatureHelp(
           uri,
           position.lineNumber - 1,
-          position.column - 1
+          position.column - 1,
         );
         if (!help) return null;
         return {
@@ -206,16 +203,16 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
                 sig.documentation == null
                   ? undefined
                   : typeof sig.documentation === "object"
-                  ? { value: sig.documentation.value }
-                  : { value: sig.documentation },
+                    ? { value: sig.documentation.value }
+                    : { value: sig.documentation },
               parameters: (sig.parameters ?? []).map((p) => ({
                 label: p.label,
                 documentation:
                   p.documentation == null
                     ? undefined
                     : typeof p.documentation === "object"
-                    ? { value: p.documentation.value }
-                    : { value: p.documentation },
+                      ? { value: p.documentation.value }
+                      : { value: p.documentation },
               })),
             })),
             activeSignature: help.activeSignature ?? 0,
@@ -237,7 +234,7 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
         const locations = await lspClient.getReferences(
           uri,
           position.lineNumber - 1,
-          position.column - 1
+          position.column - 1,
         );
         return locations.map((loc) => ({
           uri: monaco.Uri.parse(loc.uri),
@@ -258,7 +255,7 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
           uri,
           position.lineNumber - 1,
           position.column - 1,
-          newName
+          newName,
         );
         if (!edit) return { edits: [] };
         return workspaceEditToMonaco(monaco, edit);
@@ -272,14 +269,21 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
         const range = await lspClient.prepareRename(
           uri,
           position.lineNumber - 1,
-          position.column - 1
+          position.column - 1,
         );
-        if (!range) return { range: { startLineNumber: 0, startColumn: 0, endLineNumber: 0, endColumn: 0 }, text: "" };
+        if (!range)
+          return {
+            range: { startLineNumber: 0, startColumn: 0, endLineNumber: 0, endColumn: 0 },
+            text: "",
+          };
         const monacoRange = lspRangeToMonaco(range);
         const text = model.getValueInRange(monacoRange);
         return { range: monacoRange, text };
       } catch {
-        return { range: { startLineNumber: 0, startColumn: 0, endLineNumber: 0, endColumn: 0 }, text: "" };
+        return {
+          range: { startLineNumber: 0, startColumn: 0, endLineNumber: 0, endColumn: 0 },
+          text: "",
+        };
       }
     },
   });
@@ -298,9 +302,14 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
             start: { line: m.startLineNumber - 1, character: m.startColumn - 1 },
             end: { line: m.endLineNumber - 1, character: m.endColumn - 1 },
           },
-          severity: m.severity === monaco.MarkerSeverity.Error ? 1
-            : m.severity === monaco.MarkerSeverity.Warning ? 2
-            : m.severity === monaco.MarkerSeverity.Info ? 3 : 4 as 1 | 2 | 3 | 4,
+          severity:
+            m.severity === monaco.MarkerSeverity.Error
+              ? 1
+              : m.severity === monaco.MarkerSeverity.Warning
+                ? 2
+                : m.severity === monaco.MarkerSeverity.Info
+                  ? 3
+                  : (4 as 1 | 2 | 3 | 4),
           message: m.message,
           source: m.source ?? undefined,
         }));
@@ -347,18 +356,18 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
         const hints = await lspClient.getInlayHints(uri, lspRange);
         return {
           hints: hints.map((h) => ({
-            kind: h.kind === 1
-              ? monaco.languages.InlayHintKind.Type
-              : h.kind === 2
-              ? monaco.languages.InlayHintKind.Parameter
-              : monaco.languages.InlayHintKind.Type,
+            kind:
+              h.kind === 1
+                ? monaco.languages.InlayHintKind.Type
+                : h.kind === 2
+                  ? monaco.languages.InlayHintKind.Parameter
+                  : monaco.languages.InlayHintKind.Type,
             position: {
               lineNumber: h.position.line + 1,
               column: h.position.character + 1,
             },
-            label: typeof h.label === "string"
-              ? h.label
-              : h.label.map((part) => part.value).join(""),
+            label:
+              typeof h.label === "string" ? h.label : h.label.map((part) => part.value).join(""),
             paddingLeft: h.paddingLeft,
             paddingRight: h.paddingRight,
           })),
@@ -372,16 +381,41 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
 
   // ── Semantic Tokens ───────────────────────────────────────────────────────
   const tokenTypes = [
-    "namespace", "type", "class", "enum", "interface",
-    "struct", "typeParameter", "parameter", "variable",
-    "property", "enumMember", "event", "function", "method",
-    "macro", "keyword", "modifier", "comment", "string",
-    "number", "regexp", "operator", "decorator",
+    "namespace",
+    "type",
+    "class",
+    "enum",
+    "interface",
+    "struct",
+    "typeParameter",
+    "parameter",
+    "variable",
+    "property",
+    "enumMember",
+    "event",
+    "function",
+    "method",
+    "macro",
+    "keyword",
+    "modifier",
+    "comment",
+    "string",
+    "number",
+    "regexp",
+    "operator",
+    "decorator",
   ];
   const tokenModifiers = [
-    "declaration", "definition", "readonly", "static",
-    "deprecated", "abstract", "async", "modification",
-    "documentation", "defaultLibrary",
+    "declaration",
+    "definition",
+    "readonly",
+    "static",
+    "deprecated",
+    "abstract",
+    "async",
+    "modification",
+    "documentation",
+    "defaultLibrary",
   ];
 
   const legend: Monaco.languages.SemanticTokensLegend = { tokenTypes, tokenModifiers };
@@ -406,7 +440,7 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
 
 function workspaceEditToMonaco(
   monaco: typeof Monaco,
-  edit: LspWorkspaceEdit
+  edit: LspWorkspaceEdit,
 ): Monaco.languages.WorkspaceEdit {
   const edits: Monaco.languages.IWorkspaceTextEdit[] = [];
 
@@ -462,6 +496,6 @@ export function setMonacoMarkers(uri: string, diagnostics: LspDiagnostic[]): voi
       message: d.message,
       severity: lspSeverityToMonaco(_monaco!, d.severity),
       source: d.source ?? "LanguageServer.jl",
-    }))
+    })),
   );
 }

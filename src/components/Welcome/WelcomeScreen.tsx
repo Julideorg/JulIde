@@ -73,11 +73,7 @@ export function WelcomeScreen() {
           <div className="welcome-recent">
             <h3 className="welcome-recent-title">Recent</h3>
             {recentWorkspaces.map((path) => (
-              <button
-                key={path}
-                className="welcome-recent-item"
-                onClick={() => openRecent(path)}
-              >
+              <button key={path} className="welcome-recent-item" onClick={() => openRecent(path)}>
                 <span className="welcome-recent-name">{path.split(/[/\\]/).pop()}</span>
                 <span className="welcome-recent-path">{path}</span>
               </button>

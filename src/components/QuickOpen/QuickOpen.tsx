@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useModalA11y } from "../../hooks/useModalA11y";
 import { invoke } from "@tauri-apps/api/core";
 import { useIdeStore } from "../../stores/useIdeStore";
 import type { FileNode, EditorTab } from "../../types";
@@ -100,6 +101,9 @@ export function QuickOpen() {
     setSelectedIdx(0);
   }, [query]);
 
+  // Traps Tab inside the dialog and restores focus to wherever it was on close.
+  const dialogRef = useModalA11y<HTMLDivElement>(open, { skipInitialFocus: true });
+
   if (!open) return null;
 
   const openSelected = async () => {
@@ -139,7 +143,11 @@ export function QuickOpen() {
   return (
     <div className="command-palette-overlay" onClick={close}>
       <div
+        ref={dialogRef}
         className="command-palette"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Go to file"
         onClick={(e) => e.stopPropagation()}
       >
         <input
@@ -158,7 +166,19 @@ export function QuickOpen() {
               <div
                 key={file.path}
                 className={`command-palette-item ${idx === selectedIdx ? "selected" : ""}`}
-                onClick={() => { close(); invoke<string>("fs_read_file", { path: file.path }).then((content) => { openFile({ id: file.path, path: file.path, name: file.name, content, isDirty: false, language: file.name.split(".").pop() ?? "plaintext" }); }); }}
+                onClick={() => {
+                  close();
+                  invoke<string>("fs_read_file", { path: file.path }).then((content) => {
+                    openFile({
+                      id: file.path,
+                      path: file.path,
+                      name: file.name,
+                      content,
+                      isDirty: false,
+                      language: file.name.split(".").pop() ?? "plaintext",
+                    });
+                  });
+                }}
                 onMouseEnter={() => setSelectedIdx(idx)}
               >
                 <span className="command-label">{file.name}</span>

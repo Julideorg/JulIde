@@ -118,12 +118,18 @@ export function GitChangesTab() {
 
   const statusIcon = (status: string) => {
     switch (status) {
-      case "modified": return <span className="git-status-badge modified">M</span>;
-      case "added": return <span className="git-status-badge added">A</span>;
-      case "deleted": return <span className="git-status-badge deleted">D</span>;
-      case "untracked": return <span className="git-status-badge untracked">U</span>;
-      case "renamed": return <span className="git-status-badge renamed">R</span>;
-      default: return <span className="git-status-badge">{status[0]?.toUpperCase()}</span>;
+      case "modified":
+        return <span className="git-status-badge modified">M</span>;
+      case "added":
+        return <span className="git-status-badge added">A</span>;
+      case "deleted":
+        return <span className="git-status-badge deleted">D</span>;
+      case "untracked":
+        return <span className="git-status-badge untracked">U</span>;
+      case "renamed":
+        return <span className="git-status-badge renamed">R</span>;
+      default:
+        return <span className="git-status-badge">{status[0]?.toUpperCase()}</span>;
     }
   };
 
@@ -151,7 +157,9 @@ export function GitChangesTab() {
             title={`Push${gitAheadBehind.ahead > 0 ? ` (${gitAheadBehind.ahead} ahead)` : ""}`}
           >
             <ArrowUp size={12} />
-            {gitAheadBehind.ahead > 0 && <span className="git-sync-count">{gitAheadBehind.ahead}</span>}
+            {gitAheadBehind.ahead > 0 && (
+              <span className="git-sync-count">{gitAheadBehind.ahead}</span>
+            )}
           </button>
           <button
             className="git-sync-btn"
@@ -160,17 +168,25 @@ export function GitChangesTab() {
             title={`Pull${gitAheadBehind.behind > 0 ? ` (${gitAheadBehind.behind} behind)` : ""}`}
           >
             <ArrowDown size={12} />
-            {gitAheadBehind.behind > 0 && <span className="git-sync-count">{gitAheadBehind.behind}</span>}
+            {gitAheadBehind.behind > 0 && (
+              <span className="git-sync-count">{gitAheadBehind.behind}</span>
+            )}
           </button>
           <button
             className="git-sync-btn"
             onClick={doFetch}
             disabled={gitIsSyncing}
             title="Fetch"
+            aria-label="Fetch"
           >
             <RotateCw size={12} className={gitIsSyncing ? "spinning" : ""} />
           </button>
-          <button className="git-refresh-btn" onClick={refreshGit} title="Refresh">
+          <button
+            className="git-refresh-btn"
+            onClick={refreshGit}
+            title="Refresh"
+            aria-label="Refresh"
+          >
             <RefreshCw size={12} />
           </button>
         </div>
@@ -209,8 +225,19 @@ export function GitChangesTab() {
             {staged.map((f) => (
               <div key={`s-${f.path}`} className="git-file-item">
                 {statusIcon(f.status)}
-                <span className="git-file-path" onClick={() => setDiffFile({ path: f.path, status: f.status })} title="View diff">{f.path}</span>
-                <button className="git-file-action" onClick={() => unstageFile(f.path)} title="Unstage">
+                <span
+                  className="git-file-path"
+                  onClick={() => setDiffFile({ path: f.path, status: f.status })}
+                  title="View diff"
+                >
+                  {f.path}
+                </span>
+                <button
+                  className="git-file-action"
+                  onClick={() => unstageFile(f.path)}
+                  title="Unstage"
+                  aria-label="Unstage"
+                >
                   <Minus size={12} />
                 </button>
               </div>
@@ -224,15 +251,31 @@ export function GitChangesTab() {
             <div className="git-section-header">
               <span>Changes</span>
               <span className="git-section-count">{unstaged.length + untracked.length}</span>
-              <button className="git-file-action" onClick={stageAll} title="Stage All">
+              <button
+                className="git-file-action"
+                onClick={stageAll}
+                title="Stage All"
+                aria-label="Stage All"
+              >
                 <Plus size={12} />
               </button>
             </div>
             {[...unstaged, ...untracked].map((f) => (
               <div key={`u-${f.path}`} className="git-file-item">
                 {statusIcon(f.status)}
-                <span className="git-file-path" onClick={() => setDiffFile({ path: f.path, status: f.status })} title="View diff">{f.path}</span>
-                <button className="git-file-action" onClick={() => stageFile(f.path)} title="Stage">
+                <span
+                  className="git-file-path"
+                  onClick={() => setDiffFile({ path: f.path, status: f.status })}
+                  title="View diff"
+                >
+                  {f.path}
+                </span>
+                <button
+                  className="git-file-action"
+                  onClick={() => stageFile(f.path)}
+                  title="Stage"
+                  aria-label="Stage"
+                >
                   <Plus size={12} />
                 </button>
               </div>

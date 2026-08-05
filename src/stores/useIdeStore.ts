@@ -216,8 +216,7 @@ export const useIdeStore = create<IdeStore>()(
         const idx = s.openTabs.findIndex((t) => t.id === id);
         s.openTabs.splice(idx, 1);
         if (s.activeTabId === id) {
-          s.activeTabId =
-            s.openTabs[Math.max(0, idx - 1)]?.id ?? s.openTabs[0]?.id ?? null;
+          s.activeTabId = s.openTabs[Math.max(0, idx - 1)]?.id ?? s.openTabs[0]?.id ?? null;
         }
       }),
     setActiveTab: (id) =>
@@ -359,15 +358,11 @@ export const useIdeStore = create<IdeStore>()(
       }),
     removeBreakpoint: (file, line) =>
       set((s) => {
-        s.breakpoints = s.breakpoints.filter(
-          (b) => !(b.file === file && b.line === line)
-        );
+        s.breakpoints = s.breakpoints.filter((b) => !(b.file === file && b.line === line));
       }),
     toggleBreakpoint: (file, line) =>
       set((s) => {
-        const idx = s.breakpoints.findIndex(
-          (b) => b.file === file && b.line === line
-        );
+        const idx = s.breakpoints.findIndex((b) => b.file === file && b.line === line);
         if (idx >= 0) {
           s.breakpoints.splice(idx, 1);
         } else {
@@ -628,7 +623,9 @@ export const useIdeStore = create<IdeStore>()(
         const [remotes, stashes, aheadBehind] = await Promise.all([
           invoke<GitRemote[]>("git_remotes", { workspacePath: wp }).catch(() => []),
           invoke<GitStash[]>("git_stash_list", { workspacePath: wp }).catch(() => []),
-          invoke<[number, number]>("git_ahead_behind", { workspacePath: wp }).catch(() => [0, 0] as [number, number]),
+          invoke<[number, number]>("git_ahead_behind", { workspacePath: wp }).catch(
+            () => [0, 0] as [number, number],
+          ),
         ]);
 
         const state2 = useIdeStore.getState();
@@ -639,5 +636,5 @@ export const useIdeStore = create<IdeStore>()(
         // Silently fail — git might not be available
       }
     },
-  }))
+  })),
 );

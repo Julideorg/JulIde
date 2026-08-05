@@ -35,7 +35,7 @@ export function GitIssuesTab() {
 
   useEffect(() => {
     fetchIssues();
-  }, [workspacePath, filter]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [workspacePath, filter]); // eslint-disable-line react-hooks/exhaustive-deps -- fetchIssues is redefined every render, so listing it would refetch in a loop
 
   const createIssue = async () => {
     if (!workspacePath || !newIssue.title.trim()) return;
@@ -68,10 +68,20 @@ export function GitIssuesTab() {
             <option value="closed">Closed</option>
             <option value="all">All</option>
           </select>
-          <button className="git-file-action" onClick={() => setCreating(!creating)} title="Create Issue">
+          <button
+            className="git-file-action"
+            onClick={() => setCreating(!creating)}
+            title="Create Issue"
+            aria-label="Create Issue"
+          >
             <Plus size={12} />
           </button>
-          <button className="git-file-action" onClick={fetchIssues} title="Refresh">
+          <button
+            className="git-file-action"
+            onClick={fetchIssues}
+            title="Refresh"
+            aria-label="Refresh"
+          >
             <RefreshCw size={12} />
           </button>
         </div>
@@ -107,9 +117,13 @@ export function GitIssuesTab() {
       )}
 
       {loading ? (
-        <div className="git-panel-empty"><p>Loading...</p></div>
+        <div className="git-panel-empty">
+          <p>Loading...</p>
+        </div>
       ) : issues.length === 0 ? (
-        <div className="git-panel-empty"><p>No issues</p></div>
+        <div className="git-panel-empty">
+          <p>No issues</p>
+        </div>
       ) : (
         <div className="git-pr-list">
           {issues.map((issue) => (
@@ -125,7 +139,9 @@ export function GitIssuesTab() {
                 {issue.labels.length > 0 && (
                   <span className="git-issue-labels">
                     {issue.labels.map((l) => (
-                      <span key={l} className="git-label">{l}</span>
+                      <span key={l} className="git-label">
+                        {l}
+                      </span>
                     ))}
                   </span>
                 )}
@@ -135,6 +151,7 @@ export function GitIssuesTab() {
                   className="git-file-action"
                   onClick={() => openExternal(issue.url).catch(console.error)}
                   title="Open in browser"
+                  aria-label="Open in browser"
                 >
                   <ExternalLink size={12} />
                 </button>

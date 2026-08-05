@@ -4,7 +4,7 @@
  */
 import { useIdeStore } from "../stores/useIdeStore";
 import { usePluginStore } from "../stores/usePluginStore";
-import { useSettingsStore } from "../stores/useSettingsStore";
+import { useSettingsStore, defaultSettings } from "../stores/useSettingsStore";
 import { resetTauriMocks } from "./tauriMock";
 
 /**
@@ -83,27 +83,13 @@ export function resetAllStores(): void {
     toolbarButtons: [],
   });
 
-  // Reset settings store
+  // Reset settings store.
+  //
+  // Reuses the store's own defaults rather than duplicating them: the previous
+  // hand-maintained copy had silently drifted and was missing five fields, which
+  // nothing caught because test files were excluded from type-checking.
   useSettingsStore.setState({
-    settings: {
-      fontSize: 14,
-      fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
-      tabSize: 4,
-      minimapEnabled: true,
-      wordWrap: "off",
-      autoSave: true,
-      theme: "julide-dark",
-      terminalFontSize: 13,
-      recentWorkspaces: [],
-      containerRuntime: "auto",
-      containerRemoteHost: "",
-      containerAutoDetect: true,
-      displayForwarding: true,
-      gpuPassthrough: false,
-      selinuxLabel: true,
-      persistJuliaPackages: true,
-      plutoPort: 3000,
-    },
+    settings: { ...defaultSettings },
     loaded: false,
     settingsOpen: false,
   });

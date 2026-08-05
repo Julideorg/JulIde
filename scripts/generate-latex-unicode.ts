@@ -23,11 +23,19 @@ function decodeJuliaString(raw: string): string {
   for (let i = 0; i < raw.length; i++) {
     if (raw[i] === "\\" && i + 1 < raw.length) {
       const next = raw[i + 1];
-      if (next === "\\") { result += "\\"; i++; }
-      else if (next === '"') { result += '"'; i++; }
-      else if (next === "n") { result += "\n"; i++; }
-      else if (next === "t") { result += "\t"; i++; }
-      else if (next === "u" || next === "U") {
+      if (next === "\\") {
+        result += "\\";
+        i++;
+      } else if (next === '"') {
+        result += '"';
+        i++;
+      } else if (next === "n") {
+        result += "\n";
+        i++;
+      } else if (next === "t") {
+        result += "\t";
+        i++;
+      } else if (next === "u" || next === "U") {
         // \uXXXX or \UXXXXXXXX
         const hexLen = next === "u" ? 4 : 8;
         const hex = raw.slice(i + 2, i + 2 + hexLen);
@@ -64,7 +72,10 @@ function parseLatexSymbols(source: string): Map<string, string> {
       inLatexDict = true;
       continue;
     }
-    if (trimmed.startsWith("const symbols_latex_canonical") || trimmed.startsWith("symbols_latex_canonical")) {
+    if (
+      trimmed.startsWith("const symbols_latex_canonical") ||
+      trimmed.startsWith("symbols_latex_canonical")
+    ) {
       inLatexDict = false;
       inCanonicalDict = true;
       continue;
@@ -80,7 +91,9 @@ function parseLatexSymbols(source: string): Map<string, string> {
     if (!inLatexDict || inCanonicalDict) continue;
 
     // Direct entry: "\\command" => "char",  # optional comment
-    const directMatch = trimmed.match(/^"((?:\\.|[^"])*?)"\s*=>\s*"((?:\\.|[^"])*?)"[,)]?\s*(?:#.*)?$/);
+    const directMatch = trimmed.match(
+      /^"((?:\\.|[^"])*?)"\s*=>\s*"((?:\\.|[^"])*?)"[,)]?\s*(?:#.*)?$/,
+    );
     if (directMatch) {
       const key = decodeJuliaString(directMatch[1]);
       const value = decodeJuliaString(directMatch[2]);
@@ -89,7 +102,9 @@ function parseLatexSymbols(source: string): Map<string, string> {
     }
 
     // Concatenated entry: prefix*"suffix" => "char",  # optional comment
-    const concatMatch = trimmed.match(/^(\w+)\*"((?:\\.|[^"])*?)"\s*=>\s*"((?:\\.|[^"])*?)"[,)]?\s*(?:#.*)?$/);
+    const concatMatch = trimmed.match(
+      /^(\w+)\*"((?:\\.|[^"])*?)"\s*=>\s*"((?:\\.|[^"])*?)"[,)]?\s*(?:#.*)?$/,
+    );
     if (concatMatch) {
       const prefix = prefixes.get(concatMatch[1]);
       if (prefix) {
@@ -173,7 +188,9 @@ async function main() {
   lines.push(`// AUTO-GENERATED from Julia ${JULIA_TAG} — do not edit by hand`);
   lines.push(`// Source: stdlib/REPL/src/latex_symbols.jl + emoji_symbols.jl`);
   lines.push(`// Generated: ${new Date().toISOString().slice(0, 10)}`);
-  lines.push(`// LaTeX: ${latexSymbols.size} | Emoji: ${emojiSymbols.size} | Total: ${merged.size}`);
+  lines.push(
+    `// LaTeX: ${latexSymbols.size} | Emoji: ${emojiSymbols.size} | Total: ${merged.size}`,
+  );
   lines.push(``);
   lines.push(`export const LATEX_UNICODE: Record<string, string> = {`);
 

@@ -1,9 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import {
-  MIME_MARKER,
-  parseMimeLine,
-  stripAnsiForDisplay,
-} from "./juliaOutput";
+import { MIME_MARKER, parseMimeLine, stripAnsiForDisplay } from "./juliaOutput";
 
 describe("parseMimeLine", () => {
   it("parses a valid marker line", () => {

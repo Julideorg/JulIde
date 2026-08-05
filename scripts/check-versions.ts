@@ -38,9 +38,7 @@ if (ref.startsWith("refs/tags/")) {
   // Allow the tag to carry a pre-release suffix the manifests cannot: v0.2.0-rc1 matches 0.2.0.
   const tagBase = tag.split("-")[0];
   if (tagBase !== first.version) {
-    console.error(
-      `\nTag ${tag} does not match the manifest version ${first.version}.`,
-    );
+    console.error(`\nTag ${tag} does not match the manifest version ${first.version}.`);
     failed = true;
   } else {
     console.log(`Tag ${tag} matches the manifest version.`);

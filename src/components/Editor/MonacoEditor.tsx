@@ -15,7 +15,10 @@ import { stripAnsiForDisplay } from "../../utils/juliaOutput";
 const SAVE_DEBOUNCE_MS = 800;
 const DEFER_RENDER_MS = 200; // Time to let Monaco paint before firing heavy IPC/Scans
 
-function getCellRange(model: Monaco.editor.ITextModel, lineNumber: number): { startLine: number; endLine: number } {
+function getCellRange(
+  model: Monaco.editor.ITextModel,
+  lineNumber: number,
+): { startLine: number; endLine: number } {
   const lineCount = model.getLineCount();
   let startLine = 1;
   let endLine = lineCount;
@@ -47,17 +50,26 @@ function getCellRange(model: Monaco.editor.ITextModel, lineNumber: number): { st
 function getLanguage(filename: string): string {
   const ext = filename.split(".").pop()?.toLowerCase();
   switch (ext) {
-    case "jl": return "julia";
-    case "json": return "json";
-    case "toml": return "toml";
-    case "md": return "markdown";
+    case "jl":
+      return "julia";
+    case "json":
+      return "json";
+    case "toml":
+      return "toml";
+    case "md":
+      return "markdown";
     case "ts":
-    case "tsx": return "typescript";
+    case "tsx":
+      return "typescript";
     case "js":
-    case "jsx": return "javascript";
-    case "py": return "python";
-    case "rs": return "rust";
-    default: return "plaintext";
+    case "jsx":
+      return "javascript";
+    case "py":
+      return "python";
+    case "rs":
+      return "rust";
+    default:
+      return "plaintext";
   }
 }
 
@@ -83,7 +95,7 @@ export function MonacoEditor() {
   const lspChangeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cellUpdateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lspVersionRef = useRef<Map<string, number>>(new Map());
-  
+
   const decorationsRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
   const debugDecoRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
   const cellDecoRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
@@ -101,7 +113,7 @@ export function MonacoEditor() {
 
     const decos: Monaco.editor.IModelDeltaDecoration[] = [];
     const lineCount = model.getLineCount();
-    
+
     for (let i = 1; i <= lineCount; i++) {
       const content = model.getLineContent(i).trimStart();
       if (content.startsWith("##")) {
@@ -177,13 +189,20 @@ export function MonacoEditor() {
       if (!code) return;
 
       if (cellResultDecoRef.current) {
-        cellResultDecoRef.current.set([{
-          range: { startLineNumber: endLine, startColumn: 1, endLineNumber: endLine, endColumn: 1 },
-          options: {
-            isWholeLine: true,
-            after: { content: "  ... running", inlineClassName: "cell-result-running" },
+        cellResultDecoRef.current.set([
+          {
+            range: {
+              startLineNumber: endLine,
+              startColumn: 1,
+              endLineNumber: endLine,
+              endColumn: 1,
+            },
+            options: {
+              isWholeLine: true,
+              after: { content: "  ... running", inlineClassName: "cell-result-running" },
+            },
           },
-        }]);
+        ]);
       }
 
       const outputLines: string[] = [];
@@ -194,21 +213,31 @@ export function MonacoEditor() {
         if (kind === "stdout" || kind === "stderr") {
           if (text) outputLines.push(text);
         } else if (kind === "done") {
-          const resultText = stripAnsiForDisplay(outputLines.join("; ").slice(0, 120)).trim() || "(no output)";
+          const resultText =
+            stripAnsiForDisplay(outputLines.join("; ").slice(0, 120)).trim() || "(no output)";
           if (cellResultDecoRef.current) {
-            cellResultDecoRef.current.set([{
-              range: { startLineNumber: endLine, startColumn: 1, endLineNumber: endLine, endColumn: 1 },
-              options: {
-                isWholeLine: true,
-                after: { content: `  => ${resultText}`, inlineClassName: "cell-result-text" },
+            cellResultDecoRef.current.set([
+              {
+                range: {
+                  startLineNumber: endLine,
+                  startColumn: 1,
+                  endLineNumber: endLine,
+                  endColumn: 1,
+                },
+                options: {
+                  isWholeLine: true,
+                  after: { content: `  => ${resultText}`, inlineClassName: "cell-result-text" },
+                },
               },
-            }]);
+            ]);
           }
           const store = useIdeStore.getState();
           store.setIsRunning(false);
           resultUnlisten?.();
         }
-      }).then((fn) => { resultUnlisten = fn; });
+      }).then((fn) => {
+        resultUnlisten = fn;
+      });
 
       const store = useIdeStore.getState();
       store.setIsRunning(true);
@@ -220,13 +249,23 @@ export function MonacoEditor() {
         store.appendOutput({ kind: "stderr", text: String(e) });
         store.setIsRunning(false);
         if (cellResultDecoRef.current) {
-          cellResultDecoRef.current.set([{
-            range: { startLineNumber: endLine, startColumn: 1, endLineNumber: endLine, endColumn: 1 },
-            options: {
-              isWholeLine: true,
-              after: { content: `  => Error: ${String(e).slice(0, 80)}`, inlineClassName: "cell-result-error" },
+          cellResultDecoRef.current.set([
+            {
+              range: {
+                startLineNumber: endLine,
+                startColumn: 1,
+                endLineNumber: endLine,
+                endColumn: 1,
+              },
+              options: {
+                isWholeLine: true,
+                after: {
+                  content: `  => Error: ${String(e).slice(0, 80)}`,
+                  inlineClassName: "cell-result-error",
+                },
+              },
             },
-          }]);
+          ]);
         }
       });
     });
@@ -268,7 +307,7 @@ export function MonacoEditor() {
         console.error("Save failed:", e);
       }
     },
-    [markTabSaved]
+    [markTabSaved],
   );
 
   // LSP Management
@@ -326,7 +365,12 @@ export function MonacoEditor() {
     if (debug.isPaused && debug.currentLine > 0) {
       debugDecoRef.current.set([
         {
-          range: { startLineNumber: debug.currentLine, startColumn: 1, endLineNumber: debug.currentLine, endColumn: 1 },
+          range: {
+            startLineNumber: debug.currentLine,
+            startColumn: 1,
+            endLineNumber: debug.currentLine,
+            endColumn: 1,
+          },
           options: {
             isWholeLine: true,
             className: "debug-current-line",
@@ -355,25 +399,26 @@ export function MonacoEditor() {
 
     // Delay git blame invocation to ensure Monaco handles the file layout transition smoothly
     const blameTimeout = setTimeout(() => {
-      invoke<Array<{ line: number; author: string; date: string; commitId: string; summary: string }>>(
-        "git_blame_file",
-        { workspacePath, filePath: relativePath }
-      ).then((blameLines) => {
-        if (!isCurrent || !blameDecoRef.current) return;
-        const decos: Monaco.editor.IModelDeltaDecoration[] = blameLines.map((b) => ({
-          range: { startLineNumber: b.line, startColumn: 1, endLineNumber: b.line, endColumn: 1 },
-          options: {
-            isWholeLine: true,
-            after: {
-              content: `  ${b.author}, ${b.date} - ${b.summary.slice(0, 40)}`,
-              inlineClassName: "git-blame-text",
+      invoke<
+        Array<{ line: number; author: string; date: string; commitId: string; summary: string }>
+      >("git_blame_file", { workspacePath, filePath: relativePath })
+        .then((blameLines) => {
+          if (!isCurrent || !blameDecoRef.current) return;
+          const decos: Monaco.editor.IModelDeltaDecoration[] = blameLines.map((b) => ({
+            range: { startLineNumber: b.line, startColumn: 1, endLineNumber: b.line, endColumn: 1 },
+            options: {
+              isWholeLine: true,
+              after: {
+                content: `  ${b.author}, ${b.date} - ${b.summary.slice(0, 40)}`,
+                inlineClassName: "git-blame-text",
+              },
             },
-          },
-        }));
-        blameDecoRef.current.set(decos);
-      }).catch(() => {
-        if (isCurrent) blameDecoRef.current?.set([]);
-      });
+          }));
+          blameDecoRef.current.set(decos);
+        })
+        .catch(() => {
+          if (isCurrent) blameDecoRef.current?.set([]);
+        });
     }, DEFER_RENDER_MS);
 
     return () => {
@@ -388,13 +433,13 @@ export function MonacoEditor() {
       cellDecoRef.current?.set([]);
       return;
     }
-    
+
     const cellTimeout = setTimeout(() => {
       updateCellDecorations();
     }, DEFER_RENDER_MS);
-    
+
     cellResultDecoRef.current?.set([]);
-    
+
     return () => clearTimeout(cellTimeout);
   }, [activeTab?.path, updateCellDecorations]);
 
@@ -423,7 +468,7 @@ export function MonacoEditor() {
         }, 500);
       }
     },
-    [activeTab, updateTabContent, saveFile, updateCellDecorations]
+    [activeTab, updateTabContent, saveFile, updateCellDecorations],
   );
 
   useEffect(() => {
@@ -439,15 +484,24 @@ export function MonacoEditor() {
       <div className="editor-empty">
         <div className="editor-empty-content">
           <div className="editor-empty-icon">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
+            <svg
+              width="64"
+              height="64"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
             </svg>
           </div>
-          <p>Open a file from the explorer or use <kbd>Cmd+O</kbd></p>
+          <p>
+            Open a file from the explorer or use <kbd>Cmd+O</kbd>
+          </p>
         </div>
       </div>
     );
@@ -482,7 +536,11 @@ export function MonacoEditor() {
           bracketPairColorization: { enabled: true },
           guides: { bracketPairs: true, indentation: true },
           stickyScroll: { enabled: true },
-          unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false, nonBasicASCII: false },
+          unicodeHighlight: {
+            ambiguousCharacters: false,
+            invisibleCharacters: false,
+            nonBasicASCII: false,
+          },
           padding: { top: 8, bottom: 8 },
         }}
       />

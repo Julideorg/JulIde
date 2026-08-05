@@ -29,6 +29,16 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
+      # The main tsconfig excludes tests and stories, so this covers them too.
+      - name: Typecheck tests and stories
+        run: bun run typecheck:test
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Format check
+        run: bun run format:check
+
       - name: Test
         run: bun test
 
@@ -75,6 +85,25 @@ jobs:
 
       - name: Test
         run: cargo test
+        working-directory: src-tauri
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-22.04
+    # Advisories are published continuously, so a new one appearing must not turn
+    # every unrelated PR red. This reports without gating.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Audit Rust dependencies
+        run: cargo audit
         working-directory: src-tauri
 
   versions:

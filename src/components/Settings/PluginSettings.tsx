@@ -42,9 +42,7 @@ export function PluginSettings() {
                   <span className="settings-plugin-version">v{plugin.version}</span>
                   {grant && grant.permissions.length > 0 && (
                     <span className="settings-plugin-permissions">
-                      {grant.permissions
-                        .map((p) => PERMISSION_CATALOG[p]?.title ?? p)
-                        .join(" · ")}
+                      {grant.permissions.map((p) => PERMISSION_CATALOG[p]?.title ?? p).join(" · ")}
                     </span>
                   )}
                   {grant && grant.permissions.length === 0 && (
@@ -73,6 +71,7 @@ export function PluginSettings() {
                       className="settings-plugin-revoke"
                       onClick={() => void revoke(plugin.name)}
                       title="Revoke granted permissions — takes effect on next launch"
+                      aria-label="Revoke granted permissions — takes effect on next launch"
                     >
                       Revoke
                     </button>

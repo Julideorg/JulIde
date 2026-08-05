@@ -118,5 +118,5 @@ export const usePluginStore = create<PluginStore>()(
       set((s) => {
         s.toolbarButtons = s.toolbarButtons.filter((b) => b.id !== id);
       }),
-  }))
+  })),
 );

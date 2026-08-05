@@ -7,33 +7,56 @@ interface DocumentSymbol {
   name: string;
   kind: number;
   range: { start: { line: number; character: number }; end: { line: number; character: number } };
-  selectionRange: { start: { line: number; character: number }; end: { line: number; character: number } };
+  selectionRange: {
+    start: { line: number; character: number };
+    end: { line: number; character: number };
+  };
   children?: DocumentSymbol[];
 }
 
 // LSP SymbolKind → icon label
 function symbolKindLabel(kind: number): string {
   switch (kind) {
-    case 2: return "mod";
-    case 5: return "class";
-    case 6: return "fn";
-    case 12: return "fn";
-    case 13: return "var";
-    case 14: return "const";
-    case 15: return "str";
-    case 23: return "struct";
-    case 26: return "type";
-    default: return "sym";
+    case 2:
+      return "mod";
+    case 5:
+      return "class";
+    case 6:
+      return "fn";
+    case 12:
+      return "fn";
+    case 13:
+      return "var";
+    case 14:
+      return "const";
+    case 15:
+      return "str";
+    case 23:
+      return "struct";
+    case 26:
+      return "type";
+    default:
+      return "sym";
   }
 }
 
 function symbolKindClass(kind: number): string {
   switch (kind) {
-    case 2: return "outline-kind-module";
-    case 5: case 23: case 26: return "outline-kind-type";
-    case 6: case 12: return "outline-kind-function";
-    case 13: case 14: case 15: return "outline-kind-variable";
-    default: return "outline-kind-default";
+    case 2:
+      return "outline-kind-module";
+    case 5:
+    case 23:
+    case 26:
+      return "outline-kind-type";
+    case 6:
+    case 12:
+      return "outline-kind-function";
+    case 13:
+    case 14:
+    case 15:
+      return "outline-kind-variable";
+    default:
+      return "outline-kind-default";
   }
 }
 
@@ -54,12 +77,20 @@ function SymbolNode({
       <div
         className="outline-symbol-row"
         style={{ paddingLeft: `${depth * 12 + 4}px` }}
-        onClick={() => onNavigate(symbol.selectionRange.start.line + 1, symbol.selectionRange.start.character + 1)}
+        onClick={() =>
+          onNavigate(
+            symbol.selectionRange.start.line + 1,
+            symbol.selectionRange.start.character + 1,
+          )
+        }
       >
         {hasChildren ? (
           <span
             className="outline-toggle"
-            onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpanded(!expanded);
+            }}
           >
             {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
           </span>
@@ -124,7 +155,7 @@ export function OutlinePanel() {
     if (!activeTab) return;
     const timer = setTimeout(fetchSymbols, 1000);
     return () => clearTimeout(timer);
-  }, [activeTab?.content]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTab?.content]); // eslint-disable-line react-hooks/exhaustive-deps -- debounced on content only; fetchSymbols changes identity every render
 
   const navigateToSymbol = useCallback((line: number, col: number) => {
     const editor = useIdeStore.getState().editorInstance;
@@ -164,15 +195,18 @@ export function OutlinePanel() {
       <div className="outline-header">
         <List size={14} />
         <span>Outline</span>
-        <button className="outline-refresh-btn" onClick={fetchSymbols} title="Refresh">
+        <button
+          className="outline-refresh-btn"
+          onClick={fetchSymbols}
+          title="Refresh"
+          aria-label="Refresh"
+        >
           ↻
         </button>
       </div>
       <div className="outline-tree">
         {loading && <div className="outline-loading">Loading...</div>}
-        {!loading && symbols.length === 0 && (
-          <div className="outline-empty">No symbols found</div>
-        )}
+        {!loading && symbols.length === 0 && <div className="outline-empty">No symbols found</div>}
         {!loading &&
           symbols.map((sym, i) => (
             <SymbolNode

@@ -8,6 +8,7 @@ A modern, fully-featured IDE for the [Julia](https://julialang.org/) programming
 <img width="2553" height="1353" alt="image" src="https://github.com/user-attachments/assets/29f6e9da-70d3-4e0c-a550-d85903ee63ed" />
 
 ---
+
 ## Credits
 
 [@ Rakesh ](https://github.com/rakeshksr) - conributed multiple bug fixs and featue suggestions 🎉
@@ -19,6 +20,7 @@ A modern, fully-featured IDE for the [Julia](https://julialang.org/) programming
 ## Features
 
 ### Code Editing
+
 - **Monaco Editor** with full Julia syntax highlighting via a custom Monarch tokenizer
 - **25+ Julia snippets** — function, struct, try/catch, @testset, comprehensions, macros, and more
 - **Tabbed multi-file editing** with dirty indicators and auto-save
@@ -29,6 +31,7 @@ A modern, fully-featured IDE for the [Julia](https://julialang.org/) programming
 - **LaTeX to Unicode** — type `\alpha` + Tab to insert `α` (based on Julia's LaTeX symbols table)
 
 ### Language Intelligence (LSP)
+
 - Powered by [LanguageServer.jl](https://github.com/julia-vscode/LanguageServer.jl)
 - **Autocompletion**, **hover documentation**, **go-to-definition**, **find references**
 - **Signature help** with parameter info
@@ -39,6 +42,7 @@ A modern, fully-featured IDE for the [Julia](https://julialang.org/) programming
 - **Workspace and document symbol search**
 
 ### Julia Runtime
+
 - **Run scripts** with rich output — inline images (PNG, JPEG, SVG), HTML, and plain text
 - **Interactive REPL** via xterm.js with full PTY emulation
 - **Multi-terminal support** — create, switch, and close multiple Julia REPL sessions
@@ -51,6 +55,7 @@ A modern, fully-featured IDE for the [Julia](https://julialang.org/) programming
 - **Environment selector** — switch between Julia project environments
 
 ### File Management
+
 - **File explorer** with tree view, create/rename/delete files and folders
 - **Drag-and-drop** to move files between directories
 - **File watching** — automatically detects external changes (git, other editors) and refreshes the tree
@@ -58,6 +63,7 @@ A modern, fully-featured IDE for the [Julia](https://julialang.org/) programming
 - **Global Search** (Cmd/Ctrl+Shift+F) — search across all files with regex, case-sensitivity, and glob filters
 
 ### Git Integration
+
 - **Source control panel** — view staged, unstaged, and untracked files
 - **Stage / unstage** individual files or stage all at once
 - **Commit** with a message directly from the UI
@@ -74,6 +80,7 @@ A modern, fully-featured IDE for the [Julia](https://julialang.org/) programming
 - Powered by `libgit2` (via the `git2` Rust crate) — no shell dependency for core operations
 
 ### Workspace & UI
+
 - **Activity bar** — switch between Explorer, Outline, Search, Variables, Source Control, and Dev Containers views
 - **Command palette** (Cmd/Ctrl+Shift+P) with 35+ commands
 - **Settings panel** (Cmd/Ctrl+,) — configure editor, terminal, and appearance
@@ -87,6 +94,7 @@ A modern, fully-featured IDE for the [Julia](https://julialang.org/) programming
 - **Status bar** — Julia version, environment, git branch, LSP status, Revise/Pluto indicators
 
 ### Dev Container Support
+
 - **Auto-detect** `devcontainer.json` in the workspace and offer to build/start
 - **Docker and Podman** runtime auto-detection (with manual override in settings)
 - **Build, start, stop, rebuild, and tear down** dev containers from the UI or command palette
@@ -96,6 +104,7 @@ A modern, fully-featured IDE for the [Julia](https://julialang.org/) programming
 - **Run Julia inside the container** — execute scripts in the dev container environment
 
 ### Plugin System
+
 - **Plugin discovery** — automatically scans `~/.julide/plugins/` for installed plugins
 - **Plugin manifest** (`plugin.json`) — declare name, version, entry point, contributions, and permissions
 - **Plugin API** — register commands, sidebar panels, bottom panels, status bar items, and toolbar buttons
@@ -127,23 +136,23 @@ The model **fails closed**: a call to a backend command whose permission was not
 granted is rejected before it reaches the backend, and commands absent from the
 catalog cannot be called at all.
 
-| Permission | Grants |
-|---|---|
-| `workspace:read` | Read files and list directories |
-| `workspace:write` | Create, edit, rename, delete files |
-| `julia:run` | Execute Julia code |
-| `julia:packages` | `Pkg.add` / `Pkg.rm` |
-| `julia:configure` | Change the Julia interpreter, scaffold projects |
-| `terminal` | Open PTY sessions and write to them |
-| `debugger` | Breakpoints, stepping, variable inspection |
-| `lsp` | Send LanguageServer.jl requests |
-| `git:read` | Status, diff, log, branches, blame, PRs, issues |
-| `git:write` | Stage, commit, branch, merge, stash, push, pull |
-| `git:credentials` | Read and modify stored access tokens |
-| `containers` | Docker/Podman and dev container control |
-| `settings:read` / `settings:write` | Read / modify julIDE preferences |
-| `pluto` | Start and stop the Pluto notebook server |
-| `dialogs` | Native file and folder pickers |
+| Permission                         | Grants                                          |
+| ---------------------------------- | ----------------------------------------------- |
+| `workspace:read`                   | Read files and list directories                 |
+| `workspace:write`                  | Create, edit, rename, delete files              |
+| `julia:run`                        | Execute Julia code                              |
+| `julia:packages`                   | `Pkg.add` / `Pkg.rm`                            |
+| `julia:configure`                  | Change the Julia interpreter, scaffold projects |
+| `terminal`                         | Open PTY sessions and write to them             |
+| `debugger`                         | Breakpoints, stepping, variable inspection      |
+| `lsp`                              | Send LanguageServer.jl requests                 |
+| `git:read`                         | Status, diff, log, branches, blame, PRs, issues |
+| `git:write`                        | Stage, commit, branch, merge, stash, push, pull |
+| `git:credentials`                  | Read and modify stored access tokens            |
+| `containers`                       | Docker/Podman and dev container control         |
+| `settings:read` / `settings:write` | Read / modify julIDE preferences                |
+| `pluto`                            | Start and stop the Pluto notebook server        |
+| `dialogs`                          | Native file and folder pickers                  |
 
 `workspace:write`, `julia:run`, `julia:configure`, `terminal`, `git:write`,
 `git:credentials`, and `containers` are flagged **high risk** in the consent prompt —
@@ -172,7 +181,46 @@ Pkg.add("Pluto")           # Reactive notebooks
 
 ---
 
+## Installation
+
+Download the latest build from the
+[releases page](https://github.com/sinisterMage/julide/releases).
+
+| Platform  | Download         | Notes                                                                             |
+| --------- | ---------------- | --------------------------------------------------------------------------------- |
+| **Linux** | `.AppImage`      | Recommended — supports in-app updates. `chmod +x` then run.                       |
+| Linux     | `.deb` / `.rpm`  | Installs system-wide and registers `.jl` files. Updates via your package manager. |
+| Windows   | `.msi` or `.exe` |                                                                                   |
+| macOS     | `.dmg`           | Apple Silicon and Intel builds are published separately.                          |
+
+You also need **Julia 1.6+** ([download](https://julialang.org/downloads/)). julIDE
+does not bundle it. If Julia is not found on first launch, julIDE will offer to help
+you install or locate it.
+
+### Unsigned builds
+
+julIDE is not yet code-signed, so your OS will warn you on first launch:
+
+- **Windows** — SmartScreen shows "Windows protected your PC". Click **More info** →
+  **Run anyway**.
+- **macOS** — Gatekeeper reports the app "cannot be opened". Either right-click the
+  app and choose **Open**, or run:
+
+  ```bash
+  xattr -dr com.apple.quarantine /Applications/julide.app
+  ```
+
+- **Linux** — no warning; AppImages just need the executable bit.
+
+This is expected for an unsigned application and is documented in
+[SECURITY.md](SECURITY.md). Signing is planned.
+
+---
+
 ## Getting Started
+
+> This section is for building julIDE from source. If you just want to use it, see
+> [Installation](#installation) above.
 
 ### Clone and install
 
@@ -198,7 +246,10 @@ This starts Vite on `localhost:1420` and opens the native Tauri window. Changes 
 bun run tauri build
 ```
 
-The output is placed in `src-tauri/target/release/bundle/` and includes platform-specific installers (`.dmg` on macOS, `.msi`/`.exe` on Windows, `.deb`/`.AppImage` on Linux).
+The output is placed in `src-tauri/target/release/bundle/`. `bundle.targets` is set to
+`"all"`, so each platform produces everything it can: `.deb`, `.rpm`, and `.AppImage` on
+Linux; `.msi` and `.exe` on Windows; `.app` and `.dmg` on macOS. A build only produces
+artifacts for the platform it runs on — the release workflow builds all four targets.
 
 ---
 
@@ -266,38 +317,38 @@ julIDE
 
 ### Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Desktop framework | Tauri 2 (Rust) |
-| Frontend | React 19, TypeScript, Vite |
-| Code editor | Monaco Editor |
-| Terminal | xterm.js with PTY |
-| State management | Zustand with Immer middleware |
-| Icons | Lucide React |
-| Git operations | git2 (libgit2 bindings) |
-| File watching | notify crate |
-| File search | walkdir + regex crates |
-| LSP | LanguageServer.jl via JSON-RPC over stdio |
-| Git provider API | reqwest (HTTP client for GitHub/GitLab/Gitea) |
-| Token storage | keyring crate (OS keychain) |
-| Container runtime | Docker / Podman CLI (auto-detected) |
+| Layer             | Technology                                    |
+| ----------------- | --------------------------------------------- |
+| Desktop framework | Tauri 2 (Rust)                                |
+| Frontend          | React 19, TypeScript, Vite                    |
+| Code editor       | Monaco Editor                                 |
+| Terminal          | xterm.js with PTY                             |
+| State management  | Zustand with Immer middleware                 |
+| Icons             | Lucide React                                  |
+| Git operations    | git2 (libgit2 bindings)                       |
+| File watching     | notify crate                                  |
+| File search       | walkdir + regex crates                        |
+| LSP               | LanguageServer.jl via JSON-RPC over stdio     |
+| Git provider API  | reqwest (HTTP client for GitHub/GitLab/Gitea) |
+| Token storage     | keyring crate (OS keychain)                   |
+| Container runtime | Docker / Podman CLI (auto-detected)           |
 
 ---
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `Cmd/Ctrl+Shift+P` | Command Palette |
-| `Cmd/Ctrl+P` | Quick Open (file finder) |
-| `Cmd/Ctrl+F` | Find in file |
-| `Cmd/Ctrl+H` | Find and replace |
-| `Cmd/Ctrl+Shift+F` | Search across files |
-| `Cmd/Ctrl+S` | Save file |
-| `` Ctrl+` `` | Toggle terminal |
-| `Cmd/Ctrl+G` | Go to Line |
-| `Ctrl/Cmd+Enter` | Run code cell |
-| `Cmd/Ctrl+,` | Open settings |
+| Shortcut           | Action                   |
+| ------------------ | ------------------------ |
+| `Cmd/Ctrl+Shift+P` | Command Palette          |
+| `Cmd/Ctrl+P`       | Quick Open (file finder) |
+| `Cmd/Ctrl+F`       | Find in file             |
+| `Cmd/Ctrl+H`       | Find and replace         |
+| `Cmd/Ctrl+Shift+F` | Search across files      |
+| `Cmd/Ctrl+S`       | Save file                |
+| `` Ctrl+` ``       | Toggle terminal          |
+| `Cmd/Ctrl+G`       | Go to Line               |
+| `Ctrl/Cmd+Enter`   | Run code cell            |
+| `Cmd/Ctrl+,`       | Open settings            |
 
 ---
 
@@ -307,26 +358,26 @@ Settings are stored in `~/.config/julide/settings.json` (Linux), `~/Library/Appl
 
 Available settings:
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `fontSize` | `14` | Editor font size |
-| `fontFamily` | `JetBrains Mono, ...` | Editor font family |
-| `tabSize` | `4` | Indentation width |
-| `minimapEnabled` | `true` | Show minimap |
-| `wordWrap` | `off` | Word wrap mode |
-| `autoSave` | `true` | Auto-save on change |
-| `theme` | `julide-dark` | Color theme (`julide-dark` or `julide-light`) |
-| `terminalFontSize` | `13` | Terminal font size |
-| `containerRuntime` | `auto` | Container runtime (`auto`, `docker`, or `podman`) |
-| `containerRemoteHost` | `""` | Remote Docker/Podman host URL |
-| `containerAutoDetect` | `true` | Auto-detect devcontainer.json on workspace open |
-| `displayForwarding` | `true` | Forward X11/Wayland display into containers |
-| `gpuPassthrough` | `false` | Pass GPU devices into containers |
-| `selinuxLabel` | `true` | Apply SELinux labels to bind mounts |
-| `persistJuliaPackages` | `true` | Persist Julia packages across container rebuilds |
-| `plutoPort` | `3000` | Port for the Pluto.jl notebook server |
-| `juliaPath` | `""` | Custom Julia binary path (overrides auto-detection) |
-| `startMaximized` | `true` | Start the window maximized |
+| Setting                | Default               | Description                                         |
+| ---------------------- | --------------------- | --------------------------------------------------- |
+| `fontSize`             | `14`                  | Editor font size                                    |
+| `fontFamily`           | `JetBrains Mono, ...` | Editor font family                                  |
+| `tabSize`              | `4`                   | Indentation width                                   |
+| `minimapEnabled`       | `true`                | Show minimap                                        |
+| `wordWrap`             | `off`                 | Word wrap mode                                      |
+| `autoSave`             | `true`                | Auto-save on change                                 |
+| `theme`                | `julide-dark`         | Color theme (`julide-dark` or `julide-light`)       |
+| `terminalFontSize`     | `13`                  | Terminal font size                                  |
+| `containerRuntime`     | `auto`                | Container runtime (`auto`, `docker`, or `podman`)   |
+| `containerRemoteHost`  | `""`                  | Remote Docker/Podman host URL                       |
+| `containerAutoDetect`  | `true`                | Auto-detect devcontainer.json on workspace open     |
+| `displayForwarding`    | `true`                | Forward X11/Wayland display into containers         |
+| `gpuPassthrough`       | `false`               | Pass GPU devices into containers                    |
+| `selinuxLabel`         | `true`                | Apply SELinux labels to bind mounts                 |
+| `persistJuliaPackages` | `true`                | Persist Julia packages across container rebuilds    |
+| `plutoPort`            | `3000`                | Port for the Pluto.jl notebook server               |
+| `juliaPath`            | `""`                  | Custom Julia binary path (overrides auto-detection) |
+| `startMaximized`       | `true`                | Start the window maximized                          |
 
 ---
 
@@ -352,12 +403,12 @@ julIDE checks for new releases on startup and shows a banner when one is availab
 **What it can install depends on how you installed it.** `tauri-plugin-updater` can only
 replace the running binary when that binary is a single self-contained file:
 
-| Install | In-app update |
-|---|---|
-| **AppImage** (Linux) | Yes — one click, then restart. **Recommended download on Linux.** |
-| `.deb` / `.rpm` | No — these are owned by your package manager. julIDE still tells you a new version exists and links to the download page. |
-| Windows `.msi` / `.exe` | Yes |
-| macOS `.app` / `.dmg` | Yes |
+| Install                 | In-app update                                                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **AppImage** (Linux)    | Yes — one click, then restart. **Recommended download on Linux.**                                                         |
+| `.deb` / `.rpm`         | No — these are owned by your package manager. julIDE still tells you a new version exists and links to the download page. |
+| Windows `.msi` / `.exe` | Yes                                                                                                                       |
+| macOS `.app` / `.dmg`   | Yes                                                                                                                       |
 
 Run **Check for Updates** from the command palette (`Cmd/Ctrl+Shift+P`) to check manually.
 

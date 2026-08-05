@@ -36,9 +36,7 @@ export function UpdateBanner() {
   const canSelfInstall = capability?.canSelfInstall ?? false;
 
   const percent =
-    progress && progress.total
-      ? Math.round((progress.downloaded / progress.total) * 100)
-      : null;
+    progress && progress.total ? Math.round((progress.downloaded / progress.total) * 100) : null;
 
   return (
     <div className="update-banner" role="status">

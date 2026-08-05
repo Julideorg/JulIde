@@ -164,7 +164,7 @@ fn find_julia_impl() -> Option<PathBuf> {
     // 3. juliaup default location
     #[cfg(unix)]
     {
-        if let Some(home) = dirs_next::home_dir() {
+        if let Some(home) = dirs::home_dir() {
             let p = home.join(".juliaup/bin/julia");
             if p.exists() {
                 return Some(p);
@@ -271,8 +271,7 @@ pub async fn julia_get_version() -> Result<String, String> {
 
 #[tauri::command]
 pub async fn julia_list_environments() -> Result<Vec<String>, String> {
-    let home =
-        dirs_next::home_dir().ok_or_else(|| "Could not determine home directory".to_string())?;
+    let home = dirs::home_dir().ok_or_else(|| "Could not determine home directory".to_string())?;
     let envs_path = home.join(".julia").join("environments");
 
     let mut envs = vec!["@v#.#".to_string()];

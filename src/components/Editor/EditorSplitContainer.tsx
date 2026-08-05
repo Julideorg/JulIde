@@ -80,7 +80,12 @@ export function EditorSplitContainer() {
           {isPlutoSplit ? (
             <>
               <span className="split-editor-tab active">Pluto Notebook</span>
-              <button className="pluto-split-close" onClick={handleClosePluto} title="Close Pluto">
+              <button
+                className="pluto-split-close"
+                onClick={handleClosePluto}
+                title="Close Pluto"
+                aria-label="Close Pluto"
+              >
                 <X size={12} />
               </button>
             </>

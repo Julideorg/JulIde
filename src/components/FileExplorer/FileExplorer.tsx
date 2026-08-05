@@ -47,10 +47,16 @@ function InlinePrompt({ placeholder, onConfirm, onCancel }: InlinePromptProps) {
         className="inline-prompt-btn confirm"
         onClick={() => value.trim() && onConfirm(value.trim())}
         title="Confirm"
+        aria-label="Confirm"
       >
         <Check size={11} />
       </button>
-      <button className="inline-prompt-btn cancel" onClick={onCancel} title="Cancel">
+      <button
+        className="inline-prompt-btn cancel"
+        onClick={onCancel}
+        title="Cancel"
+        aria-label="Cancel"
+      >
         <X size={11} />
       </button>
     </div>
@@ -234,9 +240,7 @@ function FileTreeNode({ node, depth, onOpen, onRefresh }: FileTreeNodeProps) {
         }}
       >
         <span className="file-tree-chevron">
-          {node.is_dir ? (
-            expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />
-          ) : null}
+          {node.is_dir ? expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} /> : null}
         </span>
         <span className="file-tree-icon">
           {node.is_dir ? (
@@ -305,10 +309,7 @@ function FileTreeNode({ node, depth, onOpen, onRefresh }: FileTreeNodeProps) {
       {contextMenu && (
         <>
           <div className="context-menu-overlay" onClick={closeMenu} />
-          <div
-            className="context-menu"
-            style={{ top: contextMenu.y, left: contextMenu.x }}
-          >
+          <div className="context-menu" style={{ top: contextMenu.y, left: contextMenu.x }}>
             {node.is_dir && (
               <>
                 <button onClick={handleNewFile}>
@@ -470,7 +471,7 @@ export function FileExplorer() {
         console.error("Cannot open file:", e);
       }
     },
-    [openFile]
+    [openFile],
   );
 
   const handleRootPromptConfirm = async (name: string) => {
@@ -494,20 +495,22 @@ export function FileExplorer() {
     <div className="file-explorer">
       <div className="file-explorer-header">
         <span className="file-explorer-title">
-          {workspacePath
-            ? workspacePath.split(/[/\\]/).pop()?.toUpperCase()
-            : "EXPLORER"}
+          {workspacePath ? workspacePath.split(/[/\\]/).pop()?.toUpperCase() : "EXPLORER"}
         </span>
         <div className="file-explorer-actions">
           {workspacePath && (
             <>
-              <button title="New File" onClick={() => setRootPrompt("file")}>
+              <button title="New File" aria-label="New File" onClick={() => setRootPrompt("file")}>
                 <FilePlus size={14} />
               </button>
-              <button title="New Folder" onClick={() => setRootPrompt("folder")}>
+              <button
+                title="New Folder"
+                aria-label="New Folder"
+                onClick={() => setRootPrompt("folder")}
+              >
                 <FolderPlus size={14} />
               </button>
-              <button title="Refresh" onClick={refreshTree}>
+              <button title="Refresh" aria-label="Refresh" onClick={refreshTree}>
                 <RefreshCw size={14} />
               </button>
             </>

@@ -72,7 +72,8 @@ export const PERMISSION_CATALOG: Record<PluginPermission, PermissionInfo> = {
   },
   terminal: {
     title: "Use the terminal",
-    description: "Open terminal sessions and type into them — equivalent to running shell commands.",
+    description:
+      "Open terminal sessions and type into them — equivalent to running shell commands.",
     risk: "high",
   },
   debugger: {

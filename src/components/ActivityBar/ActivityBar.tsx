@@ -1,13 +1,4 @@
-import {
-  Files,
-  Search,
-  GitBranch,
-  Settings,
-  Container,
-  Puzzle,
-  List,
-  Eye,
-} from "lucide-react";
+import { Files, Search, GitBranch, Settings, Container, Puzzle, List, Eye } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useIdeStore } from "../../stores/useIdeStore";
 import { useSettingsStore } from "../../stores/useSettingsStore";
@@ -55,6 +46,7 @@ export function ActivityBar() {
           className="activity-bar-btn"
           onClick={() => setSettingsOpen(true)}
           title="Settings"
+          aria-label="Settings"
         >
           <Settings size={20} />
         </button>

@@ -51,7 +51,16 @@ export function DiffViewer({ filePath, fileStatus, onClose }: DiffViewerProps) {
   };
 
   const ext = filePath.split(".").pop()?.toLowerCase();
-  const language = ext === "jl" ? "julia" : ext === "toml" ? "toml" : ext === "json" ? "json" : ext === "md" ? "markdown" : "plaintext";
+  const language =
+    ext === "jl"
+      ? "julia"
+      : ext === "toml"
+        ? "toml"
+        : ext === "json"
+          ? "json"
+          : ext === "md"
+            ? "markdown"
+            : "plaintext";
 
   return (
     <div className="diff-viewer">
@@ -59,10 +68,21 @@ export function DiffViewer({ filePath, fileStatus, onClose }: DiffViewerProps) {
         <span className="diff-viewer-title">
           {filePath}
           <span className={`diff-viewer-status ${fileStatus}`}>
-            {fileStatus === "modified" ? "M" : fileStatus === "added" ? "A" : fileStatus === "deleted" ? "D" : fileStatus[0]?.toUpperCase()}
+            {fileStatus === "modified"
+              ? "M"
+              : fileStatus === "added"
+                ? "A"
+                : fileStatus === "deleted"
+                  ? "D"
+                  : fileStatus[0]?.toUpperCase()}
           </span>
         </span>
-        <button className="diff-viewer-close" onClick={onClose} title="Close diff">
+        <button
+          className="diff-viewer-close"
+          onClick={onClose}
+          title="Close diff"
+          aria-label="Close diff"
+        >
           <X size={14} />
         </button>
       </div>

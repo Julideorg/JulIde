@@ -16,7 +16,7 @@ export function GitPanel() {
 
   useEffect(() => {
     refreshGit();
-  }, [workspacePath]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [workspacePath]); // eslint-disable-line react-hooks/exhaustive-deps -- refreshGit is a stable store action; this should re-run on workspace change only
 
   if (!workspacePath) {
     return (
@@ -44,15 +44,17 @@ export function GitPanel() {
   return (
     <div className="git-panel">
       <div className="git-tab-bar">
-        {tabs.filter((t) => t.visible).map((tab) => (
-          <button
-            key={tab.id}
-            className={`git-tab ${activeTab === tab.id ? "active" : ""}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {tabs
+          .filter((t) => t.visible)
+          .map((tab) => (
+            <button
+              key={tab.id}
+              className={`git-tab ${activeTab === tab.id ? "active" : ""}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
       </div>
 
       <div className="git-tab-content">

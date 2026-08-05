@@ -89,9 +89,13 @@ end;
           bufferRef.current.push(trimmed);
         }
       }
-    }).then((fn) => { unlisten = fn; });
+    }).then((fn) => {
+      unlisten = fn;
+    });
 
-    return () => { unlisten?.(); };
+    return () => {
+      unlisten?.();
+    };
   }, []);
 
   return (
@@ -99,8 +103,12 @@ end;
       <div className="dataframe-header">
         <Table size={14} />
         <span>{varName}</span>
-        <span className="dataframe-info">{rows.length > 0 ? `${rows.length} rows x ${headers.length} cols` : ""}</span>
-        <button className="dataframe-close" onClick={onClose}><X size={14} /></button>
+        <span className="dataframe-info">
+          {rows.length > 0 ? `${rows.length} rows x ${headers.length} cols` : ""}
+        </span>
+        <button className="dataframe-close" onClick={onClose}>
+          <X size={14} />
+        </button>
       </div>
 
       {loading && <div className="dataframe-loading">Loading...</div>}
@@ -112,14 +120,18 @@ end;
             <thead>
               <tr>
                 <th className="dataframe-row-num">#</th>
-                {headers.map((h, i) => <th key={i}>{h}</th>)}
+                {headers.map((h, i) => (
+                  <th key={i}>{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {rows.map((row, ri) => (
                 <tr key={ri}>
                   <td className="dataframe-row-num">{ri + 1}</td>
-                  {row.map((cell, ci) => <td key={ci}>{cell}</td>)}
+                  {row.map((cell, ci) => (
+                    <td key={ci}>{cell}</td>
+                  ))}
                 </tr>
               ))}
             </tbody>

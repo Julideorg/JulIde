@@ -16,7 +16,7 @@ export function EditorTabs() {
       e.stopPropagation();
       closeTab(id);
     },
-    [closeTab]
+    [closeTab],
   );
 
   const handleMiddleClick = useCallback(
@@ -26,7 +26,7 @@ export function EditorTabs() {
         closeTab(id);
       }
     },
-    [closeTab]
+    [closeTab],
   );
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
@@ -76,11 +76,16 @@ export function EditorTabs() {
           onDrop={(e) => handleDrop(e, index)}
         >
           <span className="editor-tab-name">{tab.name}</span>
-          {tab.isDirty && <span className="editor-tab-dirty" title="Unsaved changes">●</span>}
+          {tab.isDirty && (
+            <span className="editor-tab-dirty" title="Unsaved changes">
+              ●
+            </span>
+          )}
           <button
             className="editor-tab-close"
             onClick={(e) => handleClose(e, tab.id)}
             title="Close"
+            aria-label="Close"
           >
             <X size={12} />
           </button>

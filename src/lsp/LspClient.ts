@@ -41,9 +41,7 @@ export interface LspCompletionList {
 
 export interface LspHover {
   contents:
-    | string
-    | { kind: string; value: string }
-    | Array<string | { language: string; value: string }>;
+    string | { kind: string; value: string } | Array<string | { language: string; value: string }>;
   range?: LspRange;
 }
 
@@ -189,9 +187,7 @@ class LspClient {
   onNotification(handler: LspNotificationHandler): () => void {
     this.notificationHandlers.push(handler);
     return () => {
-      this.notificationHandlers = this.notificationHandlers.filter(
-        (h) => h !== handler
-      );
+      this.notificationHandlers = this.notificationHandlers.filter((h) => h !== handler);
     };
   }
 
@@ -217,7 +213,7 @@ class LspClient {
             handler(method, params);
           }
         }
-      }
+      },
     );
   }
 
@@ -225,11 +221,7 @@ class LspClient {
    * Respond to server-initiated LSP requests.
    * LanguageServer.jl crashes if these go unanswered.
    */
-  private async handleServerRequest(
-    id: unknown,
-    method: string,
-    params: unknown
-  ): Promise<void> {
+  private async handleServerRequest(id: unknown, method: string, params: unknown): Promise<void> {
     let result: unknown = null;
 
     if (method === "workspace/configuration") {
@@ -296,16 +288,41 @@ class LspClient {
               dynamicRegistration: false,
               requests: { full: { delta: false }, range: false },
               tokenTypes: [
-                "namespace", "type", "class", "enum", "interface",
-                "struct", "typeParameter", "parameter", "variable",
-                "property", "enumMember", "event", "function", "method",
-                "macro", "keyword", "modifier", "comment", "string",
-                "number", "regexp", "operator", "decorator",
+                "namespace",
+                "type",
+                "class",
+                "enum",
+                "interface",
+                "struct",
+                "typeParameter",
+                "parameter",
+                "variable",
+                "property",
+                "enumMember",
+                "event",
+                "function",
+                "method",
+                "macro",
+                "keyword",
+                "modifier",
+                "comment",
+                "string",
+                "number",
+                "regexp",
+                "operator",
+                "decorator",
               ],
               tokenModifiers: [
-                "declaration", "definition", "readonly", "static",
-                "deprecated", "abstract", "async", "modification",
-                "documentation", "defaultLibrary",
+                "declaration",
+                "definition",
+                "readonly",
+                "static",
+                "deprecated",
+                "abstract",
+                "async",
+                "modification",
+                "documentation",
+                "defaultLibrary",
               ],
               formats: ["relative"],
               multilineTokenSupport: false,
@@ -389,11 +406,7 @@ class LspClient {
 
   // ── Language features ─────────────────────────────────────────────────────────
 
-  async getCompletions(
-    uri: string,
-    line: number,
-    character: number
-  ): Promise<LspCompletionItem[]> {
+  async getCompletions(uri: string, line: number, character: number): Promise<LspCompletionItem[]> {
     if (!this._isReady || !this._openDocuments.has(uri)) return [];
 
     const result = await invoke<LspCompletionList | LspCompletionItem[] | null>(
@@ -405,18 +418,14 @@ class LspClient {
           position: { line, character },
           context: { triggerKind: 1 },
         },
-      }
+      },
     );
     if (!result) return [];
     if (Array.isArray(result)) return result;
     return result.items ?? [];
   }
 
-  async getHover(
-    uri: string,
-    line: number,
-    character: number
-  ): Promise<LspHover | null> {
+  async getHover(uri: string, line: number, character: number): Promise<LspHover | null> {
     if (!this._isReady || !this._openDocuments.has(uri)) return null;
 
     return invoke<LspHover | null>("lsp_send_request", {
@@ -425,20 +434,13 @@ class LspClient {
     });
   }
 
-  async getDefinition(
-    uri: string,
-    line: number,
-    character: number
-  ): Promise<LspLocation[]> {
+  async getDefinition(uri: string, line: number, character: number): Promise<LspLocation[]> {
     if (!this._isReady || !this._openDocuments.has(uri)) return [];
 
-    const result = await invoke<LspLocation | LspLocation[] | null>(
-      "lsp_send_request",
-      {
-        method: "textDocument/definition",
-        params: { textDocument: { uri }, position: { line, character } },
-      }
-    );
+    const result = await invoke<LspLocation | LspLocation[] | null>("lsp_send_request", {
+      method: "textDocument/definition",
+      params: { textDocument: { uri }, position: { line, character } },
+    });
     if (!result) return [];
     return Array.isArray(result) ? result : [result];
   }
@@ -446,7 +448,7 @@ class LspClient {
   async getSignatureHelp(
     uri: string,
     line: number,
-    character: number
+    character: number,
   ): Promise<LspSignatureHelp | null> {
     if (!this._isReady || !this._openDocuments.has(uri)) return null;
 
@@ -460,11 +462,7 @@ class LspClient {
     });
   }
 
-  async getReferences(
-    uri: string,
-    line: number,
-    character: number
-  ): Promise<LspLocation[]> {
+  async getReferences(uri: string, line: number, character: number): Promise<LspLocation[]> {
     if (!this._isReady || !this._openDocuments.has(uri)) return [];
 
     const result = await invoke<LspLocation[] | null>("lsp_send_request", {
@@ -482,7 +480,7 @@ class LspClient {
     uri: string,
     line: number,
     character: number,
-    newName: string
+    newName: string,
   ): Promise<LspWorkspaceEdit | null> {
     if (!this._isReady || !this._openDocuments.has(uri)) return null;
 
@@ -496,11 +494,7 @@ class LspClient {
     });
   }
 
-  async prepareRename(
-    uri: string,
-    line: number,
-    character: number
-  ): Promise<LspRange | null> {
+  async prepareRename(uri: string, line: number, character: number): Promise<LspRange | null> {
     if (!this._isReady || !this._openDocuments.has(uri)) return null;
 
     return invoke<LspRange | null>("lsp_send_request", {
@@ -515,7 +509,7 @@ class LspClient {
   async getCodeActions(
     uri: string,
     range: LspRange,
-    diagnostics: LspDiagnostic[]
+    diagnostics: LspDiagnostic[],
   ): Promise<LspCodeAction[]> {
     if (!this._isReady || !this._openDocuments.has(uri)) return [];
 
@@ -530,11 +524,7 @@ class LspClient {
     return result ?? [];
   }
 
-  async formatting(
-    uri: string,
-    tabSize: number,
-    insertSpaces: boolean
-  ): Promise<LspTextEdit[]> {
+  async formatting(uri: string, tabSize: number, insertSpaces: boolean): Promise<LspTextEdit[]> {
     if (!this._isReady || !this._openDocuments.has(uri)) return [];
 
     const result = await invoke<LspTextEdit[] | null>("lsp_send_request", {
@@ -547,10 +537,7 @@ class LspClient {
     return result ?? [];
   }
 
-  async getInlayHints(
-    uri: string,
-    range: LspRange
-  ): Promise<LspInlayHint[]> {
+  async getInlayHints(uri: string, range: LspRange): Promise<LspInlayHint[]> {
     if (!this._isReady || !this._openDocuments.has(uri)) return [];
 
     const result = await invoke<LspInlayHint[] | null>("lsp_send_request", {
@@ -593,7 +580,7 @@ class LspClient {
   async prepareCallHierarchy(
     uri: string,
     line: number,
-    character: number
+    character: number,
   ): Promise<LspCallHierarchyItem[]> {
     if (!this._isReady || !this._openDocuments.has(uri)) return [];
 
@@ -604,7 +591,9 @@ class LspClient {
     return result ?? [];
   }
 
-  async callHierarchyIncomingCalls(item: LspCallHierarchyItem): Promise<LspCallHierarchyIncomingCall[]> {
+  async callHierarchyIncomingCalls(
+    item: LspCallHierarchyItem,
+  ): Promise<LspCallHierarchyIncomingCall[]> {
     if (!this._isReady) return [];
 
     const result = await invoke<LspCallHierarchyIncomingCall[] | null>("lsp_send_request", {
@@ -614,7 +603,9 @@ class LspClient {
     return result ?? [];
   }
 
-  async callHierarchyOutgoingCalls(item: LspCallHierarchyItem): Promise<LspCallHierarchyOutgoingCall[]> {
+  async callHierarchyOutgoingCalls(
+    item: LspCallHierarchyItem,
+  ): Promise<LspCallHierarchyOutgoingCall[]> {
     if (!this._isReady) return [];
 
     const result = await invoke<LspCallHierarchyOutgoingCall[] | null>("lsp_send_request", {

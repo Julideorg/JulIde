@@ -28,12 +28,12 @@ Be respectful, constructive, and inclusive. We welcome contributors of all exper
 
 ### Prerequisites
 
-| Tool | Version | Installation |
-|------|---------|-------------|
-| **Rust** | Latest stable | [rustup.rs](https://rustup.rs/) |
-| **Bun** | Latest | [bun.sh](https://bun.sh/) |
-| **Julia** | 1.6+ | [julialang.org](https://julialang.org/downloads/) |
-| **Tauri CLI** | v2 | `cargo install tauri-cli --version "^2"` |
+| Tool          | Version       | Installation                                      |
+| ------------- | ------------- | ------------------------------------------------- |
+| **Rust**      | Latest stable | [rustup.rs](https://rustup.rs/)                   |
+| **Bun**       | Latest        | [bun.sh](https://bun.sh/)                         |
+| **Julia**     | 1.6+          | [julialang.org](https://julialang.org/downloads/) |
+| **Tauri CLI** | v2            | `cargo install tauri-cli --version "^2"`          |
 
 **Linux only** — install system dependencies:
 
@@ -76,8 +76,39 @@ bun run dev
 cd src-tauri && cargo check
 
 # TypeScript type-checking only
-bun run tsc --noEmit
+bun run typecheck
 ```
+
+### Checks
+
+These are exactly what CI runs, so running them locally means no surprises:
+
+```bash
+bun run typecheck        # TypeScript (src/)
+bun run typecheck:test   # TypeScript (tests, stories, scripts)
+bun run lint             # ESLint
+bun run format:check     # Prettier
+bun test                 # Frontend tests
+bun run test:rust        # Rust tests
+bun run test:all         # Both test suites
+
+# Auto-fix what can be fixed
+bun run lint:fix
+bun run format
+```
+
+Rust checks, run from `src-tauri/`:
+
+```bash
+cargo test
+cargo clippy --all-targets -- -D warnings
+cargo fmt --all --check
+```
+
+> **NixOS:** the default PATH has no C compiler, so cargo builds fail with
+> `ToolNotFound: failed to find tool "cc"`. Wrap cargo commands in a shell that
+> provides the toolchain, e.g. `nix-shell -p gcc pkg-config openssl zlib glib gtk3
+webkitgtk_4_1 libsoup_3 librsvg libappindicator-gtk3 --run '...'`.
 
 ### Building
 
@@ -184,6 +215,7 @@ src-tauri/src/                # Backend (Rust)
 ### Adding a new Tauri command (full flow)
 
 1. **Rust**: Define the command in the appropriate module:
+
    ```rust
    #[tauri::command]
    pub fn my_command(arg: String) -> Result<String, String> {
@@ -192,6 +224,7 @@ src-tauri/src/                # Backend (Rust)
    ```
 
 2. **Rust**: Register in `lib.rs`:
+
    ```rust
    .invoke_handler(tauri::generate_handler![
        // ... existing commands
@@ -243,34 +276,44 @@ src-tauri/src/                # Backend (Rust)
 ## Submitting a Pull Request
 
 1. **Fork** the repository and create a branch from `master`:
+
    ```bash
    git checkout -b feature/my-feature
    ```
 
 2. **Make your changes** following the coding standards above.
 
-3. **Verify** your changes compile:
+3. **Verify** — run the same checks CI will:
+
    ```bash
-   bun run tsc --noEmit          # TypeScript
-   cd src-tauri && cargo build    # Rust
+   bun run typecheck && bun run typecheck:test && bun run lint && bun run format:check && bun test
+   cd src-tauri && cargo test && cargo clippy --all-targets -- -D warnings && cargo fmt --all --check
    ```
 
-4. **Test manually** by running `bun run tauri dev` and verifying your feature works.
+4. **Add tests** for behaviour you changed. Frontend tests live beside the code as
+   `*.test.ts`; Rust tests go in a `#[cfg(test)]` module in the same file.
 
-5. **Push** your branch and open a PR against `master`.
+5. **Test manually** by running `bun run tauri dev` and verifying your feature works.
 
-6. **PR description** should include:
+6. **Push** your branch and open a PR against `master`.
+
+7. **PR description** should include:
    - A summary of what changed and why.
    - Screenshots or screen recordings for UI changes.
    - Steps to test the change.
 
 ### PR checklist
 
-- [ ] TypeScript compiles without errors (`bun run tsc --noEmit`)
-- [ ] Rust compiles without errors (`cargo build`)
+- [ ] `bun run typecheck` and `bun run typecheck:test` pass
+- [ ] `bun run lint` and `bun run format:check` pass
+- [ ] `bun test` passes
+- [ ] `cargo test`, `cargo clippy --all-targets -- -D warnings`, and `cargo fmt --all --check` pass (if Rust changed)
+- [ ] Tests added or updated for the behaviour this changes
+- [ ] `CHANGELOG.md` updated under Unreleased (if user-visible)
 - [ ] Tested in both dark and light themes (if UI changes)
 - [ ] No hardcoded colors (use CSS variables)
 - [ ] New Tauri commands are registered in `lib.rs`
+- [ ] New commands that plugins may call are mapped in `src/services/pluginPermissions.ts` — the model fails closed, so an unmapped command is unreachable
 - [ ] New state is added to the appropriate Zustand store
 
 ---
@@ -280,6 +323,7 @@ src-tauri/src/                # Backend (Rust)
 ### Bug reports
 
 Please include:
+
 - **OS and version** (e.g., macOS 14.2, Ubuntu 22.04, Windows 11)
 - **Julia version** (`julia --version`)
 - **Steps to reproduce**
@@ -310,17 +354,17 @@ React Component
 
 ### Key data flows
 
-| Feature | Frontend → Backend | Backend → Frontend |
-|---------|-------------------|-------------------|
-| Run Julia | `julia_run(filePath, projectPath)` | `julia-output` events (stdout/stderr/done) |
-| Terminal | `pty_write(sessionId, data)` | `pty-output` events |
-| LSP | `lsp_send_request(method, params)` | `lsp-notification` events |
-| File ops | `fs_read_file`, `fs_write_file`, etc. | Direct return values |
-| Git | `git_status`, `git_commit`, `git_push`, etc. | Direct return values |
-| Git Providers | `git_provider_list_prs`, `git_provider_list_issues`, etc. | Direct return values (async) |
-| Container | `devcontainer_up`, `container_start`, etc. | `container-status`, `container-output` events |
-| Plugins | `plugin_scan`, `plugin_read_entry` | Direct return values |
-| File watch | `watcher_start(workspacePath)` | `fs-changed` events |
+| Feature       | Frontend → Backend                                        | Backend → Frontend                            |
+| ------------- | --------------------------------------------------------- | --------------------------------------------- |
+| Run Julia     | `julia_run(filePath, projectPath)`                        | `julia-output` events (stdout/stderr/done)    |
+| Terminal      | `pty_write(sessionId, data)`                              | `pty-output` events                           |
+| LSP           | `lsp_send_request(method, params)`                        | `lsp-notification` events                     |
+| File ops      | `fs_read_file`, `fs_write_file`, etc.                     | Direct return values                          |
+| Git           | `git_status`, `git_commit`, `git_push`, etc.              | Direct return values                          |
+| Git Providers | `git_provider_list_prs`, `git_provider_list_issues`, etc. | Direct return values (async)                  |
+| Container     | `devcontainer_up`, `container_start`, etc.                | `container-status`, `container-output` events |
+| Plugins       | `plugin_scan`, `plugin_read_entry`                        | Direct return values                          |
+| File watch    | `watcher_start(workspacePath)`                            | `fs-changed` events                           |
 
 ### State management
 

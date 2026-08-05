@@ -1,7 +1,9 @@
-import { useEffect, useRef } from "react";
-import { X } from "lucide-react";
+import { cloneElement, isValidElement, useEffect, useId } from "react";
+import type { ReactElement, ReactNode } from "react";
+import { AlertTriangle, X } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { useSettingsStore } from "../../stores/useSettingsStore";
+import { useModalA11y } from "../../hooks/useModalA11y";
 import { PluginSettings } from "./PluginSettings";
 import { GitAuthSettings } from "../Git/GitAuthSettings";
 
@@ -10,7 +12,11 @@ export function SettingsPanel() {
   const setOpen = useSettingsStore((s) => s.setSettingsOpen);
   const settings = useSettingsStore((s) => s.settings);
   const updateSettings = useSettingsStore((s) => s.updateSettings);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const saveError = useSettingsStore((s) => s.saveError);
+  const resetSettings = useSettingsStore((s) => s.resetSettings);
+  const flushSettings = useSettingsStore((s) => s.flushSettings);
+  const panelRef = useModalA11y<HTMLDivElement>(open);
+  const titleId = useId();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -25,6 +31,11 @@ export function SettingsPanel() {
     return () => window.removeEventListener("keydown", handler);
   }, [open, setOpen]);
 
+  // Writes are debounced, so closing right after a change would otherwise drop it.
+  useEffect(() => {
+    if (!open) void flushSettings();
+  }, [open, flushSettings]);
+
   if (!open) return null;
 
   return (
@@ -32,14 +43,28 @@ export function SettingsPanel() {
       <div
         ref={panelRef}
         className="settings-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="settings-header">
-          <h2>Settings</h2>
-          <button className="settings-close" onClick={() => setOpen(false)}>
+          <h2 id={titleId}>Settings</h2>
+          <button
+            className="settings-close"
+            onClick={() => setOpen(false)}
+            aria-label="Close settings"
+          >
             <X size={16} />
           </button>
         </div>
+
+        {saveError && (
+          <div className="settings-save-error" role="alert">
+            <AlertTriangle size={14} />
+            <span>Settings could not be saved: {saveError}</span>
+          </div>
+        )}
 
         <div className="settings-body">
           <SettingsSection title="Editor">
@@ -150,9 +175,7 @@ export function SettingsPanel() {
                   {settings.startMaximized ? "Maximized" : "Windowed"}
                 </span>
               </label>
-              <span className="settings-hint">
-                Takes effect on next launch
-              </span>
+              <span className="settings-hint">Takes effect on next launch</span>
             </SettingRow>
           </SettingsSection>
 
@@ -166,9 +189,7 @@ export function SettingsPanel() {
                 <option value="languageserver">LanguageServer.jl</option>
                 <option value="jetls">JETLS.jl (Experimental)</option>
               </select>
-              <span className="settings-hint">
-                Requires LSP restart to take effect
-              </span>
+              <span className="settings-hint">Requires LSP restart to take effect</span>
               {settings.lspBackend === "jetls" && (
                 <span className="settings-hint">
                   JETLS.jl requires Julia 1.12.2+. See{" "}
@@ -211,9 +232,7 @@ export function SettingsPanel() {
                   Browse
                 </button>
               </div>
-              <span className="settings-hint">
-                Leave empty to auto-detect
-              </span>
+              <span className="settings-hint">Leave empty to auto-detect</span>
             </SettingRow>
 
             <SettingRow label="Pluto Port">
@@ -250,9 +269,7 @@ export function SettingsPanel() {
                 onChange={(e) => updateSettings({ containerRemoteHost: e.target.value })}
                 title="SSH connection address (not a password). Auth uses SSH keys via ssh-agent."
               />
-              <span className="settings-hint">
-                Uses SSH key auth — never stores passwords
-              </span>
+              <span className="settings-hint">Uses SSH key auth — never stores passwords</span>
             </SettingRow>
 
             <SettingRow label="Auto-detect devcontainer.json">
@@ -325,12 +342,24 @@ export function SettingsPanel() {
 
           <PluginSettings />
         </div>
+
+        <div className="settings-footer">
+          <button
+            type="button"
+            className="settings-reset"
+            onClick={() => void resetSettings()}
+            title="Restore every preference to its default. Recent projects are kept."
+            aria-label="Restore every preference to its default. Recent projects are kept."
+          >
+            Reset to defaults
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
+function SettingsSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="settings-section">
       <h3 className="settings-section-title">{title}</h3>
@@ -339,11 +368,20 @@ function SettingsSection({ title, children }: { title: string; children: React.R
   );
 }
 
-function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
+function SettingRow({ label, children }: { label: string; children: ReactNode }) {
+  // Associates the label with whatever control it wraps, so clicking the label
+  // focuses the input and screen readers announce the field rather than a blank one.
+  const id = useId();
   return (
     <div className="settings-row">
-      <label className="settings-label">{label}</label>
-      <div className="settings-control">{children}</div>
+      <label className="settings-label" htmlFor={id}>
+        {label}
+      </label>
+      <div className="settings-control">
+        {isValidElement(children)
+          ? cloneElement(children as ReactElement<{ id?: string }>, { id })
+          : children}
+      </div>
     </div>
   );
 }

@@ -103,12 +103,17 @@ export function VariableExplorer() {
           bufferRef.current.push(trimmed);
         }
       }
-    }).then((fn) => { unlisten = fn; });
+    }).then((fn) => {
+      unlisten = fn;
+    });
 
-    return () => { unlisten?.(); };
+    return () => {
+      unlisten?.();
+    };
   }, []);
 
-  const isDataFrame = (type: string) => type === "DataFrame" || type.endsWith("DataFrame") || type.includes("DataFrame");
+  const isDataFrame = (type: string) =>
+    type === "DataFrame" || type.endsWith("DataFrame") || type.includes("DataFrame");
 
   if (dfViewer) {
     return <DataFrameViewer varName={dfViewer} onClose={() => setDfViewer(null)} />;
@@ -124,6 +129,7 @@ export function VariableExplorer() {
           onClick={refresh}
           disabled={loading}
           title="Refresh variables"
+          aria-label="Refresh variables"
         >
           <RefreshCw size={12} className={loading ? "spinning" : ""} />
         </button>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useModalA11y } from "../../hooks/useModalA11y";
 import { useIdeStore } from "../../stores/useIdeStore";
 import { usePluginStore } from "../../stores/usePluginStore";
 
@@ -11,16 +12,13 @@ export function CommandPalette() {
 
   const registeredCommands = usePluginStore((s) => s.commands);
 
-  const commands = useMemo(
-    () => Array.from(registeredCommands.values()),
-    [registeredCommands]
-  );
+  const commands = useMemo(() => Array.from(registeredCommands.values()), [registeredCommands]);
 
   const filtered = query.trim()
     ? commands.filter(
         (c) =>
           c.label.toLowerCase().includes(query.toLowerCase()) ||
-          c.description?.toLowerCase().includes(query.toLowerCase())
+          c.description?.toLowerCase().includes(query.toLowerCase()),
       )
     : commands;
 
@@ -53,6 +51,9 @@ export function CommandPalette() {
     setSelectedIdx(0);
   }, [query]);
 
+  // Traps Tab inside the dialog and restores focus to wherever it was on close.
+  const dialogRef = useModalA11y<HTMLDivElement>(open, { skipInitialFocus: true });
+
   if (!open) return null;
 
   const runSelected = () => {
@@ -80,7 +81,11 @@ export function CommandPalette() {
   return (
     <div className="command-palette-overlay" onClick={close}>
       <div
+        ref={dialogRef}
         className="command-palette"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
         onClick={(e) => e.stopPropagation()}
       >
         <input
@@ -99,16 +104,15 @@ export function CommandPalette() {
               <div
                 key={cmd.id}
                 className={`command-palette-item ${idx === selectedIdx ? "selected" : ""}`}
-                onClick={() => { close(); cmd.execute(); }}
+                onClick={() => {
+                  close();
+                  cmd.execute();
+                }}
                 onMouseEnter={() => setSelectedIdx(idx)}
               >
                 <span className="command-label">{cmd.label}</span>
-                {cmd.description && (
-                  <span className="command-desc">{cmd.description}</span>
-                )}
-                {cmd.shortcut && (
-                  <span className="command-shortcut">{cmd.shortcut}</span>
-                )}
+                {cmd.description && <span className="command-desc">{cmd.description}</span>}
+                {cmd.shortcut && <span className="command-shortcut">{cmd.shortcut}</span>}
               </div>
             ))
           )}

@@ -94,7 +94,14 @@ export const WithOpenFile: Story = {
       juliaVersion: "Julia 1.10.4",
       lspStatus: "ready",
       openTabs: [
-        { id: "tab-1", path: "/project/main.jl", name: "main.jl", content: "", isDirty: false, language: "julia" },
+        {
+          id: "tab-1",
+          path: "/project/main.jl",
+          name: "main.jl",
+          content: "",
+          isDirty: false,
+          language: "julia",
+        },
       ],
       activeTabId: "tab-1",
     });

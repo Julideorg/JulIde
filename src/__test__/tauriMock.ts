@@ -28,7 +28,7 @@ export const eventListeners = new Map<string, Set<(event: any) => void>>();
  */
 export async function mockListen(
   event: string,
-  callback: (event: any) => void
+  callback: (event: any) => void,
 ): Promise<() => void> {
   if (!eventListeners.has(event)) {
     eventListeners.set(event, new Set());

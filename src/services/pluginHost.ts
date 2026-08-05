@@ -1,10 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { createPluginContext } from "./pluginContext";
 import { useIdeStore } from "../stores/useIdeStore";
-import {
-  computeManifestHash,
-  usePluginPermissionStore,
-} from "../stores/usePluginPermissionStore";
+import { computeManifestHash, usePluginPermissionStore } from "../stores/usePluginPermissionStore";
 import { parsePermissions, unknownPermissions } from "./pluginPermissions";
 import type { PluginManifest, PluginContext } from "../types/plugin";
 
@@ -12,7 +9,10 @@ interface LoadedPlugin {
   manifest: PluginManifest;
   context: PluginContext;
   disposeAll: () => void;
-  module: { activate?: (ctx: PluginContext) => void | Promise<void>; deactivate?: () => void | Promise<void> };
+  module: {
+    activate?: (ctx: PluginContext) => void | Promise<void>;
+    deactivate?: () => void | Promise<void>;
+  };
   active: boolean;
   error?: string;
 }
@@ -181,7 +181,13 @@ class PluginHost {
     }
   }
 
-  getPlugins(): Array<{ name: string; displayName: string; version: string; active: boolean; error?: string }> {
+  getPlugins(): Array<{
+    name: string;
+    displayName: string;
+    version: string;
+    active: boolean;
+    error?: string;
+  }> {
     return Array.from(this.plugins.values()).map((p) => ({
       name: p.manifest.name,
       displayName: p.manifest.displayName,

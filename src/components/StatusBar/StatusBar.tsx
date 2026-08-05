@@ -34,14 +34,21 @@ export function StatusBar() {
   const pluginStatusItems = usePluginStore((s) => s.statusBarItems);
 
   useEffect(() => {
-    if (!workspacePath) { setGitBranch(""); return; }
-    invoke<boolean>("git_is_repo", { workspacePath }).then((isRepo) => {
-      if (isRepo) {
-        invoke<string>("git_branch_current", { workspacePath }).then(setGitBranch).catch(() => setGitBranch(""));
-      } else {
-        setGitBranch("");
-      }
-    }).catch(() => setGitBranch(""));
+    if (!workspacePath) {
+      setGitBranch("");
+      return;
+    }
+    invoke<boolean>("git_is_repo", { workspacePath })
+      .then((isRepo) => {
+        if (isRepo) {
+          invoke<string>("git_branch_current", { workspacePath })
+            .then(setGitBranch)
+            .catch(() => setGitBranch(""));
+        } else {
+          setGitBranch("");
+        }
+      })
+      .catch(() => setGitBranch(""));
   }, [workspacePath]);
 
   // Detection lives in useJuliaStore so the welcome screen, the status bar, and the
@@ -67,9 +74,7 @@ export function StatusBar() {
         <span
           className={`status-item status-julia ${isRunning ? "running" : ""} ${debug.isDebugging ? "debugging" : ""} ${juliaStatus === "missing" ? "missing" : ""}`}
           title={
-            juliaStatus === "missing"
-              ? "Julia was not found — click to set it up"
-              : juliaVersion
+            juliaStatus === "missing" ? "Julia was not found — click to set it up" : juliaVersion
           }
           role={juliaStatus === "missing" ? "button" : undefined}
           tabIndex={juliaStatus === "missing" ? 0 : undefined}
@@ -95,18 +100,22 @@ export function StatusBar() {
         {useIdeStore.getState().containerMode && (
           <span
             className={`status-item status-container status-container-${useIdeStore.getState().containerState}`}
-            title={useIdeStore.getState().containerName ? `Container: ${useIdeStore.getState().containerName}` : "Dev Container"}
+            title={
+              useIdeStore.getState().containerName
+                ? `Container: ${useIdeStore.getState().containerName}`
+                : "Dev Container"
+            }
           >
             <Container size={11} />{" "}
             {useIdeStore.getState().containerState === "running"
               ? "Container"
               : useIdeStore.getState().containerState === "building"
-              ? "Building..."
-              : useIdeStore.getState().containerState === "starting"
-              ? "Starting..."
-              : useIdeStore.getState().containerState === "error"
-              ? "Container Err"
-              : "Container"}
+                ? "Building..."
+                : useIdeStore.getState().containerState === "starting"
+                  ? "Starting..."
+                  : useIdeStore.getState().containerState === "error"
+                    ? "Container Err"
+                    : "Container"}
           </span>
         )}
         {pluginStatusItems
@@ -117,9 +126,7 @@ export function StatusBar() {
       </div>
 
       <div className="status-center">
-        <span className="status-item status-filename">
-          {activeTab ? activeTab.name : "julIDE"}
-        </span>
+        <span className="status-item status-filename">{activeTab ? activeTab.name : "julIDE"}</span>
       </div>
 
       <div className="status-bar-right">
@@ -140,10 +147,7 @@ export function StatusBar() {
         )}
         <span className="status-item status-encoding">UTF-8</span>
         {reviseEnabled && (
-          <span
-            className="status-item status-revise"
-            title="Revise.jl hot-reload active"
-          >
+          <span className="status-item status-revise" title="Revise.jl hot-reload active">
             Rev ●
           </span>
         )}
@@ -154,15 +158,15 @@ export function StatusBar() {
               plutoStatus === "error"
                 ? (plutoMessage ?? "Pluto error")
                 : plutoStatus === "ready"
-                ? (plutoMessage ?? "Pluto running")
-                : "Pluto starting…"
+                  ? (plutoMessage ?? "Pluto running")
+                  : "Pluto starting…"
             }
           >
             {plutoStatus === "starting"
               ? "Pluto…"
               : plutoStatus === "ready"
-              ? "Pluto ●"
-              : "Pluto ✕"}
+                ? "Pluto ●"
+                : "Pluto ✕"}
           </span>
         )}
         <span
@@ -178,10 +182,10 @@ export function StatusBar() {
             return lspStatus === "off"
               ? label
               : lspStatus === "starting"
-              ? `${label}…`
-              : lspStatus === "ready"
-              ? `${label} ●`
-              : `${label} ✕`;
+                ? `${label}…`
+                : lspStatus === "ready"
+                  ? `${label} ●`
+                  : `${label} ✕`;
           })()}
         </span>
       </div>
@@ -189,7 +193,11 @@ export function StatusBar() {
   );
 }
 
-function StatusBarPluginItem({ item }: { item: import("../../types/plugin").StatusBarItemContribution }) {
+function StatusBarPluginItem({
+  item,
+}: {
+  item: import("../../types/plugin").StatusBarItemContribution;
+}) {
   if (item.component) {
     return <PluginPanel component={item.component} />;
   }

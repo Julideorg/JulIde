@@ -12,8 +12,18 @@ const meta: Meta<typeof ActivityBar> = {
       const store = usePluginStore.getState();
       store.registerSidebarPanel({ id: "files", label: "Explorer", icon: "Files", order: 1 });
       store.registerSidebarPanel({ id: "search", label: "Search", icon: "Search", order: 2 });
-      store.registerSidebarPanel({ id: "git", label: "Source Control", icon: "GitBranch", order: 3 });
-      store.registerSidebarPanel({ id: "containers", label: "Containers", icon: "Container", order: 4 });
+      store.registerSidebarPanel({
+        id: "git",
+        label: "Source Control",
+        icon: "GitBranch",
+        order: 3,
+      });
+      store.registerSidebarPanel({
+        id: "containers",
+        label: "Containers",
+        icon: "Container",
+        order: 4,
+      });
       return (
         <div style={{ height: "400px", background: "var(--bg-sidebar, #181825)" }}>
           <Story />

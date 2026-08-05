@@ -43,7 +43,7 @@ pub struct TrustStatus {
 }
 
 fn trust_path() -> PathBuf {
-    let config = dirs_next::config_dir().unwrap_or_else(|| PathBuf::from("."));
+    let config = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
     config.join("julide").join("workspace-trust.json")
 }
 

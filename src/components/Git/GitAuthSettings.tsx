@@ -65,12 +65,21 @@ export function GitAuthSettings() {
         Configure Personal Access Tokens for GitHub, GitLab, and Gitea integration.
       </p>
 
-      {error && <div className="git-error" style={{ marginBottom: 8 }}>{error}</div>}
+      {error && (
+        <div className="git-error" style={{ marginBottom: 8 }}>
+          {error}
+        </div>
+      )}
 
       {PROVIDERS.map((prov) => (
         <div key={prov.id} className="settings-row" style={{ alignItems: "center" }}>
-          <label className="settings-label" style={{ minWidth: 60 }}>{prov.label}</label>
-          <div className="settings-control" style={{ display: "flex", gap: 4, alignItems: "center", flex: 1 }}>
+          <label className="settings-label" style={{ minWidth: 60 }}>
+            {prov.label}
+          </label>
+          <div
+            className="settings-control"
+            style={{ display: "flex", gap: 4, alignItems: "center", flex: 1 }}
+          >
             {hasToken(prov.id) ? (
               <>
                 <span className="settings-plugin-active" style={{ fontSize: 12 }}>
@@ -80,6 +89,7 @@ export function GitAuthSettings() {
                   className="git-file-action"
                   onClick={() => removeToken(prov.id)}
                   title="Remove token"
+                  aria-label="Remove token"
                 >
                   <Trash2 size={12} />
                 </button>
@@ -99,7 +109,12 @@ export function GitAuthSettings() {
                   <button
                     className="git-file-action"
                     onClick={() => setVisible((v) => ({ ...v, [prov.id]: !v[prov.id] }))}
-                    style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)" }}
+                    style={{
+                      position: "absolute",
+                      right: 4,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                    }}
                     title={visible[prov.id] ? "Hide" : "Show"}
                   >
                     {visible[prov.id] ? <EyeOff size={12} /> : <Eye size={12} />}

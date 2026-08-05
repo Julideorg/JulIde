@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useModalA11y } from "../../hooks/useModalA11y";
 import { create } from "zustand";
 
 export interface BestieTemplateData {
@@ -98,6 +99,9 @@ export function BestieTemplateDialog() {
     if (e.key === "Enter" && e.ctrlKey) submit();
   };
 
+  // Traps Tab inside the dialog and restores focus to wherever it was on close.
+  const dialogRef = useModalA11y<HTMLDivElement>(open, {});
+
   if (!open) return null;
 
   const field = (
@@ -124,7 +128,11 @@ export function BestieTemplateDialog() {
   return (
     <div className="input-dialog-overlay" onClick={() => close(null)}>
       <div
+        ref={dialogRef}
         className="bestie-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="New project from BestieTemplate"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
@@ -153,7 +161,9 @@ export function BestieTemplateDialog() {
               onChange={(e) => setData((d) => ({ ...d, license: e.target.value }))}
             >
               {LICENSES.map((l) => (
-                <option key={l} value={l}>{l}</option>
+                <option key={l} value={l}>
+                  {l}
+                </option>
               ))}
             </select>
           </label>
@@ -163,12 +173,12 @@ export function BestieTemplateDialog() {
             <select
               className="bestie-field-select"
               value={data.strategyLevel}
-              onChange={(e) =>
-                setData((d) => ({ ...d, strategyLevel: Number(e.target.value) }))
-              }
+              onChange={(e) => setData((d) => ({ ...d, strategyLevel: Number(e.target.value) }))}
             >
               {STRATEGIES.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
               ))}
             </select>
           </label>

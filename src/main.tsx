@@ -3,6 +3,7 @@ import { installClipboardPolyfill } from "./services/clipboardPolyfill";
 // Must come before anything that renders an <Editor>.
 import "./monacoSetup";
 
+import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
@@ -21,10 +22,17 @@ installGlobalErrorHandlers();
 
 // Register all built-in commands, panels, and UI contributions, then load plugins
 registerBuiltinContributions().then(() => {
+  // StrictMode double-invokes effects in development to surface missing cleanup.
+  // It has no effect on production builds. Every effect that allocates something —
+  // the PTY session, the file watcher, the LSP client — either has a cleanup or is
+  // guarded by a live-state check, so the double-invoke is safe. If a future effect
+  // starts misbehaving in dev but not in a build, this is the first thing to suspect.
   ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>,
+    <StrictMode>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </StrictMode>,
   );
 
   // The native menu dispatches into the command registry, so this has to come

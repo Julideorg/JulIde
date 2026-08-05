@@ -14,8 +14,13 @@ function parseProjectToml(content: string): Package[] {
   const packages: Package[] = [];
   let inDeps = false;
   for (const line of content.split("\n")) {
-    if (line.trim() === "[deps]") { inDeps = true; continue; }
-    if (line.startsWith("[") && line.trim() !== "[deps]") { inDeps = false; }
+    if (line.trim() === "[deps]") {
+      inDeps = true;
+      continue;
+    }
+    if (line.startsWith("[") && line.trim() !== "[deps]") {
+      inDeps = false;
+    }
     if (inDeps) {
       const match = line.match(/^(\w[\w.]+)\s*=\s*"([^"]+)"/);
       if (match) packages.push({ name: match[1], version: match[2] });
@@ -56,8 +61,12 @@ export function PackageManager() {
       } else {
         setPkgOutput((prev) => [...prev.slice(-100), e.payload.text]);
       }
-    }).then((fn) => { unlisten = fn; });
-    return () => { unlisten?.(); };
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      unlisten?.();
+    };
   }, [loadPackages]);
 
   const addPackage = async () => {
@@ -95,8 +104,10 @@ export function PackageManager() {
     <div className="package-manager">
       <div className="package-manager-header">
         <h3>Package Manager</h3>
-        <span className="pkg-workspace">{workspacePath ? workspacePath.split(/[/\\]/).pop() : "No workspace"}</span>
-        <button onClick={loadPackages} title="Refresh" disabled={loading}>
+        <span className="pkg-workspace">
+          {workspacePath ? workspacePath.split(/[/\\]/).pop() : "No workspace"}
+        </span>
+        <button onClick={loadPackages} title="Refresh" aria-label="Refresh" disabled={loading}>
           <RefreshCw size={13} className={loading ? "spin" : ""} />
         </button>
       </div>
@@ -149,7 +160,9 @@ export function PackageManager() {
       {pkgOutput.length > 0 && (
         <div className="pkg-output">
           {pkgOutput.map((line, i) => (
-            <div key={i} className="pkg-output-line">{line}</div>
+            <div key={i} className="pkg-output-line">
+              {line}
+            </div>
           ))}
         </div>
       )}
