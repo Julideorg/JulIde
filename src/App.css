@@ -3025,3 +3025,350 @@ button, input, select {
 .error-boundary-full .error-boundary-title {
   font-size: 16px;
 }
+
+/* ─── Julia setup dialog ─────────────────────────────────────────────────── */
+
+.julia-setup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2100;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.julia-setup-dialog {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  width: 520px;
+  max-width: calc(100vw - 48px);
+  max-height: 80vh;
+  overflow: auto;
+  padding: 20px 24px;
+  color: var(--text-primary);
+  font-size: 13px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.julia-setup-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.julia-setup-header h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.julia-setup-icon.warn {
+  color: var(--accent-red);
+}
+
+.julia-setup-icon.ok {
+  color: var(--accent-green);
+}
+
+.julia-setup-body {
+  margin: 0 0 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.julia-setup-error,
+.julia-setup-message {
+  margin: 0 0 14px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+.julia-setup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.julia-setup-actions button,
+.julia-setup-footer button,
+.julia-setup-package button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.julia-setup-actions button:hover:not(:disabled),
+.julia-setup-footer button:hover:not(:disabled),
+.julia-setup-package button:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--border-light);
+}
+
+.julia-setup-actions button:disabled,
+.julia-setup-package button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.julia-setup-actions .btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.julia-setup-actions .btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.julia-setup-packages {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+.julia-setup-package {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.julia-setup-package:last-child {
+  border-bottom: none;
+}
+
+.julia-setup-package-name {
+  display: block;
+  font-weight: 600;
+}
+
+.julia-setup-package-unlocks {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.julia-setup-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+/* Welcome screen: actionable "Julia not found" affordance. */
+.welcome-julia-missing {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--accent-red);
+  background: transparent;
+  color: var(--accent-red);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.welcome-julia-missing:hover {
+  background: var(--bg-hover);
+}
+
+/* Status bar: same affordance, always reachable. */
+.status-julia.missing {
+  color: var(--accent-red);
+  cursor: pointer;
+}
+
+.status-julia.missing:hover {
+  background: var(--bg-hover);
+}
+
+/* ─── Plugin consent dialog ──────────────────────────────────────────────── */
+
+.plugin-consent-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plugin-consent-dialog {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  width: 520px;
+  max-width: calc(100vw - 48px);
+  max-height: 80vh;
+  overflow: auto;
+  padding: 20px 24px;
+  color: var(--text-primary);
+  font-size: 13px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.plugin-consent-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.plugin-consent-header h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.plugin-consent-subtitle {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.plugin-consent-subtitle code {
+  font-family: var(--font-mono, monospace);
+}
+
+.plugin-consent-icon.warn {
+  color: var(--accent-red);
+  flex-shrink: 0;
+}
+
+.plugin-consent-icon.ok {
+  color: var(--accent-green);
+  flex-shrink: 0;
+}
+
+.plugin-consent-permissions {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.plugin-consent-permission {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.plugin-consent-permission:last-child {
+  border-bottom: none;
+}
+
+.plugin-consent-permission.high {
+  background: rgba(203, 60, 51, 0.08);
+}
+
+.plugin-consent-permission-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.plugin-consent-permission-desc {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.plugin-consent-risk-badge {
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--accent-red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.plugin-consent-note {
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.plugin-consent-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.plugin-consent-footer button {
+  padding: 6px 16px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.plugin-consent-footer button:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-light);
+}
+
+/* "Allow" is styled as the risky action, not the happy path — declining is safe. */
+.plugin-consent-footer .btn-danger {
+  background: transparent;
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+}
+
+.plugin-consent-footer .btn-danger:hover {
+  background: var(--accent-red);
+  color: #fff;
+}
+
+.settings-plugin-permissions {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.settings-plugin-revoke {
+  margin-left: 10px;
+  padding: 2px 10px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.settings-plugin-revoke:hover {
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+}

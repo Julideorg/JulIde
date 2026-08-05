@@ -103,6 +103,7 @@ pub fn run() {
             settings::settings_load,
             settings::settings_save,
             settings::settings_add_recent_workspace,
+            settings::settings_remove_recent_workspace,
             // Git
             git::git_is_repo,
             git::git_branch_current,
@@ -147,6 +148,8 @@ pub fn run() {
             plugins::plugin_get_dir,
             plugins::plugin_scan,
             plugins::plugin_read_entry,
+            plugins::plugin_grants_load,
+            plugins::plugin_grants_save,
             // Container
             container::container_detect_runtime,
             container::container_set_runtime,

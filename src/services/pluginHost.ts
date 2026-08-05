@@ -1,6 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { createPluginContext } from "./pluginContext";
 import { useIdeStore } from "../stores/useIdeStore";
+import {
+  computeManifestHash,
+  usePluginPermissionStore,
+} from "../stores/usePluginPermissionStore";
+import { parsePermissions, unknownPermissions } from "./pluginPermissions";
 import type { PluginManifest, PluginContext } from "../types/plugin";
 
 interface LoadedPlugin {
@@ -17,6 +22,10 @@ class PluginHost {
 
   async discoverAndLoadAll(): Promise<void> {
     try {
+      // Grants must be loaded before any plugin activates, otherwise a plugin that
+      // was previously approved would come up with no permissions.
+      await usePluginPermissionStore.getState().load();
+
       const manifests = await invoke<PluginManifest[]>("plugin_scan");
       for (const manifest of manifests) {
         if (this.plugins.has(manifest.name)) continue;
@@ -36,8 +45,66 @@ class PluginHost {
     }
   }
 
+  /**
+   * Resolve which permissions this plugin may use, prompting the user if the request
+   * has not been approved for this exact manifest.
+   *
+   * Returns null if the user declined, in which case the plugin is not loaded at all.
+   * A plugin requesting nothing needs no prompt — it still runs, it just cannot reach
+   * any Tauri command.
+   */
+  private async resolvePermissions(manifest: PluginManifest) {
+    const store = usePluginPermissionStore.getState();
+    const requested = parsePermissions(manifest.permissions);
+    const unknown = unknownPermissions(manifest.permissions);
+    const manifestHash = computeManifestHash({
+      name: manifest.name,
+      version: manifest.version,
+      main: manifest.main,
+      permissions: manifest.permissions ?? [],
+    });
+
+    if (requested.length === 0) {
+      if (unknown.length > 0) {
+        useIdeStore.getState().appendOutput({
+          kind: "info",
+          text: `Plugin "${manifest.displayName}" requests unknown permissions: ${unknown.join(", ")}. They were ignored.`,
+        });
+      }
+      return { granted: [], manifestHash };
+    }
+
+    const alreadyGranted = store.granted(manifest.name, manifestHash);
+    if (alreadyGranted.length === requested.length) {
+      return { granted: alreadyGranted, manifestHash };
+    }
+
+    const approved = await store.requestConsent({
+      pluginId: manifest.name,
+      displayName: manifest.displayName,
+      version: manifest.version,
+      requested,
+      unknown,
+      manifestHash,
+    });
+
+    if (!approved) return null;
+
+    await store.grant(manifest.name, requested, manifestHash);
+    return { granted: requested, manifestHash };
+  }
+
   async activatePlugin(manifest: PluginManifest): Promise<void> {
-    const { context, disposeAll } = createPluginContext(manifest.name);
+    const resolved = await this.resolvePermissions(manifest);
+    if (!resolved) {
+      useIdeStore.getState().appendOutput({
+        kind: "info",
+        text: `Plugin "${manifest.displayName}" was not loaded — permissions declined.`,
+      });
+      return;
+    }
+
+    const { context, disposeAll } = createPluginContext(manifest.name, resolved.granted);
 
     try {
       // Read the plugin's entry JS file

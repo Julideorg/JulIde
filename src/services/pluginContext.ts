@@ -2,13 +2,22 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { usePluginStore } from "../stores/usePluginStore";
 import { useIdeStore } from "../stores/useIdeStore";
+import { assertCommandAllowed, type PluginPermission } from "./pluginPermissions";
 import type { PluginContext, Disposable } from "../types/plugin";
 
 /**
  * Create a frozen plugin context object for a plugin.
  * All registrations are tracked so they can be disposed on deactivation.
+ *
+ * `granted` is the set of permissions the user approved for this plugin. Every path
+ * that reaches a Tauri command goes through {@link assertCommandAllowed} — including
+ * the convenience wrappers in `workspace`, not just `ipc.invoke`, so a plugin cannot
+ * route around the check by preferring the friendlier API.
  */
-export function createPluginContext(pluginId: string): {
+export function createPluginContext(
+  pluginId: string,
+  granted: readonly PluginPermission[] = [],
+): {
   context: PluginContext;
   disposeAll: () => void;
 } {
@@ -17,6 +26,12 @@ export function createPluginContext(pluginId: string): {
   const track = (d: Disposable): Disposable => {
     disposables.push(d);
     return d;
+  };
+
+  // Single choke point: nothing in this module calls `invoke` directly.
+  const guardedInvoke = async (command: string, args?: Record<string, unknown>) => {
+    assertCommandAllowed(pluginId, command, granted);
+    return invoke(command, args);
   };
 
   const context: PluginContext = {
@@ -100,10 +115,10 @@ export function createPluginContext(pluginId: string): {
         return useIdeStore.getState().workspacePath;
       },
       async readFile(path: string): Promise<string> {
-        return invoke<string>("fs_read_file", { path });
+        return (await guardedInvoke("fs_read_file", { path })) as string;
       },
       async writeFile(path: string, content: string): Promise<void> {
-        await invoke("fs_write_file", { path, content });
+        await guardedInvoke("fs_write_file", { path, content });
       },
       onDidChangeFiles(callback: (paths: string[]) => void): Disposable {
         let unlisten: (() => void) | null = null;
@@ -133,7 +148,7 @@ export function createPluginContext(pluginId: string): {
 
     ipc: {
       async invoke(command: string, args?: Record<string, unknown>): Promise<unknown> {
-        return invoke(command, args);
+        return guardedInvoke(command, args);
       },
       listen(event: string, callback: (payload: unknown) => void): Disposable {
         let unlisten: (() => void) | null = null;

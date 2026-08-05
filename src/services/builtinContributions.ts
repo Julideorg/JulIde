@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { usePluginStore } from "../stores/usePluginStore";
 import { useIdeStore } from "../stores/useIdeStore";
 import { useSettingsStore } from "../stores/useSettingsStore";
+import { useJuliaStore } from "../stores/useJuliaStore";
 import { showInputDialog } from "../components/InputDialog/InputDialog";
 import { showBestieTemplateDialog } from "../components/BestieTemplateDialog/BestieTemplateDialog";
 import type { FileNode, JuliaOutputEvent } from "../types";
@@ -347,12 +348,17 @@ function registerBuiltinCommands() {
     id: "julia.set-path",
     label: "Set Julia Executable Path",
     description: "Choose a custom Julia binary",
-    execute: async () => {
-      const path = await invoke<string | null>("dialog_pick_executable");
-      if (path) {
-        await settings().updateSettings({ juliaPath: path });
-        await invoke("julia_set_path", { path });
-      }
+    // Routed through the store so the binary gets probed with --version, the
+    // setting is persisted, and every surface re-detects afterwards.
+    execute: () => useJuliaStore.getState().locateManually(),
+  });
+
+  store.registerCommand({
+    id: "julia.setup",
+    label: "Julia: Setup",
+    description: "Locate Julia and install the optional packages julIDE uses",
+    execute: () => {
+      useJuliaStore.getState().setSetupOpen(true);
     },
   });
 

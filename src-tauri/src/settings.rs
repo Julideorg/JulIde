@@ -139,6 +139,15 @@ pub fn settings_add_recent_workspace(workspace_path: String) -> Result<(), Strin
     settings_save(settings)
 }
 
+/// Drop an entry from the recent list — used when opening it fails because the
+/// directory was moved or deleted, so the welcome screen stops offering a dead link.
+#[tauri::command]
+pub fn settings_remove_recent_workspace(workspace_path: String) -> Result<(), String> {
+    let mut settings = settings_load();
+    settings.recent_workspaces.retain(|w| w != &workspace_path);
+    settings_save(settings)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

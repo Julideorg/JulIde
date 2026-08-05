@@ -11,7 +11,9 @@ import { InputDialog } from "./components/InputDialog/InputDialog";
 import { BestieTemplateDialog } from "./components/BestieTemplateDialog/BestieTemplateDialog";
 import { ActivityBar } from "./components/ActivityBar/ActivityBar";
 import { WelcomeScreen } from "./components/Welcome/WelcomeScreen";
+import { JuliaSetupDialog } from "./components/Welcome/JuliaSetupDialog";
 import { PluginPanel } from "./components/Plugin/PluginPanel";
+import { PluginConsentDialog } from "./components/Plugin/PluginConsentDialog";
 import { useSettingsStore } from "./stores/useSettingsStore";
 import { useIdeStore } from "./stores/useIdeStore";
 import { usePluginStore } from "./stores/usePluginStore";
@@ -520,6 +522,8 @@ useEffect(() => {
       <SettingsPanel />
       <InputDialog />
       <BestieTemplateDialog />
+      <JuliaSetupDialog />
+      <PluginConsentDialog />
     </div>
   );
 }

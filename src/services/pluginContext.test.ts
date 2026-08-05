@@ -3,6 +3,8 @@ import { createPluginContext } from "./pluginContext";
 import { usePluginStore } from "../stores/usePluginStore";
 import { useIdeStore } from "../stores/useIdeStore";
 import { resetAllStores } from "../__test__/storeTestUtils";
+import { invokeHandlers } from "../__test__/tauriMock";
+import { ALL_PERMISSIONS } from "./pluginPermissions";
 
 beforeEach(() => {
   resetAllStores();
@@ -217,5 +219,67 @@ describe("disposeAll", () => {
     expect(usePluginStore.getState().bottomPanels).toHaveLength(0);
     expect(usePluginStore.getState().statusBarItems).toHaveLength(0);
     expect(usePluginStore.getState().toolbarButtons).toHaveLength(0);
+  });
+});
+
+describe("ipc permission enforcement", () => {
+  test("invoke succeeds for a granted command", async () => {
+    invokeHandlers.set("fs_read_file", () => "contents");
+    const { context } = createPluginContext("p", ["workspace:read"]);
+
+    await expect(context.ipc.invoke("fs_read_file", { path: "/a.jl" })).resolves.toBe(
+      "contents",
+    );
+  });
+
+  test("invoke rejects an ungranted command without reaching the backend", async () => {
+    let reached = false;
+    invokeHandlers.set("fs_write_file", () => {
+      reached = true;
+    });
+    const { context } = createPluginContext("p", ["workspace:read"]);
+
+    await expect(context.ipc.invoke("fs_write_file", { path: "/a.jl", content: "x" })).rejects.toThrow(
+      /workspace:write/,
+    );
+    expect(reached).toBe(false);
+  });
+
+  test("a plugin with no declared permissions can call nothing", async () => {
+    invokeHandlers.set("fs_read_file", () => "contents");
+    const { context } = createPluginContext("p");
+
+    await expect(context.ipc.invoke("fs_read_file", { path: "/a.jl" })).rejects.toThrow(
+      /workspace:read/,
+    );
+  });
+
+  test("the workspace helpers are gated too, not just ipc.invoke", async () => {
+    // These are the friendlier API over the same commands — a plugin must not be
+    // able to route around the check by preferring them.
+    let wrote = false;
+    invokeHandlers.set("fs_read_file", () => "contents");
+    invokeHandlers.set("fs_write_file", () => {
+      wrote = true;
+    });
+
+    const { context } = createPluginContext("p", ["workspace:read"]);
+
+    await expect(context.workspace.readFile("/a.jl")).resolves.toBe("contents");
+    await expect(context.workspace.writeFile("/a.jl", "x")).rejects.toThrow(/workspace:write/);
+    expect(wrote).toBe(false);
+  });
+
+  test("plugin-management commands are refused even when everything is granted", async () => {
+    let reached = false;
+    invokeHandlers.set("plugin_grants_save", () => {
+      reached = true;
+    });
+    const { context } = createPluginContext("p", ALL_PERMISSIONS);
+
+    await expect(context.ipc.invoke("plugin_grants_save", { grants: {} })).rejects.toThrow(
+      /may never call/,
+    );
+    expect(reached).toBe(false);
   });
 });

@@ -2,11 +2,16 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useIdeStore } from "../../stores/useIdeStore";
 import { usePluginStore } from "../../stores/usePluginStore";
+import { useJuliaStore } from "../../stores/useJuliaStore";
 import { PluginPanel } from "../Plugin/PluginPanel";
 import { GitBranch, Container } from "lucide-react";
 
 export function StatusBar() {
   const juliaVersion = useIdeStore((s) => s.juliaVersion);
+  const juliaStatus = useJuliaStore((s) => s.status);
+  const juliaDetectedVersion = useJuliaStore((s) => s.version);
+  const detectJulia = useJuliaStore((s) => s.detect);
+  const openJuliaSetup = useJuliaStore((s) => s.setSetupOpen);
   const juliaEnv = useIdeStore((s) => s.juliaEnv);
   const isRunning = useIdeStore((s) => s.isRunning);
   const debug = useIdeStore((s) => s.debug);
@@ -39,22 +44,43 @@ export function StatusBar() {
     }).catch(() => setGitBranch(""));
   }, [workspacePath]);
 
+  // Detection lives in useJuliaStore so the welcome screen, the status bar, and the
+  // setup dialog all agree — and so re-checking after a fix updates every surface.
   useEffect(() => {
-    invoke<string>("julia_get_version")
-      .then((v) => setJuliaVersion(v))
-      .catch(() => setJuliaVersion("Julia not found"));
+    if (juliaStatus === "unknown") void detectJulia();
+  }, [juliaStatus, detectJulia]);
 
-    invoke<string[]>("julia_list_environments")
-      .then((envs) => setAvailableEnvs(envs))
-      .catch(() => {});
-  }, [setJuliaVersion, setAvailableEnvs]);
+  useEffect(() => {
+    if (juliaStatus === "found") {
+      setJuliaVersion(juliaDetectedVersion);
+      invoke<string[]>("julia_list_environments")
+        .then((envs) => setAvailableEnvs(envs))
+        .catch(console.error);
+    } else if (juliaStatus === "missing") {
+      setJuliaVersion("Julia not found");
+    }
+  }, [juliaStatus, juliaDetectedVersion, setJuliaVersion, setAvailableEnvs]);
 
   return (
     <div className="status-bar">
       <div className="status-bar-left">
         <span
-          className={`status-item status-julia ${isRunning ? "running" : ""} ${debug.isDebugging ? "debugging" : ""}`}
-          title={juliaVersion}
+          className={`status-item status-julia ${isRunning ? "running" : ""} ${debug.isDebugging ? "debugging" : ""} ${juliaStatus === "missing" ? "missing" : ""}`}
+          title={
+            juliaStatus === "missing"
+              ? "Julia was not found — click to set it up"
+              : juliaVersion
+          }
+          role={juliaStatus === "missing" ? "button" : undefined}
+          tabIndex={juliaStatus === "missing" ? 0 : undefined}
+          onClick={juliaStatus === "missing" ? () => openJuliaSetup(true) : undefined}
+          onKeyDown={
+            juliaStatus === "missing"
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") openJuliaSetup(true);
+                }
+              : undefined
+          }
         >
           {debug.isDebugging ? "🐛 Debugging" : isRunning ? "▶ Running" : `⚡ ${juliaVersion}`}
         </span>

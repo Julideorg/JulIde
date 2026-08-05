@@ -77,6 +77,12 @@ export interface PluginManifest {
   author?: string;
   main: string;
   activationEvents?: string[];
+  /**
+   * Capabilities the plugin needs, e.g. `["workspace:read", "julia:run"]`.
+   * The user approves these once; anything not listed is refused at the
+   * `ctx.ipc.invoke` boundary. See src/services/pluginPermissions.ts for the catalog.
+   */
+  permissions?: string[];
   contributes?: {
     commands?: { id: string; label: string; shortcut?: string }[];
     settings?: { key: string; type: string; default: unknown; description: string }[];

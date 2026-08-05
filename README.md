@@ -97,9 +97,57 @@ A modern, fully-featured IDE for the [Julia](https://julialang.org/) programming
 
 ### Plugin System
 - **Plugin discovery** — automatically scans `~/.julide/plugins/` for installed plugins
-- **Plugin manifest** (`plugin.json`) — declare name, version, entry point, and contributions
+- **Plugin manifest** (`plugin.json`) — declare name, version, entry point, contributions, and permissions
 - **Plugin API** — register commands, sidebar panels, bottom panels, status bar items, and toolbar buttons
-- **Plugin panel** in the activity bar sidebar — view installed plugins and their status
+- **Permission model** — plugins declare the capabilities they need and the user approves them once; every backend call is checked against that grant
+- **Plugin panel** in the activity bar sidebar — view installed plugins, their status, and their granted permissions
+
+#### Plugin permissions
+
+Plugins are unsigned third-party code that runs inside julIDE, so they must declare
+what they need in `plugin.json`:
+
+```json
+{
+  "name": "my-plugin",
+  "version": "1.0.0",
+  "displayName": "My Plugin",
+  "main": "index.js",
+  "permissions": ["workspace:read", "julia:run"]
+}
+```
+
+On first load julIDE shows what the plugin is asking for and why it matters; declining
+means the plugin is not executed at all. Approvals are tied to a fingerprint of the
+manifest, so bumping the version, changing the entry point, or requesting one more
+permission all re-prompt rather than inheriting the old approval. Grants are revocable
+under **Settings → Plugins**.
+
+The model **fails closed**: a call to a backend command whose permission was not
+granted is rejected before it reaches the backend, and commands absent from the
+catalog cannot be called at all.
+
+| Permission | Grants |
+|---|---|
+| `workspace:read` | Read files and list directories |
+| `workspace:write` | Create, edit, rename, delete files |
+| `julia:run` | Execute Julia code |
+| `julia:packages` | `Pkg.add` / `Pkg.rm` |
+| `julia:configure` | Change the Julia interpreter, scaffold projects |
+| `terminal` | Open PTY sessions and write to them |
+| `debugger` | Breakpoints, stepping, variable inspection |
+| `lsp` | Send LanguageServer.jl requests |
+| `git:read` | Status, diff, log, branches, blame, PRs, issues |
+| `git:write` | Stage, commit, branch, merge, stash, push, pull |
+| `git:credentials` | Read and modify stored access tokens |
+| `containers` | Docker/Podman and dev container control |
+| `settings:read` / `settings:write` | Read / modify julIDE preferences |
+| `pluto` | Start and stop the Pluto notebook server |
+| `dialogs` | Native file and folder pickers |
+
+`workspace:write`, `julia:run`, `julia:configure`, `terminal`, `git:write`,
+`git:credentials`, and `containers` are flagged **high risk** in the consent prompt —
+each can lead to arbitrary code execution, credential disclosure, or data loss.
 
 ---
 

@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 .claude
 .claude-*
+# Local dev shell (personal, not project config)
+shell.nix
