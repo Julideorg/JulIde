@@ -25,15 +25,15 @@ impl GithubProvider {
                 let mut headers = reqwest::header::HeaderMap::new();
                 headers.insert(
                     reqwest::header::AUTHORIZATION,
-                    format!("Bearer {}", token).parse().unwrap(),
+                    crate::git_provider::auth_header_value(&format!("Bearer {}", token))?,
                 );
                 headers.insert(
                     reqwest::header::ACCEPT,
-                    "application/vnd.github+json".parse().unwrap(),
+                    reqwest::header::HeaderValue::from_static("application/vnd.github+json"),
                 );
                 headers.insert(
                     reqwest::header::USER_AGENT,
-                    "JulIDE".parse().unwrap(),
+                    reqwest::header::HeaderValue::from_static("JulIDE"),
                 );
                 headers
             })

@@ -59,9 +59,9 @@ pub fn fs_search_files(
     };
 
     // Compile optional glob filter
-    let glob_pattern = file_glob.as_deref().and_then(|g| {
-        glob::Pattern::new(g).ok()
-    });
+    let glob_pattern = file_glob
+        .as_deref()
+        .and_then(|g| glob::Pattern::new(g).ok());
 
     let mut results = Vec::new();
 
@@ -177,7 +177,9 @@ pub fn fs_replace_in_files(
             .map_err(|e| format!("Search error: {}", e))?
     };
 
-    let glob_pattern = file_glob.as_deref().and_then(|g| glob::Pattern::new(g).ok());
+    let glob_pattern = file_glob
+        .as_deref()
+        .and_then(|g| glob::Pattern::new(g).ok());
 
     let mut files_modified = 0usize;
     let mut total_replacements = 0usize;
@@ -298,7 +300,11 @@ mod tests {
     fn search_in_temp_dir() {
         let dir = tempfile::tempdir().unwrap();
         let ws = make_workspace(&dir);
-        std::fs::write(ws.join("test.jl"), "println(\"hello\")\nprintln(\"world\")\n").unwrap();
+        std::fs::write(
+            ws.join("test.jl"),
+            "println(\"hello\")\nprintln(\"world\")\n",
+        )
+        .unwrap();
 
         let results = fs_search_files(
             ws.to_string_lossy().to_string(),
@@ -375,7 +381,7 @@ mod tests {
     fn search_skips_binary_files() {
         let dir = tempfile::tempdir().unwrap();
         let ws = make_workspace(&dir);
-        std::fs::write(ws.join("binary.bin"), &[0x48, 0x65, 0x00, 0x6c]).unwrap();
+        std::fs::write(ws.join("binary.bin"), [0x48, 0x65, 0x00, 0x6c]).unwrap();
         std::fs::write(ws.join("text.jl"), "hello\n").unwrap();
 
         let results = fs_search_files(

@@ -52,9 +52,21 @@ static LSP_STATE: Lazy<Arc<Mutex<LspState>>> =
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-fn emit_status(app: &tauri::AppHandle, status: LspStatus, message: Option<String>, backend: Option<String>) {
+fn emit_status(
+    app: &tauri::AppHandle,
+    status: LspStatus,
+    message: Option<String>,
+    backend: Option<String>,
+) {
     use tauri::Emitter;
-    let _ = app.emit("lsp-status", LspStatusEvent { status, message, backend });
+    let _ = app.emit(
+        "lsp-status",
+        LspStatusEvent {
+            status,
+            message,
+            backend,
+        },
+    );
 }
 
 async fn write_lsp_message(stdin_arc: &Arc<Mutex<ChildStdin>>, msg: &Value) -> Result<(), String> {
@@ -222,8 +234,7 @@ pub async fn lsp_start(app: tauri::AppHandle, workspace_path: String) -> Result<
     // Build the LSP server command based on the chosen backend
     let mut cmd = if backend == "jetls" {
         // ── JETLS.jl ────────────────────────────────────────────────────
-        let home = dirs_next::home_dir()
-            .ok_or("Cannot determine home directory")?;
+        let home = dirs_next::home_dir().ok_or("Cannot determine home directory")?;
         let jetls_bin = if cfg!(windows) {
             home.join(".julia").join("bin").join("jetls.bat")
         } else {
@@ -266,10 +277,7 @@ pub async fn lsp_start(app: tauri::AppHandle, workspace_path: String) -> Result<
             use std::os::windows::process::CommandExt;
             probe_cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
         }
-        let probe = probe_cmd
-            .status()
-            .await
-            .map_err(|e| e.to_string())?;
+        let probe = probe_cmd.status().await.map_err(|e| e.to_string())?;
 
         if !probe.success() {
             return Err(

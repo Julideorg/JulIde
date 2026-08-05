@@ -17,28 +17,20 @@ mock.module("@tauri-apps/api/event", () => ({
   once: async () => () => {},
 }));
 
-// Mock Tauri plugins (used in some components)
-mock.module("@tauri-apps/plugin-dialog", () => ({
-  open: async () => null,
-  save: async () => null,
-  message: async () => {},
-  ask: async () => false,
-  confirm: async () => false,
-}));
-
-mock.module("@tauri-apps/plugin-fs", () => ({
-  readTextFile: async () => "",
-  writeTextFile: async () => {},
-  exists: async () => false,
-}));
-
-mock.module("@tauri-apps/plugin-shell", () => ({
-  Command: class {
-    static sidecar() { return new this(); }
-    async execute() { return { code: 0, stdout: "", stderr: "" }; }
-  },
-}));
-
+// Mock Tauri plugins the frontend actually uses.
+//
+// The shell, fs, and dialog plugins are intentionally absent: the frontend does
+// that work through custom Tauri commands instead, and the corresponding
+// permissions are no longer granted in src-tauri/capabilities/default.json. If a
+// mock for one of them ever becomes necessary again, the capability has to come
+// back too — so make that a deliberate decision rather than a silent one.
 mock.module("@tauri-apps/plugin-opener", () => ({
+  openUrl: async () => {},
+  openPath: async () => {},
   open: async () => {},
+}));
+
+mock.module("@tauri-apps/plugin-clipboard-manager", () => ({
+  readText: async () => "",
+  writeText: async () => {},
 }));

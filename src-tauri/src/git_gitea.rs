@@ -25,11 +25,11 @@ impl GiteaProvider {
                 let mut headers = reqwest::header::HeaderMap::new();
                 headers.insert(
                     reqwest::header::AUTHORIZATION,
-                    format!("token {}", token).parse().unwrap(),
+                    crate::git_provider::auth_header_value(&format!("token {}", token))?,
                 );
                 headers.insert(
                     reqwest::header::USER_AGENT,
-                    "JulIDE".parse().unwrap(),
+                    reqwest::header::HeaderValue::from_static("JulIDE"),
                 );
                 headers
             })
@@ -196,10 +196,7 @@ impl GitProvider for GiteaProvider {
     async fn list_issues(&self, token: &str, state: &str) -> Result<Vec<Issue>, String> {
         let client = self.client(token)?;
         let resp = client
-            .get(self.api_url(&format!(
-                "/issues?state={}&type=issues&limit=50",
-                state
-            )))
+            .get(self.api_url(&format!("/issues?state={}&type=issues&limit=50", state)))
             .send()
             .await
             .map_err(|e| e.to_string())?;

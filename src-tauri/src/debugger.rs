@@ -1,7 +1,8 @@
+use crate::sync::LockRecover;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, Write};
 use std::sync::{Arc, Mutex};
-use once_cell::sync::Lazy;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Breakpoint {
@@ -46,7 +47,7 @@ static BREAKPOINTS: Lazy<Arc<Mutex<Vec<Breakpoint>>>> =
 
 #[tauri::command]
 pub async fn debug_set_breakpoint(file: String, line: u32) -> Result<(), String> {
-    let mut bps = BREAKPOINTS.lock().unwrap();
+    let mut bps = BREAKPOINTS.lock_recover();
     if !bps.iter().any(|b| b.file == file && b.line == line) {
         bps.push(Breakpoint { file, line });
     }
@@ -55,14 +56,14 @@ pub async fn debug_set_breakpoint(file: String, line: u32) -> Result<(), String>
 
 #[tauri::command]
 pub async fn debug_remove_breakpoint(file: String, line: u32) -> Result<(), String> {
-    let mut bps = BREAKPOINTS.lock().unwrap();
+    let mut bps = BREAKPOINTS.lock_recover();
     bps.retain(|b| !(b.file == file && b.line == line));
     Ok(())
 }
 
 #[tauri::command]
 pub async fn debug_get_breakpoints() -> Result<Vec<Breakpoint>, String> {
-    let bps = BREAKPOINTS.lock().unwrap();
+    let bps = BREAKPOINTS.lock_recover();
     Ok(bps.clone())
 }
 
@@ -79,7 +80,7 @@ pub async fn debug_start(
         .await
         .ok_or_else(|| "Julia not found.".to_string())?;
 
-    let bps = BREAKPOINTS.lock().unwrap().clone();
+    let bps = BREAKPOINTS.lock_recover().clone();
 
     // Build a debug script that sets breakpoints and runs the file
     let mut script = String::from("using Debugger\n");
@@ -110,10 +111,12 @@ pub async fn debug_start(
     let stderr = child.stderr.take().unwrap();
 
     // Send the debug script
-    stdin.write_all(script.as_bytes()).map_err(|e| e.to_string())?;
+    stdin
+        .write_all(script.as_bytes())
+        .map_err(|e| e.to_string())?;
 
     {
-        let mut session = DEBUG_SESSION.lock().unwrap();
+        let mut session = DEBUG_SESSION.lock_recover();
         *session = Some(DebugSession {
             stdin: Box::new(stdin),
         });
@@ -126,9 +129,11 @@ pub async fn debug_start(
     // Stream stdout — parse for debugger prompts
     std::thread::spawn(move || {
         let reader = std::io::BufReader::new(stdout);
-        for line in reader.lines().flatten() {
+        for line in reader.lines().map_while(Result::ok) {
             // Detect debugger stopped prompt (e.g. "In function foo at file.jl:10")
-            if line.contains(" at ") && (line.starts_with("In ") || line.starts_with("About to run")) {
+            if line.contains(" at ")
+                && (line.starts_with("In ") || line.starts_with("About to run"))
+            {
                 // Parse stopped location
                 let _ = app_out.emit(
                     "debug-output",
@@ -160,7 +165,7 @@ pub async fn debug_start(
 
     std::thread::spawn(move || {
         let reader = std::io::BufReader::new(stderr);
-        for line in reader.lines().flatten() {
+        for line in reader.lines().map_while(Result::ok) {
             let _ = app_err.emit(
                 "debug-output",
                 DebugOutputEvent {
@@ -180,7 +185,7 @@ pub async fn debug_start(
                 text: "Debug session ended.".into(),
             },
         );
-        let mut session = DEBUG_SESSION.lock().unwrap();
+        let mut session = DEBUG_SESSION.lock_recover();
         *session = None;
     });
 
@@ -188,7 +193,7 @@ pub async fn debug_start(
 }
 
 fn send_debug_command(cmd: &str) -> Result<(), String> {
-    let mut session = DEBUG_SESSION.lock().unwrap();
+    let mut session = DEBUG_SESSION.lock_recover();
     if let Some(ref mut s) = *session {
         s.stdin
             .write_all(format!("{}\n", cmd).as_bytes())
@@ -221,7 +226,7 @@ pub async fn debug_step_out() -> Result<(), String> {
 
 #[tauri::command]
 pub async fn debug_stop() -> Result<(), String> {
-    let mut session = DEBUG_SESSION.lock().unwrap();
+    let mut session = DEBUG_SESSION.lock_recover();
     *session = None;
     Ok(())
 }
@@ -233,9 +238,6 @@ pub async fn debug_get_variables(app: tauri::AppHandle) -> Result<(), String> {
     send_debug_command("varinfo()")?;
     // Variables will come back through stdout stream
     // For now emit empty — actual parsing happens in stdout handler
-    let _ = app.emit(
-        "debug-variables",
-        DebugVariablesEvent { variables: vec![] },
-    );
+    let _ = app.emit("debug-variables", DebugVariablesEvent { variables: vec![] });
     Ok(())
 }

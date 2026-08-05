@@ -2933,3 +2933,95 @@ button, input, select {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+
+/* ─── Error boundary ─────────────────────────────────────────────────────── */
+
+.error-boundary {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.error-boundary-title {
+  margin: 0 0 8px;
+  font-weight: 600;
+  color: var(--accent-red);
+}
+
+.error-boundary-message {
+  margin: 0 0 12px;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.error-boundary-hint {
+  margin: 0 0 16px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.error-boundary-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.error-boundary-actions button {
+  padding: 5px 14px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.error-boundary-actions button:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-light);
+}
+
+.error-boundary-actions button:first-child {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.error-boundary-actions button:first-child:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+/* Inline variant — used inside a single panel that failed. */
+.error-boundary-inline {
+  padding: 16px;
+  height: 100%;
+  overflow: auto;
+}
+
+/* Full-window variant — the app-level boundary. */
+.error-boundary-full {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  padding: 24px;
+}
+
+.error-boundary-full .error-boundary-box {
+  max-width: 560px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px 28px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.error-boundary-full .error-boundary-title {
+  font-size: 16px;
+}

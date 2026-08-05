@@ -1,3 +1,4 @@
+use crate::sync::LockRecover;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -69,7 +70,7 @@ end"#;
 /// return Ok(false) in that case so the frontend re-attaches instead of
 /// spawning a replacement (which would kill the running process).
 pub(crate) fn session_exists(session_id: &str) -> bool {
-    PTY_SESSIONS.lock().unwrap().contains_key(session_id)
+    PTY_SESSIONS.lock_recover().contains_key(session_id)
 }
 
 /// Store the session and spawn the reader thread that forwards PTY output to
@@ -88,7 +89,7 @@ pub(crate) fn register_session(
     let generation = NEXT_GENERATION.fetch_add(1, Ordering::Relaxed);
 
     {
-        let mut sessions = PTY_SESSIONS.lock().unwrap();
+        let mut sessions = PTY_SESSIONS.lock_recover();
         sessions.insert(
             session_id.to_string(),
             PtySession {
@@ -119,7 +120,7 @@ pub(crate) fn register_session(
             }
         }
         {
-            let mut sessions = PTY_SESSIONS.lock().unwrap();
+            let mut sessions = PTY_SESSIONS.lock_recover();
             if sessions.get(&sid).map(|s| s.generation) == Some(generation) {
                 sessions.remove(&sid);
             }
@@ -188,9 +189,7 @@ pub async fn pty_create(
             .output()
         {
             if output.status.success() {
-                let path_val = String::from_utf8_lossy(&output.stdout)
-                    .trim()
-                    .to_string();
+                let path_val = String::from_utf8_lossy(&output.stdout).trim().to_string();
                 cmd.env("PATH", &path_val);
             }
         }
@@ -256,7 +255,7 @@ pub async fn pty_create_shell(
 
 #[tauri::command]
 pub fn pty_write(session_id: String, data: String) -> Result<(), String> {
-    let mut sessions = PTY_SESSIONS.lock().unwrap();
+    let mut sessions = PTY_SESSIONS.lock_recover();
     if let Some(session) = sessions.get_mut(&session_id) {
         session
             .writer
@@ -268,7 +267,7 @@ pub fn pty_write(session_id: String, data: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn pty_resize(session_id: String, rows: u16, cols: u16) -> Result<(), String> {
-    let sessions = PTY_SESSIONS.lock().unwrap();
+    let sessions = PTY_SESSIONS.lock_recover();
     if let Some(session) = sessions.get(&session_id) {
         session
             .master
@@ -285,7 +284,7 @@ pub fn pty_resize(session_id: String, rows: u16, cols: u16) -> Result<(), String
 
 #[tauri::command]
 pub fn pty_close(session_id: String) -> Result<(), String> {
-    let mut sessions = PTY_SESSIONS.lock().unwrap();
+    let mut sessions = PTY_SESSIONS.lock_recover();
     sessions.remove(&session_id);
     Ok(())
 }

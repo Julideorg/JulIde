@@ -17,10 +17,8 @@ const config: StorybookConfig = {
       ...config.resolve.alias,
       "@tauri-apps/api/core": path.resolve(__dirname, "mocks/tauri-core.ts"),
       "@tauri-apps/api/event": path.resolve(__dirname, "mocks/tauri-event.ts"),
-      "@tauri-apps/plugin-dialog": path.resolve(__dirname, "mocks/tauri-core.ts"),
-      "@tauri-apps/plugin-fs": path.resolve(__dirname, "mocks/tauri-core.ts"),
-      "@tauri-apps/plugin-shell": path.resolve(__dirname, "mocks/tauri-core.ts"),
       "@tauri-apps/plugin-opener": path.resolve(__dirname, "mocks/tauri-core.ts"),
+      "@tauri-apps/plugin-clipboard-manager": path.resolve(__dirname, "mocks/tauri-core.ts"),
     };
     return config;
   },

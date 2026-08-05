@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openExternal } from "../../services/openExternal";
 import { GitPullRequest, Plus, ExternalLink, GitMerge, RefreshCw } from "lucide-react";
 import { useIdeStore } from "../../stores/useIdeStore";
 import type { GitPullRequest as PR } from "../../types/git";
@@ -158,7 +158,7 @@ export function GitPRsTab() {
               <div className="git-pr-item-actions">
                 <button
                   className="git-file-action"
-                  onClick={() => openUrl(pr.url).catch(console.error)}
+                  onClick={() => openExternal(pr.url).catch(console.error)}
                   title="Open in browser"
                 >
                   <ExternalLink size={12} />

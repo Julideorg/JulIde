@@ -95,9 +95,7 @@ pub async fn pluto_open(
     );
 
     // Build the Julia one-liner that starts Pluto
-    let escaped_path = notebook_path
-        .replace('\\', "\\\\")
-        .replace('"', "\\\"");
+    let escaped_path = notebook_path.replace('\\', "\\\\").replace('"', "\\\"");
     let pluto_code = if notebook_path.is_empty() {
         format!(
             concat!(
@@ -115,8 +113,7 @@ pub async fn pluto_open(
                 r#"error("Pluto.jl not installed. Run: using Pkg; Pkg.add(\"Pluto\")"); "#,
                 r#"end; Pluto.run(notebook="{}", launch_browser=false, port={})"#
             ),
-            escaped_path,
-            port
+            escaped_path, port
         )
     };
 

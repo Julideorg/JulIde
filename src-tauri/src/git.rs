@@ -31,10 +31,7 @@ pub fn git_is_repo(workspace_path: String) -> bool {
 pub fn git_branch_current(workspace_path: String) -> Result<String, String> {
     let repo = open_repo(&workspace_path)?;
     let head = repo.head().map_err(|e| e.to_string())?;
-    Ok(head
-        .shorthand()
-        .unwrap_or("HEAD (detached)")
-        .to_string())
+    Ok(head.shorthand().unwrap_or("HEAD (detached)").to_string())
 }
 
 #[tauri::command]
@@ -71,28 +68,60 @@ pub fn git_status(workspace_path: String) -> Result<Vec<GitFileStatus>, String> 
         let st = entry.status();
 
         if st.contains(git2::Status::INDEX_NEW) {
-            results.push(GitFileStatus { path: path.clone(), status: "added".into(), staged: true });
+            results.push(GitFileStatus {
+                path: path.clone(),
+                status: "added".into(),
+                staged: true,
+            });
         }
         if st.contains(git2::Status::INDEX_MODIFIED) {
-            results.push(GitFileStatus { path: path.clone(), status: "modified".into(), staged: true });
+            results.push(GitFileStatus {
+                path: path.clone(),
+                status: "modified".into(),
+                staged: true,
+            });
         }
         if st.contains(git2::Status::INDEX_DELETED) {
-            results.push(GitFileStatus { path: path.clone(), status: "deleted".into(), staged: true });
+            results.push(GitFileStatus {
+                path: path.clone(),
+                status: "deleted".into(),
+                staged: true,
+            });
         }
         if st.contains(git2::Status::INDEX_RENAMED) {
-            results.push(GitFileStatus { path: path.clone(), status: "renamed".into(), staged: true });
+            results.push(GitFileStatus {
+                path: path.clone(),
+                status: "renamed".into(),
+                staged: true,
+            });
         }
         if st.contains(git2::Status::WT_MODIFIED) {
-            results.push(GitFileStatus { path: path.clone(), status: "modified".into(), staged: false });
+            results.push(GitFileStatus {
+                path: path.clone(),
+                status: "modified".into(),
+                staged: false,
+            });
         }
         if st.contains(git2::Status::WT_DELETED) {
-            results.push(GitFileStatus { path: path.clone(), status: "deleted".into(), staged: false });
+            results.push(GitFileStatus {
+                path: path.clone(),
+                status: "deleted".into(),
+                staged: false,
+            });
         }
         if st.contains(git2::Status::WT_NEW) {
-            results.push(GitFileStatus { path: path.clone(), status: "untracked".into(), staged: false });
+            results.push(GitFileStatus {
+                path: path.clone(),
+                status: "untracked".into(),
+                staged: false,
+            });
         }
         if st.contains(git2::Status::WT_RENAMED) {
-            results.push(GitFileStatus { path: path.clone(), status: "renamed".into(), staged: false });
+            results.push(GitFileStatus {
+                path: path.clone(),
+                status: "renamed".into(),
+                staged: false,
+            });
         }
     }
     Ok(results)
@@ -137,7 +166,9 @@ pub fn git_stage(workspace_path: String, file_paths: Vec<String>) -> Result<(), 
         if full_path.exists() {
             index.add_path(Path::new(path)).map_err(|e| e.to_string())?;
         } else {
-            index.remove_path(Path::new(path)).map_err(|e| e.to_string())?;
+            index
+                .remove_path(Path::new(path))
+                .map_err(|e| e.to_string())?;
         }
     }
 
@@ -179,7 +210,9 @@ pub fn git_unstage(workspace_path: String, file_paths: Vec<String>) -> Result<()
                 .map_err(|e| e.to_string())?;
         } else {
             // File didn't exist in HEAD — remove from index
-            index.remove_path(Path::new(path)).map_err(|e| e.to_string())?;
+            index
+                .remove_path(Path::new(path))
+                .map_err(|e| e.to_string())?;
         }
     }
 
@@ -194,7 +227,9 @@ pub fn git_commit(workspace_path: String, message: String) -> Result<String, Str
     let tree_oid = index.write_tree().map_err(|e| e.to_string())?;
     let tree = repo.find_tree(tree_oid).map_err(|e| e.to_string())?;
 
-    let sig = repo.signature().map_err(|e| format!("Git signature not configured: {}", e))?;
+    let sig = repo
+        .signature()
+        .map_err(|e| format!("Git signature not configured: {}", e))?;
     let head = repo.head().map_err(|e| e.to_string())?;
     let parent = head.peel_to_commit().map_err(|e| e.to_string())?;
 
@@ -264,15 +299,13 @@ pub fn git_remotes(workspace_path: String) -> Result<Vec<GitRemote>, String> {
     let repo = open_repo(&workspace_path)?;
     let remote_names = repo.remotes().map_err(|e| e.to_string())?;
     let mut remotes = Vec::new();
-    for name in remote_names.iter() {
-        if let Some(name) = name {
-            let remote = repo.find_remote(name).map_err(|e| e.to_string())?;
-            let url = remote.url().unwrap_or("").to_string();
-            remotes.push(GitRemote {
-                name: name.to_string(),
-                url,
-            });
-        }
+    for name in remote_names.iter().flatten() {
+        let remote = repo.find_remote(name).map_err(|e| e.to_string())?;
+        let url = remote.url().unwrap_or("").to_string();
+        remotes.push(GitRemote {
+            name: name.to_string(),
+            url,
+        });
     }
     Ok(remotes)
 }
@@ -329,7 +362,9 @@ pub fn git_merge(workspace_path: String, branch: String) -> Result<(), String> {
         .reference_to_annotated_commit(reference.get())
         .map_err(|e| e.to_string())?;
 
-    let (analysis, _pref) = repo.merge_analysis(&[&annotated]).map_err(|e| e.to_string())?;
+    let (analysis, _pref) = repo
+        .merge_analysis(&[&annotated])
+        .map_err(|e| e.to_string())?;
 
     if analysis.is_up_to_date() {
         return Ok(());
@@ -492,7 +527,9 @@ pub fn git_pull(workspace_path: String, remote: String, branch: String) -> Resul
         .reference_to_annotated_commit(&fetch_head)
         .map_err(|e| e.to_string())?;
 
-    let (analysis, _pref) = repo.merge_analysis(&[&annotated]).map_err(|e| e.to_string())?;
+    let (analysis, _pref) = repo
+        .merge_analysis(&[&annotated])
+        .map_err(|e| e.to_string())?;
 
     if analysis.is_up_to_date() {
         return Ok(());
@@ -502,7 +539,10 @@ pub fn git_pull(workspace_path: String, remote: String, branch: String) -> Resul
         let target_oid = annotated.id();
         let mut head_ref = repo.head().map_err(|e| e.to_string())?;
         head_ref
-            .set_target(target_oid, &format!("Pull fast-forward from {}/{}", remote, branch))
+            .set_target(
+                target_oid,
+                &format!("Pull fast-forward from {}/{}", remote, branch),
+            )
             .map_err(|e| e.to_string())?;
         repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))
             .map_err(|e| e.to_string())?;
@@ -588,16 +628,12 @@ pub fn git_show_file_at_head(workspace_path: String, file_path: String) -> Resul
         Ok(h) => h,
         Err(_) => return Ok(String::new()), // No commits yet
     };
-    let tree = head
-        .peel_to_tree()
-        .map_err(|e| e.to_string())?;
+    let tree = head.peel_to_tree().map_err(|e| e.to_string())?;
     let entry = match tree.get_path(Path::new(&file_path)) {
         Ok(e) => e,
         Err(_) => return Ok(String::new()), // File doesn't exist in HEAD (new file)
     };
-    let blob = repo
-        .find_blob(entry.id())
-        .map_err(|e| e.to_string())?;
+    let blob = repo.find_blob(entry.id()).map_err(|e| e.to_string())?;
     Ok(String::from_utf8_lossy(blob.content()).to_string())
 }
 
@@ -613,7 +649,10 @@ pub struct BlameLineInfo {
 
 /// Get blame info for a file.
 #[tauri::command]
-pub fn git_blame_file(workspace_path: String, file_path: String) -> Result<Vec<BlameLineInfo>, String> {
+pub fn git_blame_file(
+    workspace_path: String,
+    file_path: String,
+) -> Result<Vec<BlameLineInfo>, String> {
     let repo = open_repo(&workspace_path)?;
     let blame = repo
         .blame_file(Path::new(&file_path), None)

@@ -48,7 +48,11 @@ pub struct CiCheck {
 #[async_trait]
 pub trait GitProvider: Send + Sync {
     async fn get_repo_info(&self, token: &str) -> Result<RepoInfo, String>;
-    async fn list_pull_requests(&self, token: &str, state: &str) -> Result<Vec<PullRequest>, String>;
+    async fn list_pull_requests(
+        &self,
+        token: &str,
+        state: &str,
+    ) -> Result<Vec<PullRequest>, String>;
     async fn create_pull_request(
         &self,
         token: &str,
@@ -97,7 +101,7 @@ pub fn parse_owner_repo(remote_url: &str) -> Option<(String, String)> {
         }
     } else if url.contains(':') {
         // SSH format: git@host:owner/repo
-        if let Some(path) = url.split(':').last() {
+        if let Some(path) = url.split(':').next_back() {
             let parts: Vec<&str> = path.split('/').collect();
             if parts.len() == 2 {
                 return Some((parts[0].to_string(), parts[1].to_string()));
@@ -107,7 +111,41 @@ pub fn parse_owner_repo(remote_url: &str) -> Option<(String, String)> {
     None
 }
 
-/// Extract the base API URL from a remote URL for self-hosted instances
+/// Build an `Authorization`-style header value from a stored token.
+///
+/// `HeaderValue` only accepts visible ASCII, so a token pasted with a trailing
+/// newline, a smart quote, or any non-ASCII character used to take the whole app
+/// down through `.parse().unwrap()`. Surface it as a recoverable error instead, and
+/// mark the value sensitive so it stays out of `Debug` output and logs.
+pub fn auth_header_value(raw: &str) -> Result<reqwest::header::HeaderValue, String> {
+    let mut value = reqwest::header::HeaderValue::from_str(raw.trim()).map_err(|_| {
+        "The stored access token contains characters that are not valid in an HTTP header. \
+         Re-enter it under Source Control → Auth settings."
+            .to_string()
+    })?;
+    value.set_sensitive(true);
+    Ok(value)
+}
+
+/// A host is loopback if it can only ever refer to this machine.
+///
+/// Plain HTTP is tolerated for these because a self-hosted Gitea on localhost is a
+/// normal development setup and the token never leaves the machine.
+fn is_loopback_host(host: &str) -> bool {
+    host == "localhost"
+        || host == "127.0.0.1"
+        || host == "::1"
+        || host == "[::1]"
+        || host.ends_with(".localhost")
+}
+
+/// Extract the base API URL from a remote URL for self-hosted instances.
+///
+/// The scheme is forced to `https` for every non-loopback host. The stored personal
+/// access token is sent to whatever this returns (`Authorization: token <PAT>`), so
+/// honouring an `http://` remote would put the user's PAT on the wire in cleartext to
+/// whatever host `origin` names — including one an attacker chose by shipping a repo
+/// with a hostile `origin` configured.
 pub fn extract_api_base(remote_url: &str) -> String {
     if remote_url.contains("github.com") {
         return "https://api.github.com".to_string();
@@ -119,11 +157,12 @@ pub fn extract_api_base(remote_url: &str) -> String {
     if remote_url.contains("://") {
         if let Ok(parsed) = url::Url::parse(remote_url) {
             if let Some(host) = parsed.host_str() {
-                let scheme = parsed.scheme();
-                let port = parsed
-                    .port()
-                    .map(|p| format!(":{}", p))
-                    .unwrap_or_default();
+                let scheme = if is_loopback_host(host) {
+                    parsed.scheme()
+                } else {
+                    "https"
+                };
+                let port = parsed.port().map(|p| format!(":{}", p)).unwrap_or_default();
                 return format!("{}://{}{}", scheme, host, port);
             }
         }
@@ -151,7 +190,9 @@ fn get_origin_url(workspace_path: &str) -> Result<String, String> {
         .ok_or_else(|| "Remote URL is not valid UTF-8".to_string())
 }
 
-fn get_provider_and_token(workspace_path: &str) -> Result<(String, String, String, String), String> {
+fn get_provider_and_token(
+    workspace_path: &str,
+) -> Result<(String, String, String, String), String> {
     let url = get_origin_url(workspace_path)?;
     let provider = detect_provider(&url).ok_or("Could not detect git provider")?;
     let token = crate::git_auth::get_stored_token_for_remote(&url).ok_or(format!(
@@ -376,27 +417,42 @@ mod tests {
 
     #[test]
     fn detect_provider_github() {
-        assert_eq!(detect_provider("https://github.com/user/repo.git"), Some("github".to_string()));
+        assert_eq!(
+            detect_provider("https://github.com/user/repo.git"),
+            Some("github".to_string())
+        );
     }
 
     #[test]
     fn detect_provider_github_ssh() {
-        assert_eq!(detect_provider("git@github.com:user/repo.git"), Some("github".to_string()));
+        assert_eq!(
+            detect_provider("git@github.com:user/repo.git"),
+            Some("github".to_string())
+        );
     }
 
     #[test]
     fn detect_provider_gitlab() {
-        assert_eq!(detect_provider("https://gitlab.com/user/repo.git"), Some("gitlab".to_string()));
+        assert_eq!(
+            detect_provider("https://gitlab.com/user/repo.git"),
+            Some("gitlab".to_string())
+        );
     }
 
     #[test]
     fn detect_provider_gitlab_self_hosted() {
-        assert_eq!(detect_provider("https://gitlab.mycompany.com/user/repo"), Some("gitlab".to_string()));
+        assert_eq!(
+            detect_provider("https://gitlab.mycompany.com/user/repo"),
+            Some("gitlab".to_string())
+        );
     }
 
     #[test]
     fn detect_provider_unknown_defaults_to_gitea() {
-        assert_eq!(detect_provider("https://gitea.example.com/user/repo"), Some("gitea".to_string()));
+        assert_eq!(
+            detect_provider("https://gitea.example.com/user/repo"),
+            Some("gitea".to_string())
+        );
     }
 
     // ── parse_owner_repo ───────────────────────────────────────────────────
@@ -445,31 +501,123 @@ mod tests {
 
     #[test]
     fn extract_api_base_github() {
-        assert_eq!(extract_api_base("https://github.com/user/repo"), "https://api.github.com");
+        assert_eq!(
+            extract_api_base("https://github.com/user/repo"),
+            "https://api.github.com"
+        );
     }
 
     #[test]
     fn extract_api_base_gitlab() {
-        assert_eq!(extract_api_base("https://gitlab.com/user/repo"), "https://gitlab.com");
+        assert_eq!(
+            extract_api_base("https://gitlab.com/user/repo"),
+            "https://gitlab.com"
+        );
     }
 
     #[test]
     fn extract_api_base_self_hosted_https() {
-        assert_eq!(extract_api_base("https://git.mycompany.com/user/repo"), "https://git.mycompany.com");
+        assert_eq!(
+            extract_api_base("https://git.mycompany.com/user/repo"),
+            "https://git.mycompany.com"
+        );
     }
 
     #[test]
     fn extract_api_base_self_hosted_with_port() {
-        assert_eq!(extract_api_base("https://git.mycompany.com:8443/user/repo"), "https://git.mycompany.com:8443");
+        assert_eq!(
+            extract_api_base("https://git.mycompany.com:8443/user/repo"),
+            "https://git.mycompany.com:8443"
+        );
     }
 
     #[test]
     fn extract_api_base_ssh_format() {
-        assert_eq!(extract_api_base("git@myhost.com:user/repo.git"), "https://myhost.com");
+        assert_eq!(
+            extract_api_base("git@myhost.com:user/repo.git"),
+            "https://myhost.com"
+        );
     }
 
     #[test]
     fn extract_api_base_fallback() {
         assert_eq!(extract_api_base("invalid-url"), "https://localhost");
+    }
+
+    // ── scheme forcing: the PAT must never travel over cleartext HTTP ───────
+
+    #[test]
+    fn extract_api_base_upgrades_http_to_https() {
+        assert_eq!(
+            extract_api_base("http://git.mycompany.com/user/repo"),
+            "https://git.mycompany.com"
+        );
+    }
+
+    #[test]
+    fn extract_api_base_upgrades_hostile_http_remote() {
+        // A repo shipped with a hostile `origin` must not cause the stored token
+        // to be sent in cleartext to the attacker's host.
+        assert_eq!(
+            extract_api_base("http://attacker.example/foo/bar"),
+            "https://attacker.example"
+        );
+    }
+
+    #[test]
+    fn extract_api_base_upgrades_http_but_keeps_port() {
+        assert_eq!(
+            extract_api_base("http://git.mycompany.com:3000/user/repo"),
+            "https://git.mycompany.com:3000"
+        );
+    }
+
+    #[test]
+    fn extract_api_base_allows_http_on_loopback() {
+        // Self-hosted Gitea on localhost is a normal dev setup; the token never
+        // leaves the machine, so plain HTTP is fine here.
+        assert_eq!(
+            extract_api_base("http://localhost:3000/user/repo"),
+            "http://localhost:3000"
+        );
+        assert_eq!(
+            extract_api_base("http://127.0.0.1:3000/user/repo"),
+            "http://127.0.0.1:3000"
+        );
+    }
+
+    // ── auth_header_value ──────────────────────────────────────────────────
+
+    #[test]
+    fn auth_header_value_accepts_a_normal_token() {
+        let v = auth_header_value("token ghp_abc123").expect("should accept ASCII");
+        assert_eq!(v.to_str().unwrap(), "token ghp_abc123");
+    }
+
+    #[test]
+    fn auth_header_value_trims_whitespace() {
+        // Pasting a PAT commonly picks up a trailing newline.
+        let v = auth_header_value("token ghp_abc123\n").expect("should trim and accept");
+        assert_eq!(v.to_str().unwrap(), "token ghp_abc123");
+    }
+
+    #[test]
+    fn auth_header_value_rejects_embedded_newlines_instead_of_panicking() {
+        // A token carrying CRLF is a header-injection attempt. This used to be
+        // `.parse().unwrap()`, which took the whole app down instead of erroring.
+        let err = auth_header_value("token abc\r\nX-Injected: 1").unwrap_err();
+        assert!(err.contains("not valid in an HTTP header"), "got: {err}");
+    }
+
+    #[test]
+    fn auth_header_value_rejects_control_characters_instead_of_panicking() {
+        let err = auth_header_value("token abc\u{0}def").unwrap_err();
+        assert!(err.contains("not valid in an HTTP header"), "got: {err}");
+    }
+
+    #[test]
+    fn auth_header_value_is_marked_sensitive() {
+        let v = auth_header_value("token secret").unwrap();
+        assert!(v.is_sensitive(), "token headers must not leak into logs");
     }
 }

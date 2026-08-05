@@ -47,16 +47,36 @@ pub struct Settings {
     pub start_maximized: bool,
 }
 
-fn default_font_size() -> u32 { 14 }
-fn default_pluto_port() -> u32 { 3000 }
-fn default_font_family() -> String { "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Noto Sans Mono', monospace".into() }
-fn default_tab_size() -> u32 { 4 }
-fn default_true() -> bool { true }
-fn default_word_wrap() -> String { "off".into() }
-fn default_theme() -> String { "julide-dark".into() }
-fn default_terminal_font_size() -> u32 { 13 }
-fn default_container_runtime() -> String { "auto".into() }
-fn default_lsp_backend() -> String { "languageserver".into() }
+fn default_font_size() -> u32 {
+    14
+}
+fn default_pluto_port() -> u32 {
+    3000
+}
+fn default_font_family() -> String {
+    "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Noto Sans Mono', monospace".into()
+}
+fn default_tab_size() -> u32 {
+    4
+}
+fn default_true() -> bool {
+    true
+}
+fn default_word_wrap() -> String {
+    "off".into()
+}
+fn default_theme() -> String {
+    "julide-dark".into()
+}
+fn default_terminal_font_size() -> u32 {
+    13
+}
+fn default_container_runtime() -> String {
+    "auto".into()
+}
+fn default_lsp_backend() -> String {
+    "languageserver".into()
+}
 
 impl Default for Settings {
     fn default() -> Self {

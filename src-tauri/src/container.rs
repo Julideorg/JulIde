@@ -1,3 +1,4 @@
+use crate::sync::LockRecover;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -47,19 +48,15 @@ pub struct ImageInfo {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum ContainerState {
+    #[default]
     None,
     Building,
     Starting,
     Running,
     Stopped,
     Error,
-}
-
-impl Default for ContainerState {
-    fn default() -> Self {
-        ContainerState::None
-    }
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -240,9 +237,18 @@ async fn detect_runtime_impl(preferred: &str, remote_host: &str) -> Option<Conta
     }
 
     let try_order: Vec<(&str, ContainerRuntimeKind)> = match preferred {
-        "docker" => vec![("docker", ContainerRuntimeKind::Docker), ("podman", ContainerRuntimeKind::Podman)],
-        "podman" => vec![("podman", ContainerRuntimeKind::Podman), ("docker", ContainerRuntimeKind::Docker)],
-        _ => vec![("docker", ContainerRuntimeKind::Docker), ("podman", ContainerRuntimeKind::Podman)],
+        "docker" => vec![
+            ("docker", ContainerRuntimeKind::Docker),
+            ("podman", ContainerRuntimeKind::Podman),
+        ],
+        "podman" => vec![
+            ("podman", ContainerRuntimeKind::Podman),
+            ("docker", ContainerRuntimeKind::Docker),
+        ],
+        _ => vec![
+            ("docker", ContainerRuntimeKind::Docker),
+            ("podman", ContainerRuntimeKind::Podman),
+        ],
     };
 
     for (name, kind) in try_order {
@@ -278,13 +284,18 @@ fn build_cmd(config: &ContainerRuntimeConfig) -> tokio::process::Command {
 }
 
 fn get_runtime() -> Result<ContainerRuntimeConfig, String> {
-    let cached = CACHED_RUNTIME.lock().unwrap();
+    let cached = CACHED_RUNTIME.lock_recover();
     cached
         .clone()
         .ok_or_else(|| "No container runtime detected. Install Docker or Podman.".to_string())
 }
 
-fn emit_status(app: &tauri::AppHandle, status: &str, message: Option<&str>, container_id: Option<&str>) {
+fn emit_status(
+    app: &tauri::AppHandle,
+    status: &str,
+    message: Option<&str>,
+    container_id: Option<&str>,
+) {
     let _ = app.emit(
         "container-status",
         ContainerStatusEvent {
@@ -403,9 +414,7 @@ fn detect_selinux() -> bool {
     // Check if SELinux is enforcing or permissive (not disabled)
     #[cfg(target_os = "linux")]
     {
-        if let Ok(output) = std::process::Command::new("getenforce")
-            .output()
-        {
+        if let Ok(output) = std::process::Command::new("getenforce").output() {
             let status = String::from_utf8_lossy(&output.stdout)
                 .trim()
                 .to_lowercase();
@@ -423,7 +432,11 @@ fn detect_selinux() -> bool {
 /// Returns the volume suffix for bind mounts based on SELinux status.
 /// `:Z` relabels the content to be accessible only by the specific container (private).
 fn volume_suffix(selinux: bool) -> &'static str {
-    if selinux { ":Z" } else { "" }
+    if selinux {
+        ":Z"
+    } else {
+        ""
+    }
 }
 
 fn get_gpu_passthrough_args() -> Vec<String> {
@@ -453,11 +466,11 @@ pub async fn container_detect_runtime(
         .await
         .ok_or_else(|| "No container runtime found. Install Docker or Podman.".to_string())?;
     {
-        let mut cached = CACHED_RUNTIME.lock().unwrap();
+        let mut cached = CACHED_RUNTIME.lock_recover();
         *cached = Some(config.clone());
     }
     {
-        let mut state = CONTAINER_STATE.lock().unwrap();
+        let mut state = CONTAINER_STATE.lock_recover();
         state.runtime = Some(config.clone());
     }
     Ok(config)
@@ -479,11 +492,11 @@ pub async fn container_set_runtime(
         remote_host,
     };
     {
-        let mut cached = CACHED_RUNTIME.lock().unwrap();
+        let mut cached = CACHED_RUNTIME.lock_recover();
         *cached = Some(config.clone());
     }
     {
-        let mut state = CONTAINER_STATE.lock().unwrap();
+        let mut state = CONTAINER_STATE.lock_recover();
         state.runtime = Some(config);
     }
     Ok(())
@@ -495,7 +508,12 @@ pub async fn container_set_runtime(
 pub async fn container_list() -> Result<Vec<ContainerInfo>, String> {
     let rt = get_runtime()?;
     let mut cmd = build_cmd(&rt);
-    cmd.args(["ps", "-a", "--format", "{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.State}}\t{{.Ports}}\t{{.CreatedAt}}"]);
+    cmd.args([
+        "ps",
+        "-a",
+        "--format",
+        "{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.State}}\t{{.Ports}}\t{{.CreatedAt}}",
+    ]);
     let output = cmd.output().await.map_err(|e| e.to_string())?;
     if !output.status.success() {
         return Err(String::from_utf8_lossy(&output.stderr).to_string());
@@ -524,7 +542,11 @@ pub async fn container_list() -> Result<Vec<ContainerInfo>, String> {
 pub async fn container_list_images() -> Result<Vec<ImageInfo>, String> {
     let rt = get_runtime()?;
     let mut cmd = build_cmd(&rt);
-    cmd.args(["images", "--format", "{{.ID}}\t{{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}"]);
+    cmd.args([
+        "images",
+        "--format",
+        "{{.ID}}\t{{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}",
+    ]);
     let output = cmd.output().await.map_err(|e| e.to_string())?;
     if !output.status.success() {
         return Err(String::from_utf8_lossy(&output.stderr).to_string());
@@ -587,7 +609,7 @@ pub async fn container_stop(app: tauri::AppHandle, container_id: String) -> Resu
     }
     emit_status(&app, "stopped", None, Some(&container_id));
     {
-        let mut state = CONTAINER_STATE.lock().unwrap();
+        let mut state = CONTAINER_STATE.lock_recover();
         if state.active_container_id.as_deref() == Some(&container_id) {
             state.container_state = ContainerState::Stopped;
         }
@@ -618,7 +640,7 @@ pub async fn container_remove(container_id: String) -> Result<(), String> {
         return Err(String::from_utf8_lossy(&output.stderr).to_string());
     }
     {
-        let mut state = CONTAINER_STATE.lock().unwrap();
+        let mut state = CONTAINER_STATE.lock_recover();
         if state.active_container_id.as_deref() == Some(&container_id) {
             state.active_container_id = None;
             state.active_container_name = None;
@@ -779,11 +801,9 @@ fn strip_json_comments(input: &str) -> String {
                     chars.next();
                     loop {
                         match chars.next() {
-                            Some('*') => {
-                                if chars.peek() == Some(&'/') {
-                                    chars.next();
-                                    break;
-                                }
+                            Some('*') if chars.peek() == Some(&'/') => {
+                                chars.next();
+                                break;
                             }
                             Some('\n') => result.push('\n'),
                             None => break,
@@ -824,7 +844,11 @@ pub async fn devcontainer_up(
     // 1. Run initializeCommand on host
     if let Some(ref init_cmd) = config.initialize_command {
         let cmd_str = init_cmd.to_shell_command();
-        emit_output(&app, "status", &format!("Running initializeCommand: {}", cmd_str));
+        emit_output(
+            &app,
+            "status",
+            &format!("Running initializeCommand: {}", cmd_str),
+        );
         let output = tokio::process::Command::new("sh")
             .args(["-c", &cmd_str])
             .current_dir(&workspace_path)
@@ -842,10 +866,7 @@ pub async fn devcontainer_up(
     if let Some(ref build_cfg) = config.build {
         if let Some(ref dockerfile) = build_cfg.dockerfile {
             let devcontainer_dir = Path::new(&workspace_path).join(".devcontainer");
-            let context = build_cfg
-                .context
-                .as_deref()
-                .unwrap_or(".");
+            let context = build_cfg.context.as_deref().unwrap_or(".");
             let context_path = devcontainer_dir.join(context);
             let dockerfile_path = devcontainer_dir.join(dockerfile);
 
@@ -856,7 +877,11 @@ pub async fn devcontainer_up(
                 .to_lowercase();
             image_name = format!("julide-dev-{}", workspace_name);
 
-            emit_output(&app, "status", &format!("Building image {} from {}...", image_name, dockerfile));
+            emit_output(
+                &app,
+                "status",
+                &format!("Building image {} from {}...", image_name, dockerfile),
+            );
 
             let mut build_cmd = build_cmd(&rt);
             build_cmd
@@ -884,7 +909,9 @@ pub async fn devcontainer_up(
                 .stdout(std::process::Stdio::piped())
                 .stderr(std::process::Stdio::piped());
 
-            let mut child = build_cmd.spawn().map_err(|e| format!("Build failed: {}", e))?;
+            let mut child = build_cmd
+                .spawn()
+                .map_err(|e| format!("Build failed: {}", e))?;
             let stderr = child.stderr.take();
             let stdout = child.stdout.take();
 
@@ -916,7 +943,10 @@ pub async fn devcontainer_up(
             }
             emit_output(&app, "status", "Image built successfully.");
         } else {
-            image_name = config.image.clone().ok_or("No image or dockerfile specified")?;
+            image_name = config
+                .image
+                .clone()
+                .ok_or("No image or dockerfile specified")?;
         }
     } else if let Some(ref img) = config.image {
         image_name = img.clone();
@@ -942,10 +972,19 @@ pub async fn devcontainer_up(
 
         let pull_status = child.wait().await.map_err(|e| e.to_string())?;
         if !pull_status.success() {
-            emit_output(&app, "stderr", &format!("Warning: pull failed, attempting to use cached image {}", image_name));
+            emit_output(
+                &app,
+                "stderr",
+                &format!(
+                    "Warning: pull failed, attempting to use cached image {}",
+                    image_name
+                ),
+            );
         }
     } else {
-        return Err("devcontainer.json must specify either 'image' or 'build.dockerfile'".to_string());
+        return Err(
+            "devcontainer.json must specify either 'image' or 'build.dockerfile'".to_string(),
+        );
     }
 
     // 3. Create container
@@ -958,10 +997,7 @@ pub async fn devcontainer_up(
         .to_string_lossy()
         .to_lowercase();
     let container_name = format!("julide-{}", workspace_name);
-    let workspace_folder = config
-        .workspace_folder
-        .as_deref()
-        .unwrap_or("/workspace");
+    let workspace_folder = config.workspace_folder.as_deref().unwrap_or("/workspace");
 
     // Remove existing container with same name if present
     let mut rm_cmd = build_cmd(&rt);
@@ -1091,7 +1127,11 @@ pub async fn devcontainer_up(
     let container_id = String::from_utf8_lossy(&create_output.stdout)
         .trim()
         .to_string();
-    emit_output(&app, "status", &format!("Container created: {}", container_id));
+    emit_output(
+        &app,
+        "status",
+        &format!("Container created: {}", container_id),
+    );
 
     // 4. Start container
     let mut start_cmd = build_cmd(&rt);
@@ -1133,14 +1173,18 @@ pub async fn devcontainer_up(
 
     // 6. Update state
     {
-        let mut state = CONTAINER_STATE.lock().unwrap();
+        let mut state = CONTAINER_STATE.lock_recover();
         state.active_container_id = Some(container_id.clone());
         state.active_container_name = Some(container_name.clone());
         state.container_state = ContainerState::Running;
     }
 
     emit_status(&app, "running", Some(&container_name), Some(&container_id));
-    emit_output(&app, "status", &format!("Dev container '{}' is ready.", container_name));
+    emit_output(
+        &app,
+        "status",
+        &format!("Dev container '{}' is ready.", container_name),
+    );
 
     Ok(())
 }
@@ -1148,7 +1192,7 @@ pub async fn devcontainer_up(
 #[tauri::command]
 pub async fn devcontainer_stop(app: tauri::AppHandle) -> Result<(), String> {
     let container_id = {
-        let state = CONTAINER_STATE.lock().unwrap();
+        let state = CONTAINER_STATE.lock_recover();
         state
             .active_container_id
             .clone()
@@ -1156,7 +1200,7 @@ pub async fn devcontainer_stop(app: tauri::AppHandle) -> Result<(), String> {
     };
     container_stop(app.clone(), container_id).await?;
     {
-        let mut state = CONTAINER_STATE.lock().unwrap();
+        let mut state = CONTAINER_STATE.lock_recover();
         state.container_state = ContainerState::Stopped;
     }
     emit_status(&app, "stopped", None, None);
@@ -1174,7 +1218,7 @@ pub async fn devcontainer_rebuild(
 ) -> Result<(), String> {
     // Stop and remove existing container
     let existing_id = {
-        let state = CONTAINER_STATE.lock().unwrap();
+        let state = CONTAINER_STATE.lock_recover();
         state.active_container_id.clone()
     };
     if let Some(id) = existing_id {
@@ -1184,19 +1228,27 @@ pub async fn devcontainer_rebuild(
         let _ = cmd.output().await;
     }
     {
-        let mut state = CONTAINER_STATE.lock().unwrap();
+        let mut state = CONTAINER_STATE.lock_recover();
         state.active_container_id = None;
         state.active_container_name = None;
         state.container_state = ContainerState::None;
     }
     emit_output(&app, "status", "Rebuilding dev container...");
-    devcontainer_up(app, workspace_path, display_forwarding, gpu_passthrough, selinux_label, persist_julia_packages).await
+    devcontainer_up(
+        app,
+        workspace_path,
+        display_forwarding,
+        gpu_passthrough,
+        selinux_label,
+        persist_julia_packages,
+    )
+    .await
 }
 
 #[tauri::command]
 pub async fn devcontainer_down(app: tauri::AppHandle) -> Result<(), String> {
     let container_id = {
-        let state = CONTAINER_STATE.lock().unwrap();
+        let state = CONTAINER_STATE.lock_recover();
         state.active_container_id.clone()
     };
     if let Some(ref id) = container_id {
@@ -1210,7 +1262,7 @@ pub async fn devcontainer_down(app: tauri::AppHandle) -> Result<(), String> {
         }
     }
     {
-        let mut state = CONTAINER_STATE.lock().unwrap();
+        let mut state = CONTAINER_STATE.lock_recover();
         state.active_container_id = None;
         state.active_container_name = None;
         state.container_state = ContainerState::None;
@@ -1303,7 +1355,9 @@ pub async fn container_julia_run(
     cmd.stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
 
-    let mut child = cmd.spawn().map_err(|e| format!("Failed to run Julia in container: {}", e))?;
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| format!("Failed to run Julia in container: {}", e))?;
 
     let stdout = child.stdout.take();
     let stderr = child.stderr.take();

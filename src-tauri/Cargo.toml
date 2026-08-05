@@ -1,8 +1,11 @@
 [package]
 name = "julide"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "A modern, fully-featured IDE for the Julia programming language"
+authors = ["Ofek Bickel"]
+license = "MIT"
+repository = "https://github.com/sinisterMage/julide"
+homepage = "https://github.com/sinisterMage/julide"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -20,8 +23,6 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
-tauri-plugin-shell = "2"
-tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-clipboard-manager = "2"
 portable-pty = "0.8"
@@ -52,3 +53,14 @@ tempfile = "3"
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
+
+# Release builds ship to end users, so trade compile time for a smaller, faster binary.
+#
+# `panic = "abort"` is deliberately NOT set: several long-lived registries are guarded
+# by mutexes whose poison state we recover from (see src/sync.rs), and that recovery
+# only works while panics unwind.
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+opt-level = "s"

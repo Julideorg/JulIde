@@ -84,25 +84,37 @@ pub fn watcher_stop() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use notify::event::{CreateKind, ModifyKind, RemoveKind, AccessKind};
+    use notify::event::{AccessKind, CreateKind, ModifyKind, RemoveKind};
 
     #[test]
     fn event_kind_create() {
-        assert_eq!(event_kind_str(&notify::EventKind::Create(CreateKind::Any)), Some("create"));
+        assert_eq!(
+            event_kind_str(&notify::EventKind::Create(CreateKind::Any)),
+            Some("create")
+        );
     }
 
     #[test]
     fn event_kind_modify() {
-        assert_eq!(event_kind_str(&notify::EventKind::Modify(ModifyKind::Any)), Some("modify"));
+        assert_eq!(
+            event_kind_str(&notify::EventKind::Modify(ModifyKind::Any)),
+            Some("modify")
+        );
     }
 
     #[test]
     fn event_kind_remove() {
-        assert_eq!(event_kind_str(&notify::EventKind::Remove(RemoveKind::Any)), Some("remove"));
+        assert_eq!(
+            event_kind_str(&notify::EventKind::Remove(RemoveKind::Any)),
+            Some("remove")
+        );
     }
 
     #[test]
     fn event_kind_access_returns_none() {
-        assert_eq!(event_kind_str(&notify::EventKind::Access(AccessKind::Any)), None);
+        assert_eq!(
+            event_kind_str(&notify::EventKind::Access(AccessKind::Any)),
+            None
+        );
     }
 }

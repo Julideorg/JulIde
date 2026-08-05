@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openExternal } from "../../services/openExternal";
 import { CircleDot, Plus, ExternalLink, RefreshCw } from "lucide-react";
 import { useIdeStore } from "../../stores/useIdeStore";
 import type { GitIssue } from "../../types/git";
@@ -133,7 +133,7 @@ export function GitIssuesTab() {
               <div className="git-pr-item-actions">
                 <button
                   className="git-file-action"
-                  onClick={() => openUrl(issue.url).catch(console.error)}
+                  onClick={() => openExternal(issue.url).catch(console.error)}
                   title="Open in browser"
                 >
                   <ExternalLink size={12} />

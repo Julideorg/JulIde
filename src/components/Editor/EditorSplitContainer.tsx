@@ -93,6 +93,12 @@ export function EditorSplitContainer() {
             src={plutoUrl}
             className="pluto-split-iframe"
             title="Pluto Notebook"
+            // Pluto needs scripts and its own origin to work (websockets, storage),
+            // and that origin is the local Pluto server — not julIDE's — so it still
+            // cannot reach the Tauri IPC bridge. What this does buy us is blocking
+            // allow-top-navigation: a notebook can no longer navigate the whole app
+            // window away from under the user.
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"
           />
         ) : (
           <div className="ide-editor-area">

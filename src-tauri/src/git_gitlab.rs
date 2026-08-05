@@ -23,10 +23,13 @@ impl GitlabProvider {
         Client::builder()
             .default_headers({
                 let mut headers = reqwest::header::HeaderMap::new();
-                headers.insert("PRIVATE-TOKEN", token.parse().unwrap());
+                headers.insert(
+                    "PRIVATE-TOKEN",
+                    crate::git_provider::auth_header_value(token)?,
+                );
                 headers.insert(
                     reqwest::header::USER_AGENT,
-                    "JulIDE".parse().unwrap(),
+                    reqwest::header::HeaderValue::from_static("JulIDE"),
                 );
                 headers
             })

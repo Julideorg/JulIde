@@ -428,6 +428,7 @@ useEffect(() => {
         {activeSidebar && (
           <PluginPanel
             key={activeSidebar.id}
+            label={activeSidebar.label}
             component={activeSidebar.component}
             render={activeSidebar.render}
           />
@@ -497,6 +498,7 @@ useEffect(() => {
                     <ProblemsPanel />
                   ) : (
                     <PluginPanel
+                      label={panel.label}
                       component={panel.component}
                       render={panel.render}
                     />

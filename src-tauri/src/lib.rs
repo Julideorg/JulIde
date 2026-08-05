@@ -9,11 +9,12 @@ mod git_gitlab;
 mod git_provider;
 mod julia;
 mod lsp;
-mod pluto;
 mod plugins;
+mod pluto;
 mod pty;
 mod search;
 mod settings;
+mod sync;
 mod watcher;
 
 use julia::new_julia_state;
@@ -23,8 +24,10 @@ use tauri::Manager;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_fs::init())
+        // The shell and fs plugins are deliberately not registered: the frontend
+        // never uses them (all such work goes through the commands below), and
+        // registering them only widens what a compromised webview could reach.
+        // dialog is registered because fs.rs drives the native pickers from Rust.
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(new_julia_state())

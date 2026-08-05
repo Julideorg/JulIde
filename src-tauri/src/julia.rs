@@ -1,6 +1,6 @@
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -43,7 +43,10 @@ fn validate_user_string(value: &str, label: &str) -> Result<(), String> {
     if value.contains('\0') {
         return Err(format!("{} must not contain null bytes", label));
     }
-    if value.chars().any(|c| c.is_ascii_control() && c != '\n' && c != '\t') {
+    if value
+        .chars()
+        .any(|c| c.is_ascii_control() && c != '\n' && c != '\t')
+    {
         return Err(format!("{} must not contain control characters", label));
     }
     Ok(())
@@ -77,8 +80,7 @@ pub(crate) fn normalize_julia_stdio_line(mut line: String) -> String {
     line
 }
 
-static JULIA_PATH: Lazy<Arc<Mutex<Option<PathBuf>>>> =
-    Lazy::new(|| Arc::new(Mutex::new(None)));
+static JULIA_PATH: Lazy<Arc<Mutex<Option<PathBuf>>>> = Lazy::new(|| Arc::new(Mutex::new(None)));
 
 /// Find the Julia executable, trying multiple strategies.
 pub async fn find_julia() -> Option<PathBuf> {
@@ -126,9 +128,7 @@ fn find_julia_impl() -> Option<PathBuf> {
             .output()
         {
             if output.status.success() {
-                let path = String::from_utf8_lossy(&output.stdout)
-                    .trim()
-                    .to_string();
+                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
                 let p = PathBuf::from(&path);
                 if p.exists() {
                     return Some(p);
@@ -144,8 +144,7 @@ fn find_julia_impl() -> Option<PathBuf> {
             use std::os::windows::process::CommandExt;
             cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
         }
-        if let Ok(output) = cmd.output()
-        {
+        if let Ok(output) = cmd.output() {
             if output.status.success() {
                 // `where` may return multiple lines; take the first
                 let path = String::from_utf8_lossy(&output.stdout)
@@ -240,9 +239,7 @@ fn find_julia_impl() -> Option<PathBuf> {
                 let name = entry.file_name();
                 let name_str = name.to_string_lossy();
                 if name_str.starts_with("Julia") && name_str.ends_with(".app") {
-                    let bin = entry
-                        .path()
-                        .join("Contents/Resources/julia/bin/julia");
+                    let bin = entry.path().join("Contents/Resources/julia/bin/julia");
                     if bin.exists() {
                         return Some(bin);
                     }
@@ -267,18 +264,15 @@ pub async fn julia_get_version() -> Result<String, String> {
         use std::os::windows::process::CommandExt;
         cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
     }
-    let output = cmd
-        .output()
-        .await
-        .map_err(|e| e.to_string())?;
+    let output = cmd.output().await.map_err(|e| e.to_string())?;
 
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
 #[tauri::command]
 pub async fn julia_list_environments() -> Result<Vec<String>, String> {
-    let home = dirs_next::home_dir()
-        .ok_or_else(|| "Could not determine home directory".to_string())?;
+    let home =
+        dirs_next::home_dir().ok_or_else(|| "Could not determine home directory".to_string())?;
     let envs_path = home.join(".julia").join("environments");
 
     let mut envs = vec!["@v#.#".to_string()];
@@ -369,7 +363,7 @@ pub async fn julia_run(
         use std::os::windows::process::CommandExt;
         cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
     }
-   
+
     let mut child = cmd.spawn().map_err(|e| e.to_string())?;
 
     {
@@ -416,9 +410,7 @@ pub async fn julia_run(
 
     tokio::spawn(async move {
         let status = child.wait().await;
-        let code = status
-            .map(|s| s.code().unwrap_or(-1))
-            .unwrap_or(-1);
+        let code = status.map(|s| s.code().unwrap_or(-1)).unwrap_or(-1);
         {
             let mut lock = state_done.lock().await;
             lock.process_pid = None;
@@ -473,7 +465,14 @@ pub async fn julia_precompile(
         let reader = tokio::io::BufReader::new(stdout);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            let _ = app_out.emit("julia-output", JuliaOutputEvent { kind: "stdout".into(), text: normalize_julia_stdio_line(line), exit_code: None });
+            let _ = app_out.emit(
+                "julia-output",
+                JuliaOutputEvent {
+                    kind: "stdout".into(),
+                    text: normalize_julia_stdio_line(line),
+                    exit_code: None,
+                },
+            );
         }
     });
 
@@ -481,14 +480,28 @@ pub async fn julia_precompile(
         let reader = tokio::io::BufReader::new(stderr);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            let _ = app_err.emit("julia-output", JuliaOutputEvent { kind: "stderr".into(), text: normalize_julia_stdio_line(line), exit_code: None });
+            let _ = app_err.emit(
+                "julia-output",
+                JuliaOutputEvent {
+                    kind: "stderr".into(),
+                    text: normalize_julia_stdio_line(line),
+                    exit_code: None,
+                },
+            );
         }
     });
 
     tokio::spawn(async move {
         let status = child.wait().await;
         let code = status.map(|s| s.code().unwrap_or(-1)).unwrap_or(-1);
-        let _ = app_done.emit("julia-output", JuliaOutputEvent { kind: "done".into(), text: String::new(), exit_code: Some(code) });
+        let _ = app_done.emit(
+            "julia-output",
+            JuliaOutputEvent {
+                kind: "done".into(),
+                text: String::new(),
+                exit_code: Some(code),
+            },
+        );
     });
 
     Ok(())
@@ -501,9 +514,7 @@ pub async fn julia_clean(
 ) -> Result<(), String> {
     use tauri::Emitter;
 
-    let proj = project_path
-        .as_deref()
-        .unwrap_or(".");
+    let proj = project_path.as_deref().unwrap_or(".");
 
     let manifest = format!("{}/Manifest.toml", proj);
     let mut cleaned = vec![];
@@ -519,8 +530,22 @@ pub async fn julia_clean(
         format!("Removed: {}", cleaned.join(", "))
     };
 
-    let _ = app.emit("julia-output", JuliaOutputEvent { kind: "stdout".into(), text: msg, exit_code: None });
-    let _ = app.emit("julia-output", JuliaOutputEvent { kind: "done".into(), text: String::new(), exit_code: Some(0) });
+    let _ = app.emit(
+        "julia-output",
+        JuliaOutputEvent {
+            kind: "stdout".into(),
+            text: msg,
+            exit_code: None,
+        },
+    );
+    let _ = app.emit(
+        "julia-output",
+        JuliaOutputEvent {
+            kind: "done".into(),
+            text: String::new(),
+            exit_code: Some(0),
+        },
+    );
 
     Ok(())
 }
@@ -586,7 +611,14 @@ pub async fn julia_pkg_add(
         let reader = tokio::io::BufReader::new(stdout);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            let _ = app_out.emit("julia-output", JuliaOutputEvent { kind: "stdout".into(), text: normalize_julia_stdio_line(line), exit_code: None });
+            let _ = app_out.emit(
+                "julia-output",
+                JuliaOutputEvent {
+                    kind: "stdout".into(),
+                    text: normalize_julia_stdio_line(line),
+                    exit_code: None,
+                },
+            );
         }
     });
 
@@ -594,14 +626,28 @@ pub async fn julia_pkg_add(
         let reader = tokio::io::BufReader::new(stderr);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            let _ = app_err.emit("julia-output", JuliaOutputEvent { kind: "stderr".into(), text: normalize_julia_stdio_line(line), exit_code: None });
+            let _ = app_err.emit(
+                "julia-output",
+                JuliaOutputEvent {
+                    kind: "stderr".into(),
+                    text: normalize_julia_stdio_line(line),
+                    exit_code: None,
+                },
+            );
         }
     });
 
     tokio::spawn(async move {
         let status = child.wait().await;
         let code = status.map(|s| s.code().unwrap_or(-1)).unwrap_or(-1);
-        let _ = app_done.emit("julia-output", JuliaOutputEvent { kind: "done".into(), text: String::new(), exit_code: Some(code) });
+        let _ = app_done.emit(
+            "julia-output",
+            JuliaOutputEvent {
+                kind: "done".into(),
+                text: String::new(),
+                exit_code: Some(code),
+            },
+        );
     });
 
     Ok(())
@@ -649,7 +695,14 @@ pub async fn julia_pkg_rm(
         let reader = tokio::io::BufReader::new(stdout);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            let _ = app_out.emit("julia-output", JuliaOutputEvent { kind: "stdout".into(), text: normalize_julia_stdio_line(line), exit_code: None });
+            let _ = app_out.emit(
+                "julia-output",
+                JuliaOutputEvent {
+                    kind: "stdout".into(),
+                    text: normalize_julia_stdio_line(line),
+                    exit_code: None,
+                },
+            );
         }
     });
 
@@ -657,14 +710,28 @@ pub async fn julia_pkg_rm(
         let reader = tokio::io::BufReader::new(stderr);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            let _ = app_err.emit("julia-output", JuliaOutputEvent { kind: "stderr".into(), text: normalize_julia_stdio_line(line), exit_code: None });
+            let _ = app_err.emit(
+                "julia-output",
+                JuliaOutputEvent {
+                    kind: "stderr".into(),
+                    text: normalize_julia_stdio_line(line),
+                    exit_code: None,
+                },
+            );
         }
     });
 
     tokio::spawn(async move {
         let status = child.wait().await;
         let code = status.map(|s| s.code().unwrap_or(-1)).unwrap_or(-1);
-        let _ = app_done.emit("julia-output", JuliaOutputEvent { kind: "done".into(), text: String::new(), exit_code: Some(code) });
+        let _ = app_done.emit(
+            "julia-output",
+            JuliaOutputEvent {
+                kind: "done".into(),
+                text: String::new(),
+                exit_code: Some(code),
+            },
+        );
     });
 
     Ok(())
@@ -717,7 +784,14 @@ pub async fn julia_create_project(
         let reader = tokio::io::BufReader::new(stdout);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            let _ = app_out.emit("julia-output", JuliaOutputEvent { kind: "stdout".into(), text: normalize_julia_stdio_line(line), exit_code: None });
+            let _ = app_out.emit(
+                "julia-output",
+                JuliaOutputEvent {
+                    kind: "stdout".into(),
+                    text: normalize_julia_stdio_line(line),
+                    exit_code: None,
+                },
+            );
         }
     });
 
@@ -725,14 +799,28 @@ pub async fn julia_create_project(
         let reader = tokio::io::BufReader::new(stderr);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            let _ = app_err.emit("julia-output", JuliaOutputEvent { kind: "stderr".into(), text: normalize_julia_stdio_line(line), exit_code: None });
+            let _ = app_err.emit(
+                "julia-output",
+                JuliaOutputEvent {
+                    kind: "stderr".into(),
+                    text: normalize_julia_stdio_line(line),
+                    exit_code: None,
+                },
+            );
         }
     });
 
     tokio::spawn(async move {
         let status = child.wait().await;
         let code = status.map(|s| s.code().unwrap_or(-1)).unwrap_or(-1);
-        let _ = app_done.emit("julia-output", JuliaOutputEvent { kind: "done".into(), text: String::new(), exit_code: Some(code) });
+        let _ = app_done.emit(
+            "julia-output",
+            JuliaOutputEvent {
+                kind: "done".into(),
+                text: String::new(),
+                exit_code: Some(code),
+            },
+        );
     });
 
     Ok(())
@@ -741,6 +829,10 @@ pub async fn julia_create_project(
 /// Create a new Julia project using BestieTemplate.jl.
 /// Runs non-interactively with a clean environment (no Tauri/Cargo vars)
 /// to avoid breaking pixi/CondaPkg.
+// The parameter list is the IPC contract with BestieTemplateDialog.tsx — each field
+// maps to one form input. Collapsing it into a struct would only move the argument
+// count behind a type without simplifying either side.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn julia_create_project_bestie(
     app: tauri::AppHandle,
@@ -759,7 +851,10 @@ pub async fn julia_create_project_bestie(
     validate_user_string(&package_owner, "Package owner")?;
     validate_user_string(&authors, "Authors")?;
     validate_path(&parent_dir, "Parent directory")?;
-    if !julia_min_version.chars().all(|c| c.is_ascii_digit() || c == '.') {
+    if !julia_min_version
+        .chars()
+        .all(|c| c.is_ascii_digit() || c == '.')
+    {
         return Err("Julia minimum version must contain only digits and dots".into());
     }
     const ALLOWED_LICENSES: &[&str] = &["MIT", "Apache-2.0", "GPL-3.0", "MPL-2.0"];
@@ -869,7 +964,14 @@ BestieTemplate.generate(dst, data; defaults=true, quiet=false)"#;
         let reader = tokio::io::BufReader::new(stdout);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            let _ = app_out.emit("julia-output", JuliaOutputEvent { kind: "stdout".into(), text: normalize_julia_stdio_line(line), exit_code: None });
+            let _ = app_out.emit(
+                "julia-output",
+                JuliaOutputEvent {
+                    kind: "stdout".into(),
+                    text: normalize_julia_stdio_line(line),
+                    exit_code: None,
+                },
+            );
         }
     });
 
@@ -877,14 +979,28 @@ BestieTemplate.generate(dst, data; defaults=true, quiet=false)"#;
         let reader = tokio::io::BufReader::new(stderr);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            let _ = app_err.emit("julia-output", JuliaOutputEvent { kind: "stderr".into(), text: normalize_julia_stdio_line(line), exit_code: None });
+            let _ = app_err.emit(
+                "julia-output",
+                JuliaOutputEvent {
+                    kind: "stderr".into(),
+                    text: normalize_julia_stdio_line(line),
+                    exit_code: None,
+                },
+            );
         }
     });
 
     tokio::spawn(async move {
         let status = child.wait().await;
         let code = status.map(|s| s.code().unwrap_or(-1)).unwrap_or(-1);
-        let _ = app_done.emit("julia-output", JuliaOutputEvent { kind: "done".into(), text: String::new(), exit_code: Some(code) });
+        let _ = app_done.emit(
+            "julia-output",
+            JuliaOutputEvent {
+                kind: "done".into(),
+                text: String::new(),
+                exit_code: Some(code),
+            },
+        );
     });
 
     Ok(())
@@ -944,9 +1060,14 @@ pub async fn julia_eval(
         let reader = tokio::io::BufReader::new(stdout);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            let _ = app_out.emit("julia-output", JuliaOutputEvent {
-                kind: "stdout".into(), text: normalize_julia_stdio_line(line), exit_code: None,
-            });
+            let _ = app_out.emit(
+                "julia-output",
+                JuliaOutputEvent {
+                    kind: "stdout".into(),
+                    text: normalize_julia_stdio_line(line),
+                    exit_code: None,
+                },
+            );
         }
     });
 
@@ -954,9 +1075,14 @@ pub async fn julia_eval(
         let reader = tokio::io::BufReader::new(stderr);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            let _ = app_err.emit("julia-output", JuliaOutputEvent {
-                kind: "stderr".into(), text: normalize_julia_stdio_line(line), exit_code: None,
-            });
+            let _ = app_err.emit(
+                "julia-output",
+                JuliaOutputEvent {
+                    kind: "stderr".into(),
+                    text: normalize_julia_stdio_line(line),
+                    exit_code: None,
+                },
+            );
         }
     });
 
@@ -967,9 +1093,14 @@ pub async fn julia_eval(
             let mut lock = state_done.lock().await;
             lock.process_pid = None;
         }
-        let _ = app_done.emit("julia-output", JuliaOutputEvent {
-            kind: "done".into(), text: String::new(), exit_code: Some(code),
-        });
+        let _ = app_done.emit(
+            "julia-output",
+            JuliaOutputEvent {
+                kind: "done".into(),
+                text: String::new(),
+                exit_code: Some(code),
+            },
+        );
     });
 
     Ok(())
@@ -982,13 +1113,61 @@ pub async fn julia_set_path(path: String) -> Result<(), String> {
         *cached = None;
         return Ok(());
     }
+    validate_path(&path, "Julia path")?;
     let p = PathBuf::from(&path);
     if !p.exists() {
         return Err(format!("Path does not exist: {}", path));
     }
+    if !p.is_file() {
+        return Err(format!("Not a file: {}", path));
+    }
+
+    probe_julia_binary(&p).await?;
+
     let mut cached = JULIA_PATH.lock().await;
     *cached = Some(p);
     Ok(())
+}
+
+/// Confirm a candidate binary really is Julia before we adopt it.
+///
+/// Whatever ends up here is executed by julia_run, julia_eval, lsp_start,
+/// debug_start and pty_create, and the command is reachable straight from the
+/// webview — so an `exists()` check alone would let a plugin or an injected script
+/// silently repoint "Julia" at an arbitrary executable. Requiring the binary to
+/// identify itself as Julia turns a silent hijack into a visible error.
+async fn probe_julia_binary(path: &Path) -> Result<String, String> {
+    let mut cmd = tokio::process::Command::new(path);
+    cmd.arg("--version");
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+
+    let output = cmd
+        .output()
+        .await
+        .map_err(|e| format!("Could not run {}: {}", path.display(), e))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "{} exited with a non-zero status when asked for --version; it does not look like a Julia binary.",
+            path.display()
+        ));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let version = stdout.trim();
+    if !version.to_lowercase().contains("julia") {
+        return Err(format!(
+            "{} does not report itself as Julia (got: {:?}). Pick the julia executable itself, not a wrapper or shortcut.",
+            path.display(),
+            version.chars().take(80).collect::<String>()
+        ));
+    }
+
+    Ok(version.to_string())
 }
 
 #[cfg(test)]
