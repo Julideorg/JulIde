@@ -298,21 +298,38 @@ pub async fn julia_list_environments() -> Result<Vec<String>, String> {
 /// stdout so the OutputPanel can render them inline.
 const MIME_HELPER: &str = r#"
 using Base64
+ENV["GKSwstype"] = "100"
+
 struct _JulIDEMIMEDisplay_ <: AbstractDisplay end
+
 function Base.display(d::_JulIDEMIMEDisplay_, x)
-    for mime in (MIME("image/png"), MIME("image/svg+xml"), MIME("text/html"), MIME("image/jpeg"))
+    for mime in (
+        MIME("image/png"),
+        MIME("image/svg+xml"),
+        MIME("image/jpeg"),
+        MIME("text/html"),
+    )
         if showable(mime, x)
-            buf = IOBuffer()
-            show(buf, mime, x)
-            data = base64encode(take!(buf))
-            println(stdout, string("%%JULIDE_MIME%%{\"type\":\"", string(mime), "\",\"data\":\"", data, "\"}%%"))
+            io = IOBuffer()
+            show(io, mime, x)
+            data = base64encode(take!(io))
+            println(
+                stdout,
+                "%%JULIDE_MIME%%{\"type\":\"$(string(mime))\",\"data\":\"$(data)\"}%%"
+            )
             flush(stdout)
-            return
+            return nothing
         end
     end
-    throw(MethodError(display, (d, x)))
+
+    # Fall back to plain text
+    show(stdout, MIME("text/plain"), x)
+    println(stdout)
+    flush(stdout)
+    return nothing
 end
-pushdisplay(_JulIDEMIMEDisplay_())
+
+Base.Multimedia.pushdisplay(_JulIDEMIMEDisplay_())
 "#;
 
 #[tauri::command]
@@ -352,7 +369,7 @@ pub async fn julia_run(
         use std::os::windows::process::CommandExt;
         cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
     }
-
+   
     let mut child = cmd.spawn().map_err(|e| e.to_string())?;
 
     {

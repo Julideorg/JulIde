@@ -17,6 +17,8 @@ import { useIdeStore } from "./stores/useIdeStore";
 import { usePluginStore } from "./stores/usePluginStore";
 import { lspClient } from "./lsp/LspClient";
 import { setMonacoMarkers } from "./lsp/juliaProviders";
+import type { JuliaOutputEvent } from "./types";
+import { parseMimeLine } from "./utils/juliaOutput";
 import type { LspPublishDiagnosticsParams } from "./lsp/LspClient";
 import type { ContainerOutputEvent, ContainerState, ContainerStatusEvent, DevContainerConfig, Problem } from "./types";
 import "./App.css";
@@ -222,6 +224,58 @@ export default function App() {
       unlisten?.();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+// Mirror julia-output events into the store
+useEffect(() => {
+  let unlisten: (() => void) | null = null;
+
+  listen<JuliaOutputEvent>("julia-output", (event) => {
+   
+    const { kind, text, exit_code } = event.payload;
+    const store = useIdeStore.getState();
+
+    if (kind === "done") {
+      store.setIsRunning(false);
+      store.appendOutput({
+        kind: "info",
+        text: `Process exited with code ${exit_code ?? -1}`,
+      });
+      return;
+    }
+
+    if (kind === "stdout") {
+      const mime = parseMimeLine(text);
+
+      if (mime) {
+        store.appendOutput({
+          kind: "stdout",
+          text: "",
+          mime,
+        });
+      } else {
+        store.appendOutput({
+          kind: "stdout",
+          text,
+        });
+      }
+      return;
+    }
+
+    if (kind === "stderr") {
+      store.appendOutput({
+        kind: "stderr",
+        text,
+      });
+    }
+  }).then((fn) => {
+    unlisten = fn;
+  });
+
+  return () => {
+    unlisten?.();
+  };
+}, []);
+
 
   // Auto-detect devcontainer.json when workspace opens
   useEffect(() => {
