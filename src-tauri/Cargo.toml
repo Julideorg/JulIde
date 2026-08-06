@@ -1,6 +1,6 @@
 [package]
 name = "julide"
-version = "0.1.0"
+version = "0.3.0"
 description = "A modern, fully-featured IDE for the Julia programming language"
 authors = ["Ofek Bickel"]
 license = "MIT"
