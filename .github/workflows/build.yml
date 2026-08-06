@@ -16,6 +16,17 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  # `bun run build` shells out to vite, whose shebang runs it under Node. Node
+  # sizes its default heap from the machine's RAM, and on the 7 GB macOS arm64
+  # runner that lands at ~2 GB — below what rollup needs to hold the module
+  # graph for a bundle this size (Monaco alone is ~4 MB minified). The build
+  # then dies with "Ineffective mark-compacts near heap limit" partway through
+  # `transforming...`.
+  #
+  # Measured: the build completes under a 3 GB cap and OOMs under 2 GB, so this
+  # is headroom rather than a tuned value. Every runner has at least 7 GB, so
+  # asking for 4 GB is safe on all four targets.
+  NODE_OPTIONS: --max-old-space-size=4096
 
 jobs:
   # Fails fast on a tag build if the updater is not configured, so the mistake
