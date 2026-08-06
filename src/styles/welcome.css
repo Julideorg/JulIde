@@ -1,0 +1,190 @@
+/* =========================================================
+   WELCOME SCREEN
+
+   Reworked from a bare title and a recent list into a launchpad. The
+   "What's in here" column names features that were previously reachable only
+   from a menu or the command palette, which is why nobody found them.
+   ========================================================= */
+.welcome-screen {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: var(--space-8) var(--space-6);
+  background: var(--surface-canvas);
+}
+
+.welcome-content {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+}
+
+.welcome-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: center;
+}
+
+.welcome-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+  color: var(--fg-hi);
+}
+/* The wordmark carries the brand colour rather than a logo image: the only
+   logo asset is a favicon whose palette matches neither the tokens nor the
+   Julia brand. */
+.welcome-title-accent {
+  color: var(--mode-brand);
+}
+
+.welcome-subtitle {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--fg-mid);
+}
+
+.welcome-julia-version {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--fg-lo);
+}
+
+.welcome-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.welcome-hint {
+  margin: 0;
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--fg-lo);
+}
+
+.welcome-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-7);
+}
+
+.welcome-section-title {
+  margin: 0 0 var(--space-4);
+  font-family: var(--font-condensed);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-lo);
+}
+
+.welcome-recent,
+.welcome-capabilities {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.welcome-recent-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--fg-hi);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out);
+}
+.welcome-recent-item:hover {
+  background: var(--surface-hover);
+}
+.welcome-recent-name {
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+}
+.welcome-recent-path {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--fg-lo);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* A long path is more useful truncated at the front than the back. */
+  direction: rtl;
+  text-align: left;
+}
+
+.welcome-capability {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out);
+}
+.welcome-capability:hover {
+  background: var(--surface-hover);
+}
+/* Entries with no command to run are described, not offered. */
+.welcome-capability.static,
+.welcome-capability.static:hover {
+  cursor: default;
+  background: none;
+}
+.welcome-capability-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--mode-brand);
+}
+.welcome-capability-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.welcome-capability-title {
+  font-size: var(--text-base);
+  color: var(--fg-hi);
+}
+.welcome-capability-body {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--fg-lo);
+}
+
+.welcome-browse {
+  align-self: center;
+  padding: var(--space-3) var(--space-5);
+  border: none;
+  background: none;
+  color: var(--fg-mid);
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.welcome-browse:hover {
+  color: var(--mode-brand);
+}

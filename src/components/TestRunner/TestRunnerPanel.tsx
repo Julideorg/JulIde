@@ -1,8 +1,10 @@
 import { useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { Play, RefreshCw } from "lucide-react";
+import { Play, RefreshCw, FlaskConical, Check, X, AlertTriangle } from "lucide-react";
 import { useIdeStore } from "../../stores/useIdeStore";
+import { Button, EmptyState } from "../ui";
+import { iconSize } from "../../themes/tokens";
 import type { JuliaOutputEvent } from "../../types";
 
 interface TestResult {
@@ -122,16 +124,36 @@ export function TestRunnerPanel() {
       </div>
 
       <div className="test-runner-results">
+        {results.length === 0 && !running && (
+          <EmptyState
+            icon={<FlaskConical size={28} />}
+            title={workspacePath ? "No tests run yet" : "Open a Julia project"}
+            hint={
+              workspacePath
+                ? "Run Tests executes Pkg.test() and lists each @testset result here."
+                : "Open a folder containing a Project.toml to run its test suite."
+            }
+            action={
+              workspacePath ? (
+                <Button variant="filled" tone="run" onClick={runTests} disabled={running}>
+                  Run tests
+                </Button>
+              ) : undefined
+            }
+          />
+        )}
         {results.map((r, i) => (
           <div key={i} className={`test-result-item test-result-${r.status}`}>
             <span className="test-result-icon">
-              {r.status === "pass"
-                ? "✓"
-                : r.status === "fail"
-                  ? "✕"
-                  : r.status === "running"
-                    ? "..."
-                    : "!"}
+              {r.status === "pass" ? (
+                <Check size={iconSize.xs} aria-label="Passed" />
+              ) : r.status === "fail" ? (
+                <X size={iconSize.xs} aria-label="Failed" />
+              ) : r.status === "running" ? (
+                <RefreshCw size={iconSize.xs} className="spinning" aria-label="Running" />
+              ) : (
+                <AlertTriangle size={iconSize.xs} aria-label="Error" />
+              )}
             </span>
             <span className="test-result-name">{r.name}</span>
             {r.message && <span className="test-result-message">{r.message}</span>}

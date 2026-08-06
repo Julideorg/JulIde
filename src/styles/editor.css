@@ -1,0 +1,339 @@
+/* =========================================================
+   EDITOR TABS
+   ========================================================= */
+.editor-tabs {
+  height: var(--tabs-height);
+  display: flex;
+  align-items: flex-end;
+  background: var(--tab-inactive-bg);
+  border-bottom: 1px solid var(--hairline);
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+.editor-tabs::-webkit-scrollbar {
+  display: none;
+}
+.editor-tabs-empty {
+  height: var(--tabs-height);
+  background: var(--tab-inactive-bg);
+  border-bottom: 1px solid var(--hairline);
+  flex-shrink: 0;
+}
+
+.editor-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 100%;
+  min-width: 80px;
+  max-width: 200px;
+  background: var(--tab-inactive-bg);
+  border-right: 1px solid var(--hairline);
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+  color: var(--fg-mid);
+  font-size: 12px;
+  position: relative;
+  transition: background 0.1s;
+}
+.editor-tab:hover {
+  background: var(--surface-hover);
+  color: var(--fg-hi);
+}
+.editor-tab.active {
+  background: var(--tab-active-bg);
+  color: var(--fg-hi);
+  border-bottom: 2px solid var(--mode-brand);
+}
+.editor-tab-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.editor-tab-dirty {
+  color: var(--mode-brand);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.editor-tab-close {
+  background: none;
+  border: none;
+  color: var(--fg-lo);
+  cursor: pointer;
+  padding: 1px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.editor-tab:hover .editor-tab-close {
+  opacity: 1;
+}
+.editor-tab.active .editor-tab-close {
+  opacity: 0.7;
+}
+.editor-tab-close:hover {
+  background: var(--surface-active);
+  color: var(--fg-hi);
+  opacity: 1 !important;
+}
+
+/* =========================================================
+   EDITOR
+   ========================================================= */
+.editor-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.editor-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-canvas);
+  color: var(--fg-lo);
+}
+.editor-empty-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+.editor-empty-icon {
+  opacity: 0.2;
+}
+.editor-empty-content p {
+  font-size: 13px;
+  color: var(--fg-lo);
+}
+.editor-empty-content kbd {
+  background: var(--surface-raised);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  padding: 1px 5px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+
+/* Breakpoint glyph */
+.breakpoint-glyph {
+  background: var(--mode-shell);
+  border-radius: var(--radius-full);
+  width: 10px !important;
+  height: 10px !important;
+  margin-top: 4px;
+  margin-left: 4px;
+}
+.debug-arrow-glyph::before {
+  content: "▶";
+  color: var(--mode-run);
+  font-size: 12px;
+}
+.debug-current-line {
+  background: var(--mode-run-tint-weak) !important;
+}
+
+/* =========================================================
+   BREADCRUMB
+   ========================================================= */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  padding: 2px 12px;
+  background: var(--surface-panel);
+  border-bottom: 1px solid var(--hairline);
+  font-size: 12px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.breadcrumb-segment {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.breadcrumb-separator {
+  color: var(--fg-lo);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+.breadcrumb-dir {
+  color: var(--fg-lo);
+  cursor: pointer;
+}
+.breadcrumb-dir:hover {
+  color: var(--fg-hi);
+}
+.breadcrumb-current {
+  color: var(--fg-hi);
+}
+
+/* =========================================================
+   SPLIT EDITOR
+   ========================================================= */
+.split-editor-container {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.split-editor-pane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+.split-editor-handle {
+  width: 4px;
+  cursor: col-resize;
+  background: var(--hairline);
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.split-editor-handle:hover {
+  background: var(--mode-brand);
+}
+.split-editor-tab-bar {
+  display: flex;
+  align-items: center;
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--hairline);
+  padding: 0 8px;
+  height: 35px;
+  flex-shrink: 0;
+}
+.split-editor-tab {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--fg-lo);
+}
+.split-editor-tab.active {
+  color: var(--fg-hi);
+  border-bottom: 2px solid var(--mode-brand);
+}
+
+/* Pluto split pane */
+.pluto-split-iframe {
+  width: 100%;
+  flex: 1;
+  border: none;
+  background: white;
+}
+.pluto-split-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--fg-lo);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+}
+.pluto-split-close:hover {
+  background: var(--surface-hover);
+  color: var(--fg-hi);
+}
+
+/* ── Error Lens ────────────────────────────────────────────── */
+.error-lens {
+  font-style: italic;
+  opacity: 0.75;
+  font-size: 0.88em;
+  padding-left: 12px;
+}
+.error-lens-error {
+  color: var(--mode-shell);
+}
+.error-lens-warning {
+  color: var(--status-warn);
+}
+.error-lens-info {
+  color: var(--mode-pkg);
+}
+
+/* ── Git Blame ─────────────────────────────────────────────── */
+.git-blame-text {
+  color: var(--fg-lo);
+  font-style: italic;
+  opacity: 0.6;
+  font-size: 0.85em;
+}
+
+/* ── Breadcrumb Dropdown ───────────────────────────────────── */
+.breadcrumb-clickable {
+  cursor: pointer;
+}
+.breadcrumb-dir.breadcrumb-clickable:hover {
+  color: var(--mode-brand);
+  text-decoration: underline;
+}
+.breadcrumb-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 50;
+  background: var(--surface-panel);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--elev-2);
+  max-height: 200px;
+  overflow-y: auto;
+  min-width: 150px;
+}
+.breadcrumb-dropdown-item {
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  color: var(--fg-hi);
+}
+.breadcrumb-dropdown-item:hover {
+  background: var(--surface-hover);
+}
+.breadcrumb-dropdown-item.active {
+  color: var(--mode-brand);
+  font-weight: 500;
+}
+.breadcrumb-segment {
+  position: relative;
+}
+
+/* ── Code Cell Decorations ─────────────────────────────────── */
+.code-cell-separator {
+  border-top: 2px solid var(--mode-brand) !important;
+  margin-top: 2px;
+}
+.code-cell-glyph {
+  background: var(--mode-brand);
+  width: 3px !important;
+  margin-left: 4px;
+  border-radius: var(--radius-xs);
+}
+.cell-result-text {
+  color: var(--mode-run);
+  font-style: italic;
+  opacity: 0.85;
+  font-size: 0.9em;
+}
+.cell-result-running {
+  color: var(--mode-pkg);
+  font-style: italic;
+  opacity: 0.7;
+  font-size: 0.9em;
+}
+.cell-result-error {
+  color: var(--mode-shell);
+  font-style: italic;
+  opacity: 0.85;
+  font-size: 0.9em;
+}

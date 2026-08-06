@@ -1,0 +1,180 @@
+/* ─── Plugin Settings ─────────────────────────────────── */
+.settings-plugins-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.settings-plugin-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.settings-plugin-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.settings-plugin-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg-hi);
+}
+.settings-plugin-version {
+  font-size: 10px;
+  color: var(--fg-lo);
+}
+.settings-plugin-status {
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.settings-plugin-active {
+  color: var(--mode-run);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.settings-plugin-inactive {
+  color: var(--fg-lo);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.settings-plugin-error {
+  color: var(--mode-shell);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* =========================================================
+   SETTINGS PANEL
+   ========================================================= */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: var(--scrim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.settings-panel {
+  background: var(--surface-raised);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-lg);
+  width: 560px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--elev-3);
+}
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--hairline);
+}
+.settings-header h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg-hi);
+}
+.settings-close {
+  background: none;
+  border: none;
+  color: var(--fg-lo);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+}
+.settings-close:hover {
+  color: var(--fg-hi);
+  background: var(--surface-hover);
+}
+.settings-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
+}
+.settings-section {
+  padding: 4px 16px;
+}
+.settings-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--fg-lo);
+  margin: 8px 0 4px;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  gap: 16px;
+}
+.settings-label {
+  font-size: 13px;
+  color: var(--fg-hi);
+  white-space: nowrap;
+}
+.settings-control {
+  flex-shrink: 0;
+}
+.settings-input {
+  background: var(--surface-canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  color: var(--fg-hi);
+  padding: 4px 8px;
+  font-size: 12px;
+  outline: none;
+  width: 200px;
+}
+.settings-input:focus {
+  border-color: var(--mode-brand);
+}
+.settings-number {
+  width: 60px;
+  text-align: center;
+}
+.settings-select {
+  background: var(--surface-canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  color: var(--fg-hi);
+  padding: 4px 8px;
+  font-size: 12px;
+  outline: none;
+}
+.settings-select:focus {
+  border-color: var(--mode-brand);
+}
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--fg-mid);
+}
+.settings-toggle input {
+  accent-color: var(--mode-brand);
+}
+.settings-hint {
+  font-size: 11px;
+  color: var(--fg-lo);
+  margin-top: 2px;
+}

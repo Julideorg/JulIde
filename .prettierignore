@@ -5,3 +5,6 @@ src-tauri/gen
 bun.lock
 # Generated from JuliaLang's symbol tables — 3,800 lines, never hand-edited.
 src/components/Editor/latexUnicode.ts
+# Generated from src/themes/tokens.ts by `bun run generate:tokens`.
+# Prettier would reformat it and make `bun run check:tokens` fail.
+src/styles/tokens.css

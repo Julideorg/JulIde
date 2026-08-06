@@ -4,7 +4,9 @@ import { useIdeStore } from "../../stores/useIdeStore";
 import { usePluginStore } from "../../stores/usePluginStore";
 import { useJuliaStore } from "../../stores/useJuliaStore";
 import { PluginPanel } from "../Plugin/PluginPanel";
-import { GitBranch, Container } from "lucide-react";
+import { Bug, Container, GitBranch, Play, Zap } from "lucide-react";
+import { Dot, Menu, MenuItem, Popover } from "../ui";
+import { iconSize } from "../../themes/tokens";
 
 export function StatusBar() {
   const juliaVersion = useIdeStore((s) => s.juliaVersion);
@@ -13,6 +15,8 @@ export function StatusBar() {
   const detectJulia = useJuliaStore((s) => s.detect);
   const openJuliaSetup = useJuliaStore((s) => s.setSetupOpen);
   const juliaEnv = useIdeStore((s) => s.juliaEnv);
+  const availableEnvs = useIdeStore((s) => s.availableEnvs);
+  const setJuliaEnv = useIdeStore((s) => s.setJuliaEnv);
   const isRunning = useIdeStore((s) => s.isRunning);
   const debug = useIdeStore((s) => s.debug);
   const openTabs = useIdeStore((s) => s.openTabs);
@@ -71,31 +75,84 @@ export function StatusBar() {
   return (
     <div className="status-bar">
       <div className="status-bar-left">
-        <span
-          className={`status-item status-julia ${isRunning ? "running" : ""} ${debug.isDebugging ? "debugging" : ""} ${juliaStatus === "missing" ? "missing" : ""}`}
-          title={
-            juliaStatus === "missing" ? "Julia was not found — click to set it up" : juliaVersion
-          }
-          role={juliaStatus === "missing" ? "button" : undefined}
-          tabIndex={juliaStatus === "missing" ? 0 : undefined}
-          onClick={juliaStatus === "missing" ? () => openJuliaSetup(true) : undefined}
-          onKeyDown={
-            juliaStatus === "missing"
-              ? (e) => {
-                  if (e.key === "Enter" || e.key === " ") openJuliaSetup(true);
-                }
-              : undefined
-          }
+        <Popover
+          side="top"
+          label="Julia runtime"
+          trigger={(props) => (
+            <button
+              {...props}
+              className={`status-item status-julia ${isRunning ? "running" : ""} ${debug.isDebugging ? "debugging" : ""} ${juliaStatus === "missing" ? "missing" : ""}`}
+              title={juliaStatus === "missing" ? "Julia was not found" : juliaVersion}
+            >
+              {debug.isDebugging ? (
+                <Bug size={iconSize.xs} />
+              ) : isRunning ? (
+                <Play size={iconSize.xs} />
+              ) : (
+                <Zap size={iconSize.xs} />
+              )}
+              <span className="status-value">
+                {debug.isDebugging ? "Debugging" : isRunning ? "Running" : juliaVersion}
+              </span>
+            </button>
+          )}
         >
-          {debug.isDebugging ? "🐛 Debugging" : isRunning ? "▶ Running" : `⚡ ${juliaVersion}`}
-        </span>
-        <span className="status-item status-env" title="Julia environment">
-          env: {juliaEnv}
-        </span>
+          {(close) => (
+            <Menu label="Julia runtime">
+              <MenuItem
+                onSelect={() => {
+                  openJuliaSetup(true);
+                  close();
+                }}
+              >
+                {juliaStatus === "missing" ? "Set up Julia…" : "Julia setup and packages…"}
+              </MenuItem>
+              <MenuItem
+                onSelect={() => {
+                  void detectJulia();
+                  close();
+                }}
+              >
+                Re-detect Julia
+              </MenuItem>
+            </Menu>
+          )}
+        </Popover>
+        <Popover
+          side="top"
+          label="Julia environment"
+          trigger={(props) => (
+            <button {...props} className="status-item status-env" title="Julia environment">
+              <span className="status-value">@{juliaEnv.replace(/^@/, "")}</span>
+            </button>
+          )}
+        >
+          {(close) => (
+            <Menu label="Julia environment">
+              {availableEnvs.map((env) => (
+                <MenuItem
+                  key={env}
+                  hint={env === juliaEnv ? "current" : undefined}
+                  onSelect={() => {
+                    setJuliaEnv(env);
+                    close();
+                  }}
+                >
+                  {env}
+                </MenuItem>
+              ))}
+            </Menu>
+          )}
+        </Popover>
         {gitBranch && (
-          <span className="status-item status-git" title={`Git branch: ${gitBranch}`}>
-            <GitBranch size={11} /> {gitBranch}
-          </span>
+          <button
+            className="status-item status-git"
+            title={`On branch ${gitBranch} — open Source Control`}
+            onClick={() => usePluginStore.getState().commands.get("git.panel")?.execute()}
+          >
+            <GitBranch size={iconSize.xs} />
+            <span className="status-value">{gitBranch}</span>
+          </button>
         )}
         {useIdeStore.getState().containerMode && (
           <span
@@ -148,7 +205,8 @@ export function StatusBar() {
         <span className="status-item status-encoding">UTF-8</span>
         {reviseEnabled && (
           <span className="status-item status-revise" title="Revise.jl hot-reload active">
-            Rev ●
+            <Dot tone="run" />
+            Revise
           </span>
         )}
         {plutoStatus !== "off" && (
@@ -162,11 +220,12 @@ export function StatusBar() {
                   : "Pluto starting…"
             }
           >
-            {plutoStatus === "starting"
-              ? "Pluto…"
-              : plutoStatus === "ready"
-                ? "Pluto ●"
-                : "Pluto ✕"}
+            <Dot
+              tone={
+                plutoStatus === "ready" ? "brand" : plutoStatus === "starting" ? "help" : "shell"
+              }
+            />
+            Pluto
           </span>
         )}
         <span
@@ -177,16 +236,12 @@ export function StatusBar() {
               : `${lspBackend === "jetls" ? "JETLS.jl" : "LanguageServer.jl"}: ${lspStatus}`
           }
         >
-          {(() => {
-            const label = lspBackend === "jetls" ? "JETLS" : "LSP";
-            return lspStatus === "off"
-              ? label
-              : lspStatus === "starting"
-                ? `${label}…`
-                : lspStatus === "ready"
-                  ? `${label} ●`
-                  : `${label} ✕`;
-          })()}
+          {lspStatus !== "off" && (
+            <Dot
+              tone={lspStatus === "ready" ? "run" : lspStatus === "starting" ? "help" : "shell"}
+            />
+          )}
+          {lspBackend === "jetls" ? "JETLS" : "LSP"}
         </span>
       </div>
     </div>

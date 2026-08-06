@@ -1,4 +1,5 @@
 import { useIdeStore } from "../stores/useIdeStore";
+import { toast } from "../components/ui/Toast";
 
 /**
  * Surface uncaught errors and unhandled promise rejections somewhere the user
@@ -6,13 +7,19 @@ import { useIdeStore } from "../stores/useIdeStore";
  *
  * In a shipped Tauri app the devtools console is closed, so `console.error` alone
  * means failures vanish silently — the Run button appears to do nothing, a panel
- * quietly stops updating, and there is no thread to pull on. Routing these into
- * the Output panel at least leaves a trace the user can read and report.
+ * quietly stops updating, and there is no thread to pull on. These now raise a
+ * toast, which does not require the user to already be watching a panel, and
+ * are still mirrored into Output so there is a scrollback record to report.
  */
 export function installGlobalErrorHandlers(): void {
   const report = (prefix: string, detail: unknown) => {
     const text = formatError(detail);
     console.error(`[julIDE] ${prefix}:`, detail);
+    try {
+      toast.error(prefix, text);
+    } catch {
+      // Toast host not mounted yet (errors during bootstrap). Output still gets it.
+    }
     try {
       useIdeStore.getState().appendOutput({ kind: "stderr", text: `${prefix}: ${text}` });
     } catch {

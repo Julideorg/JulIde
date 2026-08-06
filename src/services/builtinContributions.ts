@@ -7,6 +7,7 @@ import { useJuliaStore } from "../stores/useJuliaStore";
 import { startDevcontainer } from "./devcontainer";
 import { showInputDialog } from "../components/InputDialog/InputDialog";
 import { showBestieTemplateDialog } from "../components/BestieTemplateDialog/BestieTemplateDialog";
+import { useModeBarStore } from "../components/ModeBar/ModeBar";
 import type { FileNode, JuliaOutputEvent } from "../types";
 
 // Lazy component imports — these are imported by the consumers (App.tsx) already,
@@ -246,20 +247,21 @@ function registerBuiltinCommands() {
     },
   });
 
+  // Both of these open the Mode Bar in the matching mode. The separate Quick
+  // Open and Command Palette overlays they used to drive are gone; the
+  // shortcuts are unchanged so existing muscle memory still works.
   store.registerCommand({
     id: "file.quick-open",
     label: "Go to File",
     shortcut: "⌘P",
-    execute: () => ide().setQuickOpenOpen(true),
+    execute: () => useModeBarStore.getState().openWith(""),
   });
 
   store.registerCommand({
     id: "view.command-palette",
     label: "Show Command Palette",
     shortcut: "⌘⇧P",
-    // Registered so the application menu has something real to point at; the
-    // keybinding itself is handled by the global keydown listener in App.tsx.
-    execute: () => ide().setCommandPaletteOpen(true),
+    execute: () => useModeBarStore.getState().openWith(">"),
   });
 
   store.registerCommand({

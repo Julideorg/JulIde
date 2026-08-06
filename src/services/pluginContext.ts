@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { usePluginStore } from "../stores/usePluginStore";
 import { useIdeStore } from "../stores/useIdeStore";
 import { assertCommandAllowed, type PluginPermission } from "./pluginPermissions";
+import { toast } from "../components/ui/Toast";
 import type { PluginContext, Disposable } from "../types/plugin";
 
 /**
@@ -105,6 +106,10 @@ export function createPluginContext(
         return track({ dispose: () => usePluginStore.getState().unregisterToolbarButton(id) });
       },
       showNotification(message: string, type: "info" | "warning" | "error") {
+        // Surfaced as a real toast. This used to append a line to the Output
+        // panel, so a user not already looking at that panel never saw it.
+        // Still mirrored to Output so there is a scrollback record.
+        toast[type](pluginId, message);
         const kind = type === "error" ? "stderr" : "info";
         useIdeStore.getState().appendOutput({ kind, text: `[${pluginId}] ${message}` });
       },

@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 
-import { Trash2 } from "lucide-react";
+import { Trash2, Terminal } from "lucide-react";
 import { useIdeStore } from "../../stores/useIdeStore";
+import { EmptyState, Kbd } from "../ui";
 
 export function OutputPanel() {
   const output = useIdeStore((s) => s.output);
@@ -25,6 +26,18 @@ export function OutputPanel() {
         </button>
       </div>
       <div className="output-content">
+        {output.length === 0 && (
+          <EmptyState
+            icon={<Terminal size={28} />}
+            title="No output yet"
+            hint={
+              <>
+                Run a file with <Kbd>F5</Kbd> to see its printed output here. Plots and rendered
+                HTML go to the Plots panel instead.
+              </>
+            }
+          />
+        )}
         {output.map((line) =>
           line.mime ? null : (
             <div key={line.id} className={`output-line output-${line.kind}`}>

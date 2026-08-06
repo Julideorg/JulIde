@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
+import { Bug } from "lucide-react";
 import { useIdeStore } from "../../stores/useIdeStore";
+import { EmptyState, Kbd } from "../ui";
 import type { DebugOutputEvent, DebugStoppedEvent, DebugVariablesEvent } from "../../types";
 
 export function DebugPanel() {
@@ -43,9 +45,17 @@ export function DebugPanel() {
 
   if (!debug.isDebugging) {
     return (
-      <div className="debug-panel-empty">
-        <p>Start a debug session to inspect variables and control execution.</p>
-      </div>
+      <EmptyState
+        icon={<Bug size={28} />}
+        title="No debug session running"
+        hint={
+          <>
+            Click the gutter beside a line number to set a breakpoint, then start debugging with{" "}
+            <Kbd>F5</Kbd>. Variables, the call stack and step controls appear here. Needs
+            Debugger.jl.
+          </>
+        }
+      />
     );
   }
 

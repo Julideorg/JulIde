@@ -1,0 +1,652 @@
+/* =========================================================
+   INPUT DIALOG
+   ========================================================= */
+.input-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: var(--scrim);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 80px;
+}
+.input-dialog {
+  background: var(--surface-raised);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-lg);
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--elev-3);
+}
+.input-dialog-title {
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fg-hi);
+  border-bottom: 1px solid var(--hairline);
+}
+.input-dialog-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--fg-hi);
+  padding: 12px 16px;
+  font-size: 14px;
+  outline: none;
+  width: 100%;
+}
+.input-dialog-error {
+  padding: 4px 16px 0;
+  font-size: 11px;
+  color: var(--status-danger);
+}
+.input-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px;
+}
+.input-dialog-btn {
+  padding: 5px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
+  background: transparent;
+  color: var(--fg-hi);
+  font-size: 12px;
+  cursor: pointer;
+}
+.input-dialog-btn:hover {
+  background: var(--surface-hover);
+}
+.input-dialog-btn.primary {
+  background: var(--mode-brand);
+  border-color: var(--mode-brand);
+  color: var(--fg-inverse);
+}
+.input-dialog-btn.primary:hover {
+  opacity: 0.9;
+}
+
+/* =========================================================
+   BESTIE TEMPLATE DIALOG
+   ========================================================= */
+.bestie-dialog {
+  background: var(--surface-raised);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-lg);
+  width: 480px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--elev-3);
+}
+.bestie-dialog-title {
+  padding: 14px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fg-hi);
+  border-bottom: 1px solid var(--hairline);
+}
+.bestie-dialog-body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 420px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
+}
+.bestie-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bestie-field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg-mid);
+}
+.bestie-field-input,
+.bestie-field-select {
+  background: var(--surface-canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  color: var(--fg-hi);
+  padding: 7px 10px;
+  font-size: 13px;
+  outline: none;
+  width: 100%;
+}
+.bestie-field-input:focus,
+.bestie-field-select:focus {
+  border-color: var(--mode-brand);
+}
+.bestie-field-select {
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+.bestie-field-select option {
+  background: var(--surface-raised);
+  color: var(--fg-hi);
+}
+
+/* ─── Julia setup dialog ─────────────────────────────────────────────────── */
+
+.julia-setup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2100;
+  background: var(--scrim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.julia-setup-dialog {
+  background: var(--surface-raised);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-lg);
+  width: 520px;
+  max-width: calc(100vw - 48px);
+  max-height: 80vh;
+  overflow: auto;
+  padding: 20px 24px;
+  color: var(--fg-hi);
+  font-size: 13px;
+  box-shadow: var(--elev-3);
+}
+
+.julia-setup-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.julia-setup-header h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.julia-setup-icon.warn {
+  color: var(--mode-shell);
+}
+
+.julia-setup-icon.ok {
+  color: var(--mode-run);
+}
+
+.julia-setup-body {
+  margin: 0 0 14px;
+  line-height: 1.6;
+  color: var(--fg-mid);
+}
+
+.julia-setup-error,
+.julia-setup-message {
+  margin: 0 0 14px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-canvas);
+  border: 1px solid var(--hairline);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--fg-mid);
+  word-break: break-word;
+}
+
+.julia-setup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.julia-setup-actions button,
+.julia-setup-footer button,
+.julia-setup-package button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
+  background: var(--surface-canvas);
+  color: var(--fg-hi);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.julia-setup-actions button:hover:not(:disabled),
+.julia-setup-footer button:hover:not(:disabled),
+.julia-setup-package button:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--hairline-strong);
+}
+
+.julia-setup-actions button:disabled,
+.julia-setup-package button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.julia-setup-actions .btn-primary {
+  background: var(--mode-brand);
+  border-color: var(--mode-brand);
+  color: var(--fg-inverse);
+  font-weight: 600;
+}
+
+.julia-setup-actions .btn-primary:hover:not(:disabled) {
+  background: var(--mode-brand-hover);
+  border-color: var(--mode-brand-hover);
+}
+
+.julia-setup-packages {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+.julia-setup-package {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.julia-setup-package:last-child {
+  border-bottom: none;
+}
+
+.julia-setup-package-name {
+  display: block;
+  font-weight: 600;
+}
+
+.julia-setup-package-unlocks {
+  display: block;
+  margin-top: 2px;
+  color: var(--fg-mid);
+  font-size: 11px;
+}
+
+.julia-setup-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+/* Welcome screen: actionable "Julia not found" affordance. */
+.welcome-julia-missing {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--mode-shell);
+  background: transparent;
+  color: var(--mode-shell);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.welcome-julia-missing:hover {
+  background: var(--surface-hover);
+}
+
+/* Status bar: same affordance, always reachable. */
+.status-julia.missing {
+  color: var(--mode-shell);
+  cursor: pointer;
+}
+
+.status-julia.missing:hover {
+  background: var(--surface-hover);
+}
+
+/* ─── Plugin consent dialog ──────────────────────────────────────────────── */
+
+.plugin-consent-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  background: var(--scrim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plugin-consent-dialog {
+  background: var(--surface-raised);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-lg);
+  width: 520px;
+  max-width: calc(100vw - 48px);
+  max-height: 80vh;
+  overflow: auto;
+  padding: 20px 24px;
+  color: var(--fg-hi);
+  font-size: 13px;
+  box-shadow: var(--elev-3);
+}
+
+.plugin-consent-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.plugin-consent-header h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.plugin-consent-subtitle {
+  margin: 4px 0 0;
+  color: var(--fg-mid);
+  font-size: 12px;
+}
+
+.plugin-consent-subtitle code {
+  font-family: var(--font-mono, monospace);
+}
+
+.plugin-consent-icon.warn {
+  color: var(--mode-shell);
+  flex-shrink: 0;
+}
+
+.plugin-consent-icon.ok {
+  color: var(--mode-run);
+  flex-shrink: 0;
+}
+
+.plugin-consent-permissions {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+}
+
+.plugin-consent-permission {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.plugin-consent-permission:last-child {
+  border-bottom: none;
+}
+
+.plugin-consent-permission.high {
+  background: var(--mode-shell-tint-weak);
+}
+
+.plugin-consent-permission-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.plugin-consent-permission-desc {
+  display: block;
+  margin-top: 3px;
+  color: var(--fg-mid);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.plugin-consent-risk-badge {
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--mode-shell);
+  color: var(--fg-inverse);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.plugin-consent-note {
+  margin: 0 0 12px;
+  color: var(--fg-mid);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.plugin-consent-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.plugin-consent-footer button {
+  padding: 6px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
+  background: var(--surface-canvas);
+  color: var(--fg-hi);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.plugin-consent-footer button:hover {
+  background: var(--surface-hover);
+  border-color: var(--hairline-strong);
+}
+
+/* "Allow" is styled as the risky action, not the happy path — declining is safe. */
+.plugin-consent-footer .btn-danger {
+  background: transparent;
+  border-color: var(--mode-shell);
+  color: var(--mode-shell);
+}
+
+.plugin-consent-footer .btn-danger:hover {
+  background: var(--mode-shell);
+  color: var(--fg-inverse);
+}
+
+.settings-plugin-permissions {
+  display: block;
+  margin-top: 3px;
+  color: var(--fg-mid);
+  font-size: 11px;
+}
+
+.settings-plugin-revoke {
+  margin-left: 10px;
+  padding: 2px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
+  background: var(--surface-canvas);
+  color: var(--fg-mid);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.settings-plugin-revoke:hover {
+  border-color: var(--mode-shell);
+  color: var(--mode-shell);
+}
+
+/* ─── Workspace trust dialog ─────────────────────────────────────────────── */
+
+.trust-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  background: var(--scrim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trust-dialog {
+  background: var(--surface-raised);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-lg);
+  width: 560px;
+  max-width: calc(100vw - 48px);
+  max-height: 80vh;
+  overflow: auto;
+  padding: 20px 24px;
+  color: var(--fg-hi);
+  font-size: 13px;
+  box-shadow: var(--elev-3);
+}
+
+.trust-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.trust-header h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.trust-icon {
+  color: var(--mode-shell);
+  flex-shrink: 0;
+}
+
+.trust-subtitle {
+  margin: 4px 0 0;
+  color: var(--fg-mid);
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.trust-body {
+  margin: 0 0 16px;
+  color: var(--fg-mid);
+  line-height: 1.6;
+}
+
+.trust-section {
+  margin-bottom: 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.trust-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--surface-canvas);
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* Host commands are the ones that actually escape the container. */
+.trust-section.host h3 {
+  color: var(--mode-shell);
+  background: var(--mode-shell-tint-weak);
+}
+
+.trust-risk-badge {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--mode-shell);
+  color: var(--fg-inverse);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.trust-section ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.trust-section li {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.trust-section li:last-child {
+  border-bottom: none;
+}
+
+.trust-phase {
+  display: block;
+  color: var(--fg-mid);
+  font-size: 11px;
+  margin-bottom: 3px;
+}
+
+.trust-command {
+  display: block;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--fg-hi);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.trust-note {
+  margin: 0 0 12px;
+  color: var(--fg-mid);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.trust-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.trust-footer button {
+  padding: 6px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
+  background: var(--surface-canvas);
+  color: var(--fg-hi);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.trust-footer button:hover {
+  background: var(--surface-hover);
+  border-color: var(--hairline-strong);
+}
+
+/* Trusting is the risky action, so it is not styled as the happy path. */
+.trust-footer .btn-danger {
+  background: transparent;
+  border-color: var(--mode-shell);
+  color: var(--mode-shell);
+}
+
+.trust-footer .btn-danger:hover {
+  background: var(--mode-shell);
+  color: var(--fg-inverse);
+}

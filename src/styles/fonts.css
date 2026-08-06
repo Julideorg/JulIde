@@ -1,0 +1,36 @@
+/* =========================================================
+   FONTS — self-hosted, bundled by Vite.
+
+   Nothing was bundled before this. `--font-mono` merely *named* JetBrains
+   Mono and Fira Code and hoped the user had one installed; on a stock Linux
+   or Windows machine the editor silently fell back to the OS monospace. For
+   an IDE whose users write `α`, `∑` and `∇` as ordinary identifiers, and
+   which explicitly targets offline and air-gapped setups, that is not good
+   enough.
+
+   These are the combined per-weight files from Fontsource, not the
+   per-subset ones. Only the combined files carry `unicode-range`; importing
+   two per-subset files for the same family and weight would make the second
+   @font-face override the first outright rather than complement it.
+   `unicode-range` also means the Greek and Cyrillic faces are only fetched
+   when a glyph actually needs them.
+
+   IBM Plex Sans          — UI body and prose (has Greek).
+   IBM Plex Sans Condensed— chrome labels; condensed type is what makes it
+                            affordable to label the activity bar and status
+                            bar instead of leaving bare icons.
+   JetBrains Mono         — code, REPL, and numerics. Chosen over IBM Plex
+                            Mono, which ships no Greek subset at all.
+   ========================================================= */
+
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+
+@import "@fontsource/ibm-plex-sans-condensed/500.css";
+@import "@fontsource/ibm-plex-sans-condensed/600.css";
+
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+/* Monaco renders comments italic; ship the real italic rather than letting
+   the renderer synthesise a slanted one. */
+@import "@fontsource/jetbrains-mono/400-italic.css";

@@ -1,0 +1,184 @@
+/* ── DataFrame Viewer ──────────────────────────────────────── */
+.dataframe-viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+.dataframe-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--fg-hi);
+}
+.dataframe-info {
+  color: var(--fg-lo);
+  font-weight: 400;
+  font-size: 11px;
+}
+.dataframe-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--fg-mid);
+  cursor: pointer;
+}
+.dataframe-close:hover {
+  color: var(--fg-hi);
+}
+.dataframe-loading,
+.dataframe-error {
+  padding: 16px;
+  text-align: center;
+  color: var(--fg-lo);
+  font-size: 12px;
+}
+.dataframe-error {
+  color: var(--mode-shell);
+}
+.dataframe-table-wrapper {
+  flex: 1;
+  overflow: auto;
+}
+.dataframe-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  width: 100%;
+}
+.dataframe-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-raised);
+  padding: 4px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--hairline);
+  font-weight: 600;
+  color: var(--fg-mid);
+  white-space: nowrap;
+}
+.dataframe-table td {
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--hairline);
+  white-space: nowrap;
+}
+.dataframe-table tr:hover td {
+  background: var(--surface-hover);
+}
+.dataframe-row-num {
+  color: var(--fg-lo);
+  width: 40px;
+  text-align: right;
+}
+.variable-row-clickable {
+  cursor: pointer;
+}
+.variable-row-clickable:hover {
+  background: var(--surface-active) !important;
+}
+.var-df-icon {
+  margin-right: 3px;
+  vertical-align: middle;
+  opacity: 0.7;
+}
+
+/* ── Variable Explorer ─────────────────────────────────────── */
+.variable-explorer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+.variable-explorer-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--fg-mid);
+  border-bottom: 1px solid var(--hairline);
+}
+.variable-refresh-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--fg-mid);
+  cursor: pointer;
+  padding: 2px;
+}
+.variable-refresh-btn:hover {
+  color: var(--fg-hi);
+}
+.variable-error {
+  padding: 8px 10px;
+  color: var(--mode-shell);
+  font-size: 12px;
+}
+.variable-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--fg-lo);
+  font-size: 12px;
+}
+.variable-hint {
+  font-size: 11px;
+  margin-top: 4px;
+  opacity: 0.7;
+}
+.variable-table {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 12px;
+}
+.variable-table-header {
+  display: flex;
+  padding: 4px 8px;
+  font-weight: 600;
+  color: var(--fg-mid);
+  font-size: 11px;
+  border-bottom: 1px solid var(--hairline);
+  position: sticky;
+  top: 0;
+  background: var(--surface-panel);
+}
+.variable-row {
+  display: flex;
+  padding: 3px 8px;
+  cursor: default;
+}
+.variable-row:hover {
+  background: var(--surface-hover);
+}
+.var-col-name {
+  flex: 0 0 30%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.var-col-type {
+  flex: 0 0 25%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-mid);
+}
+.var-col-value {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-lo);
+}
+.var-name {
+  color: var(--mode-brand);
+  font-weight: 500;
+}
+.var-type {
+  font-style: italic;
+}

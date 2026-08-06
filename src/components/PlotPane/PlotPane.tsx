@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Trash2, ChevronLeft, ChevronRight, Maximize2, Minimize2 } from "lucide-react";
+import { Trash2, ChevronLeft, ChevronRight, Maximize2, Minimize2, ChartLine } from "lucide-react";
 import { useIdeStore } from "../../stores/useIdeStore";
+import { EmptyState, Kbd } from "../ui";
 
 // Helper to convert base64 to Blob efficiently using modern browser APIs
 function base64ToBlob(base64: string, type: string): Blob {
@@ -137,12 +138,17 @@ export function PlotPane() {
 
       <div className="plot-pane-content" ref={containerRef}>
         {plotLines.length === 0 ? (
-          <div className="plot-pane-empty">
-            <p>No plots yet</p>
-            <p className="plot-pane-hint">
-              Run Julia code that generates plots (Plots.jl, Makie.jl, etc.)
-            </p>
-          </div>
+          <EmptyState
+            icon={<ChartLine size={28} />}
+            title="Plots appear here"
+            hint={
+              <>
+                Run a file with <Kbd>F5</Kbd>, or a single cell with <Kbd>Ctrl+Enter</Kbd>. Output
+                from Plots.jl, Makie.jl and anything else that emits an image or HTML lands in this
+                pane.
+              </>
+            }
+          />
         ) : plotData ? (
           <div className="plot-pane-display">
             {plotData.type === "text/html" ? (

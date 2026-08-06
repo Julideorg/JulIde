@@ -17,6 +17,7 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { useIdeStore } from "../../stores/useIdeStore";
 import { useSettingsStore } from "../../stores/useSettingsStore";
+import { showConfirm } from "../ui";
 import type { FileNode } from "../../types";
 
 // Inline prompt that works in Tauri (replaces window.prompt which returns null)
@@ -102,7 +103,13 @@ function FileTreeNode({ node, depth, onOpen, onRefresh }: FileTreeNodeProps) {
 
   const handleDelete = async () => {
     closeMenu();
-    const confirmed = await showConfirm(`Delete "${node.name}"?`);
+    // The name is interpolated into React text, never markup: workspaces are
+    // routinely cloned from other people's repos, and a file called
+    // `<img src=x onerror=...>` would otherwise run with full IPC access.
+    const confirmed = await showConfirm(`"${node.name}" will be deleted permanently.`, {
+      title: node.is_dir ? "Delete folder?" : "Delete file?",
+      confirmLabel: "Delete",
+    });
     if (!confirmed) return;
     try {
       await invoke("fs_delete_entry", { path: node.path });
@@ -343,78 +350,6 @@ function FileTreeNode({ node, depth, onOpen, onRefresh }: FileTreeNodeProps) {
       )}
     </>
   );
-}
-
-// A simple confirm that works in Tauri via a custom overlay.
-//
-// The message is set with textContent, never innerHTML: it embeds a filename,
-// and workspaces are routinely cloned from other people's repos, so a file named
-// `<img src=x onerror=...>` would otherwise execute with full IPC access.
-function showConfirm(message: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const overlay = document.createElement("div");
-    overlay.style.cssText =
-      "position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center";
-
-    const box = document.createElement("div");
-    box.setAttribute("role", "alertdialog");
-    box.setAttribute("aria-modal", "true");
-    box.style.cssText =
-      "background:#2d2d30;border:1px solid #3e3e42;border-radius:8px;padding:20px 24px;min-width:280px;color:#ccc;font-family:system-ui,sans-serif;font-size:13px;box-shadow:0 8px 32px rgba(0,0,0,.6)";
-
-    const text = document.createElement("p");
-    text.style.cssText = "margin:0 0 16px";
-    text.textContent = message;
-    box.appendChild(text);
-
-    const actions = document.createElement("div");
-    actions.style.cssText = "display:flex;gap:8px;justify-content:flex-end";
-
-    const cancelBtn = document.createElement("button");
-    cancelBtn.type = "button";
-    cancelBtn.textContent = "Cancel";
-    cancelBtn.style.cssText =
-      "padding:5px 14px;border-radius:4px;border:1px solid #3e3e42;background:#1e1e1e;color:#ccc;cursor:pointer;font-size:12px";
-
-    const confirmBtn = document.createElement("button");
-    confirmBtn.type = "button";
-    confirmBtn.textContent = "Delete";
-    confirmBtn.style.cssText =
-      "padding:5px 14px;border-radius:4px;border:none;background:#CB3C33;color:#fff;cursor:pointer;font-size:12px;font-weight:600";
-
-    actions.append(cancelBtn, confirmBtn);
-    box.appendChild(actions);
-    overlay.appendChild(box);
-    document.body.appendChild(overlay);
-
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    cancelBtn.focus();
-
-    const cleanup = (result: boolean) => {
-      document.removeEventListener("keydown", onKeyDown, true);
-      overlay.remove();
-      previouslyFocused?.focus?.();
-      resolve(result);
-    };
-
-    // Escape cancels, Enter confirms — neither worked before.
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        cleanup(false);
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        cleanup(true);
-      }
-    };
-    document.addEventListener("keydown", onKeyDown, true);
-
-    confirmBtn.addEventListener("click", () => cleanup(true));
-    cancelBtn.addEventListener("click", () => cleanup(false));
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) cleanup(false);
-    });
-  });
 }
 
 export function FileExplorer() {

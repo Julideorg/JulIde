@@ -7,29 +7,15 @@ import { invoke } from "@tauri-apps/api/core";
 import { Plus, X } from "lucide-react";
 import "@xterm/xterm/css/xterm.css";
 import { useIdeStore } from "../../stores/useIdeStore";
+import { useSettingsStore } from "../../stores/useSettingsStore";
+import { themes } from "../../themes/themes";
+import { fontStack } from "../../themes/tokens";
 import type { PtyOutputEvent } from "../../types";
 
-const XTERM_THEME = {
-  background: "#1a1a1a",
-  foreground: "#cccccc",
-  cursor: "#9558B2",
-  black: "#1e1e1e",
-  red: "#CB3C33",
-  green: "#389826",
-  yellow: "#e5c07b",
-  blue: "#4063D8",
-  magenta: "#9558B2",
-  cyan: "#56b6c2",
-  white: "#cccccc",
-  brightBlack: "#5c6370",
-  brightRed: "#e06c75",
-  brightGreen: "#98c379",
-  brightYellow: "#e5c07b",
-  brightBlue: "#61afef",
-  brightMagenta: "#c678dd",
-  brightCyan: "#56b6c2",
-  brightWhite: "#ffffff",
-};
+/** Falls back to the dark theme if a plugin or stale setting names an unknown id. */
+function terminalThemeFor(themeId: string): Record<string, string> {
+  return (themes[themeId] ?? themes["julide-dark"]).terminalTheme;
+}
 
 interface TermInstance {
   terminal: Terminal;
@@ -88,6 +74,8 @@ export function TerminalPanel() {
   const addTerminalSession = useIdeStore((s) => s.addTerminalSession);
   const removeTerminalSession = useIdeStore((s) => s.removeTerminalSession);
   const setActiveTerminal = useIdeStore((s) => s.setActiveTerminal);
+  const themeId = useSettingsStore((s) => s.settings.theme);
+  const terminalFontSize = useSettingsStore((s) => s.settings.terminalFontSize);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -116,11 +104,16 @@ export function TerminalPanel() {
         continue;
       }
 
+      // Read appearance imperatively: making this effect depend on the
+      // settings would tear down and recreate every terminal (losing
+      // scrollback and the REPL session) whenever the theme changed. The
+      // effect below applies those changes in place instead.
+      const appearance = useSettingsStore.getState().settings;
       const term = new Terminal({
         cursorBlink: true,
-        fontSize: 13,
-        fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
-        theme: XTERM_THEME,
+        fontSize: appearance.terminalFontSize,
+        fontFamily: fontStack.mono,
+        theme: terminalThemeFor(appearance.theme),
       });
 
       const fitAddon = new FitAddon();
@@ -196,6 +189,19 @@ export function TerminalPanel() {
       setTimeout(() => fitAndResize(sessionId), 100);
     }
   }, [sessions, activeTerminalId, workspacePath]);
+
+  // Push appearance changes into terminals that already exist. Instances live
+  // at module scope and outlive this component, so they never pick up new
+  // settings from the constructor above — they have to be updated in place.
+  // A font-size change alters the cell grid, so the PTY needs re-measuring too.
+  useEffect(() => {
+    const theme = terminalThemeFor(themeId);
+    for (const [sessionId, inst] of termInstances) {
+      inst.terminal.options.theme = theme;
+      inst.terminal.options.fontSize = terminalFontSize;
+      fitAndResize(sessionId);
+    }
+  }, [themeId, terminalFontSize]);
 
   // Show/hide terminals when active tab changes
   useEffect(() => {

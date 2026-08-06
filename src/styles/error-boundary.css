@@ -1,0 +1,91 @@
+/* ─── Error boundary ─────────────────────────────────────────────────────── */
+
+.error-boundary {
+  color: var(--fg-hi);
+  font-size: 13px;
+}
+
+.error-boundary-title {
+  margin: 0 0 8px;
+  font-weight: 600;
+  color: var(--mode-shell);
+}
+
+.error-boundary-message {
+  margin: 0 0 12px;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--fg-hi);
+  word-break: break-word;
+}
+
+.error-boundary-hint {
+  margin: 0 0 16px;
+  color: var(--fg-mid);
+  line-height: 1.5;
+}
+
+.error-boundary-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.error-boundary-actions button {
+  padding: 5px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
+  background: var(--surface-canvas);
+  color: var(--fg-hi);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.error-boundary-actions button:hover {
+  background: var(--surface-hover);
+  border-color: var(--hairline-strong);
+}
+
+.error-boundary-actions button:first-child {
+  background: var(--mode-brand);
+  border-color: var(--mode-brand);
+  color: var(--fg-inverse);
+  font-weight: 600;
+}
+
+.error-boundary-actions button:first-child:hover {
+  background: var(--mode-brand-hover);
+  border-color: var(--mode-brand-hover);
+}
+
+/* Inline variant — used inside a single panel that failed. */
+.error-boundary-inline {
+  padding: 16px;
+  height: 100%;
+  overflow: auto;
+}
+
+/* Full-window variant — the app-level boundary. */
+.error-boundary-full {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-canvas);
+  padding: 24px;
+}
+
+.error-boundary-full .error-boundary-box {
+  max-width: 560px;
+  background: var(--surface-raised);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+  box-shadow: var(--elev-3);
+}
+
+.error-boundary-full .error-boundary-title {
+  font-size: 16px;
+}

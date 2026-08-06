@@ -46,8 +46,6 @@ export function resetAllStores(): void {
     lspErrorMessage: null,
     lspBackend: "languageserver",
     editorInstance: null,
-    commandPaletteOpen: false,
-    quickOpenOpen: false,
     activeSidebarView: "files",
     searchResults: [],
     searchQuery: "",

@@ -1,0 +1,94 @@
+/* =========================================================
+   TERMINAL PANEL
+   ========================================================= */
+.terminal-panel {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-canvas);
+}
+.terminal-container {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 4px;
+  /* xterm needs a concrete height — let it fill via flex */
+  display: flex;
+  flex-direction: column;
+}
+.terminal-container .xterm {
+  flex: 1;
+  min-height: 0;
+}
+.terminal-container .xterm-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
+}
+.terminal-container .xterm-screen {
+  height: 100% !important;
+}
+
+/* =========================================================
+   TERMINAL TABS
+   ========================================================= */
+.terminal-tabs-bar {
+  display: flex;
+  align-items: center;
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--hairline);
+  padding: 0 4px;
+  flex-shrink: 0;
+  height: 28px;
+}
+.terminal-tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--fg-lo);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+.terminal-tab:hover {
+  color: var(--fg-hi);
+  background: var(--surface-hover);
+}
+.terminal-tab.active {
+  color: var(--fg-hi);
+  background: var(--surface-active);
+}
+.terminal-tab-name {
+}
+.terminal-tab-close {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  color: var(--fg-lo);
+  cursor: pointer;
+  padding: 1px;
+  border-radius: var(--radius-xs);
+}
+.terminal-tab-close:hover {
+  color: var(--fg-hi);
+  background: var(--surface-hover);
+}
+.terminal-add-btn {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  color: var(--fg-lo);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  margin-left: 2px;
+}
+.terminal-add-btn:hover {
+  color: var(--fg-hi);
+  background: var(--surface-hover);
+}

@@ -1,0 +1,150 @@
+/* =========================================================
+   PACKAGE MANAGER
+   ========================================================= */
+.package-manager {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  padding: 8px;
+  gap: 8px;
+}
+.package-manager-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.package-manager-header h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--fg-hi);
+}
+.pkg-workspace {
+  flex: 1;
+  color: var(--fg-lo);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.package-manager-header button {
+  background: none;
+  border: none;
+  color: var(--fg-mid);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+}
+.package-manager-header button:hover {
+  background: var(--surface-hover);
+}
+
+.pkg-add-row {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.pkg-input {
+  flex: 1;
+  background: var(--surface-canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  color: var(--fg-hi);
+  padding: 4px 8px;
+  font-size: 12px;
+  outline: none;
+}
+.pkg-input:focus {
+  border-color: var(--mode-brand);
+}
+.pkg-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.pkg-list {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
+  background: var(--surface-canvas);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
+}
+.pkg-list-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--fg-lo);
+  border-bottom: 1px solid var(--hairline);
+  font-weight: 600;
+}
+.pkg-empty {
+  padding: 12px;
+  color: var(--fg-lo);
+  font-size: 12px;
+  text-align: center;
+}
+.pkg-item {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 12px;
+  gap: 8px;
+}
+.pkg-item:hover {
+  background: var(--surface-hover);
+}
+.pkg-name {
+  flex: 1;
+  color: var(--fg-hi);
+  font-family: var(--font-mono);
+}
+.pkg-version {
+  color: var(--fg-lo);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.pkg-remove {
+  background: none;
+  border: none;
+  color: var(--fg-lo);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: opacity 0.1s;
+  display: flex;
+  align-items: center;
+}
+.pkg-item:hover .pkg-remove {
+  opacity: 1;
+}
+.pkg-remove:hover {
+  color: var(--mode-shell);
+  background: var(--mode-shell-tint-weak);
+}
+
+.pkg-output {
+  background: var(--surface-canvas);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
+  padding: 6px 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-mid);
+  max-height: 80px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.pkg-output-line {
+  line-height: 1.5;
+}

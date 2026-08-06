@@ -18,6 +18,7 @@ import { useSettingsStore } from "../../stores/useSettingsStore";
 import { usePluginStore } from "../../stores/usePluginStore";
 import { PluginPanel } from "../Plugin/PluginPanel";
 import { startDevcontainer } from "../../services/devcontainer";
+import { ModeBarTrigger } from "../ModeBar/ModeBar";
 import type { FileNode } from "../../types";
 
 export function Toolbar() {
@@ -359,6 +360,12 @@ export function Toolbar() {
             })}
           </>
         )}
+      </div>
+
+      {/* The one visible door to every feature. Centred so it reads as the
+          app's entry point rather than another toolbar button. */}
+      <div className="toolbar-center">
+        <ModeBarTrigger />
       </div>
 
       <div className="toolbar-right">

@@ -1,0 +1,118 @@
+/* =========================================================
+   DEBUG PANEL
+   ========================================================= */
+.debug-panel-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--fg-lo);
+  font-size: 12px;
+  text-align: center;
+  padding: 16px;
+}
+.debug-panel {
+  height: 100%;
+  overflow-y: auto;
+  padding: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
+}
+.debug-status {
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+.debug-paused {
+  color: var(--mode-brand);
+}
+.debug-running {
+  color: var(--mode-run);
+}
+
+.debug-section {
+  margin-bottom: 12px;
+}
+.debug-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--fg-mid);
+  letter-spacing: 0.06em;
+  padding: 4px 0;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: 4px;
+}
+.debug-empty {
+  color: var(--fg-lo);
+  font-size: 12px;
+  padding: 4px 0;
+}
+.debug-variables-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+.debug-variables-table th {
+  text-align: left;
+  color: var(--fg-mid);
+  font-size: 11px;
+  padding: 2px 6px;
+  border-bottom: 1px solid var(--hairline);
+  font-family: var(--font-ui);
+}
+.debug-variables-table td {
+  padding: 2px 6px;
+  border-bottom: 1px solid var(--hairline);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  white-space: nowrap;
+}
+.var-name {
+  color: var(--status-danger);
+}
+.var-type {
+  color: var(--mode-pkg);
+  font-size: 11px;
+}
+.var-value {
+  color: var(--mode-run);
+}
+
+.breakpoints-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.breakpoint-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+.bp-dot {
+  color: var(--mode-shell);
+  font-size: 10px;
+}
+.bp-location {
+  flex: 1;
+  color: var(--fg-hi);
+}
+.bp-remove {
+  background: none;
+  border: none;
+  color: var(--fg-lo);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  line-height: 1;
+}
+.bp-remove:hover {
+  color: var(--mode-shell);
+}

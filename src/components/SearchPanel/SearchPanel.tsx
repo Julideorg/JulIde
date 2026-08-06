@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Search, X, Replace } from "lucide-react";
+import { Search, X, Replace, ChevronRight, ChevronDown } from "lucide-react";
+import { iconSize } from "../../themes/tokens";
 import { useIdeStore } from "../../stores/useIdeStore";
 import type { SearchResult, EditorTab } from "../../types";
 
@@ -258,7 +259,13 @@ function SearchFileGroup({
   return (
     <div className="search-file-group">
       <div className="search-file-header" onClick={() => setCollapsed(!collapsed)}>
-        <span className="search-file-toggle">{collapsed ? "▶" : "▼"}</span>
+        <span className="search-file-toggle">
+          {collapsed ? (
+            <ChevronRight size={iconSize.xs} aria-hidden="true" />
+          ) : (
+            <ChevronDown size={iconSize.xs} aria-hidden="true" />
+          )}
+        </span>
         <span className="search-file-name">{relativePath.split(/[/\\]/).pop()}</span>
         <span className="search-file-path">{relativePath}</span>
         <span className="search-file-count">{results.length}</span>

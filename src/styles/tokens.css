@@ -1,0 +1,305 @@
+/* =========================================================
+   julIDE design tokens — GENERATED FILE, DO NOT EDIT.
+
+   Source:    src/themes/tokens.ts
+   Regenerate: bun run generate:tokens
+
+   Direction "Instrument": a cool blue-graphite ground with Julia's own
+   REPL prompt modes as the semantic accent palette —
+   julia> green, pkg> blue, help?> yellow, shell> red, brand purple.
+   ========================================================= */
+
+:root {
+  /* Spacing — 4px base with 2px and 6px half-steps */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-7: 24px;
+  --space-8: 32px;
+
+  /* Radius */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-full: 999px;
+
+  /* Type */
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-condensed: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", "Noto Sans Mono", Consolas, monospace;
+  --text-2xs: 10px;
+  --leading-2xs: 14px;
+  --text-xs: 11px;
+  --leading-xs: 16px;
+  --text-sm: 12px;
+  --leading-sm: 18px;
+  --text-base: 13px;
+  --leading-base: 20px;
+  --text-md: 15px;
+  --leading-md: 22px;
+  --text-lg: 19px;
+  --leading-lg: 26px;
+  --text-xl: 28px;
+  --leading-xl: 34px;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* Motion */
+  --dur-1: 120ms;
+  --dur-2: 180ms;
+  --dur-3: 240ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Z-index */
+  --z-sticky: 10;
+  --z-dropdown: 100;
+  --z-popover: 200;
+  --z-scrim: 300;
+  --z-modal: 310;
+  --z-toast: 400;
+
+  /* Chrome dimensions */
+  --toolbar-height: 40px;
+  --statusbar-height: 24px;
+  --tabs-height: 35px;
+  --panel-tabs-height: 30px;
+  --activitybar-width: 56px;
+  --activitybar-width-compact: 48px;
+}
+
+/* Dark is the default, so its values live on :root as well as .theme-dark —
+   html/body paint from :root before .theme-* is applied to .ide-root. */
+:root,
+.theme-dark {
+  /* Surfaces */
+  --surface-canvas: #0e1116;
+  --surface-chrome: #131820;
+  --surface-panel: #171d27;
+  --surface-raised: #1e2530;
+  --surface-hover: #232c39;
+  --surface-active: #2c3745;
+  --surface-selected: #243449;
+  --surface-plot: #ffffff;
+  --surface-canvas-rgb: 14 17 22;
+
+  /* Hairlines */
+  --hairline: #202834;
+  --hairline-strong: #33404f;
+
+  /* Foreground */
+  --fg-hi: #dde4ee;
+  --fg-mid: #94a2b4;
+  --fg-lo: #7a8896;
+  --fg-inverse: #0e1116;
+
+  /* Julia REPL modes — semantic accents */
+  --mode-run: #3fae3a;
+  --mode-run-rgb: 63 174 58;
+  --mode-run-hover: #5ebb5a;
+  --mode-run-tint-weak: rgb(63 174 58 / 0.10);
+  --mode-run-tint: rgb(63 174 58 / 0.16);
+  --mode-run-tint-strong: rgb(63 174 58 / 0.24);
+  --mode-pkg: #6c8cf0;
+  --mode-pkg-rgb: 108 140 240;
+  --mode-pkg-hover: #849ef2;
+  --mode-pkg-tint-weak: rgb(108 140 240 / 0.10);
+  --mode-pkg-tint: rgb(108 140 240 / 0.16);
+  --mode-pkg-tint-strong: rgb(108 140 240 / 0.24);
+  --mode-help: #e0a93f;
+  --mode-help-rgb: 224 169 63;
+  --mode-help-hover: #e5b75e;
+  --mode-help-tint-weak: rgb(224 169 63 / 0.10);
+  --mode-help-tint: rgb(224 169 63 / 0.16);
+  --mode-help-tint-strong: rgb(224 169 63 / 0.24);
+  --mode-shell: #e85c50;
+  --mode-shell-rgb: 232 92 80;
+  --mode-shell-hover: #ec766c;
+  --mode-shell-tint-weak: rgb(232 92 80 / 0.10);
+  --mode-shell-tint: rgb(232 92 80 / 0.16);
+  --mode-shell-tint-strong: rgb(232 92 80 / 0.24);
+  --mode-brand: #b072d1;
+  --mode-brand-rgb: 176 114 209;
+  --mode-brand-hover: #bd89d8;
+  --mode-brand-tint-weak: rgb(176 114 209 / 0.10);
+  --mode-brand-tint: rgb(176 114 209 / 0.16);
+  --mode-brand-tint-strong: rgb(176 114 209 / 0.24);
+
+  /* Status aliases — same colors, named by meaning */
+  --status-success: #3fae3a;
+  --status-info: #6c8cf0;
+  --status-warn: #e0a93f;
+  --status-danger: #e85c50;
+  --status-success-tint: rgb(63 174 58 / 0.16);
+  --status-info-tint: rgb(108 140 240 / 0.16);
+  --status-warn-tint: rgb(224 169 63 / 0.16);
+  --status-danger-tint: rgb(232 92 80 / 0.16);
+
+  /* Syntax */
+  --syntax-keyword: #b072d1;
+  --syntax-type: #6c8cf0;
+  --syntax-func: #8fb8f5;
+  --syntax-macro: #e85c50;
+  --syntax-symbol: #e0a93f;
+  --syntax-string: #6fc26a;
+  --syntax-number: #4fc1b0;
+  --syntax-comment: #717f90;
+  --syntax-operator: #9db0c6;
+
+  /* Elevation, scrim, editor */
+  --elev-1: 0 1px 2px rgb(0 0 0 / 0.40), 0 2px 8px rgb(0 0 0 / 0.30);
+  --elev-2: 0 2px 4px rgb(0 0 0 / 0.40), 0 8px 20px rgb(0 0 0 / 0.40);
+  --elev-3: 0 4px 8px rgb(0 0 0 / 0.40), 0 16px 48px rgb(0 0 0 / 0.55);
+  --scrim: rgb(0 0 0 / 0.60);
+  --editor-selection: #2b4260;
+  --editor-line-highlight: #161d26;
+
+  /* Focus ring */
+  --border-focus: #b072d1;
+  --focus-ring: 0 0 0 2px rgb(176 114 209 / 0.55);
+
+  /* Scrollbars */
+  --scrollbar: #2c3745;
+  --scrollbar-hover: #33404f;
+
+  /* ── Legacy aliases ──────────────────────────────────────
+     Kept so the pre-redesign rules in src/styles/*.css keep
+     rendering while they are migrated onto the tokens above.
+     Remove once no stylesheet references them. */
+  --bg-primary: #0e1116;
+  --bg-secondary: #171d27;
+  --bg-tertiary: #1e2530;
+  --bg-hover: #232c39;
+  --bg-active: #2c3745;
+  --border: #202834;
+  --border-light: #33404f;
+  --text-primary: #dde4ee;
+  --text-secondary: #94a2b4;
+  --text-muted: #7a8896;
+  --accent: #b072d1;
+  --accent-hover: #bd89d8;
+  --accent-green: #3fae3a;
+  --accent-red: #e85c50;
+  --accent-blue: #6c8cf0;
+  --tab-active-bg: #0e1116;
+  --tab-inactive-bg: #171d27;
+}
+
+.theme-light {
+  /* Surfaces */
+  --surface-canvas: #ffffff;
+  --surface-chrome: #eef1f6;
+  --surface-panel: #f5f7fa;
+  --surface-raised: #ffffff;
+  --surface-hover: #e4e9f1;
+  --surface-active: #d7dee9;
+  --surface-selected: #dbe6f7;
+  --surface-plot: #ffffff;
+  --surface-canvas-rgb: 255 255 255;
+
+  /* Hairlines */
+  --hairline: #dfe4ec;
+  --hairline-strong: #c3ccd9;
+
+  /* Foreground */
+  --fg-hi: #0e1116;
+  --fg-mid: #4c596b;
+  --fg-lo: #6d7986;
+  --fg-inverse: #ffffff;
+
+  /* Julia REPL modes — semantic accents */
+  --mode-run: #2a7d20;
+  --mode-run-rgb: 42 125 32;
+  --mode-run-hover: #246c1c;
+  --mode-run-tint-weak: rgb(42 125 32 / 0.10);
+  --mode-run-tint: rgb(42 125 32 / 0.16);
+  --mode-run-tint-strong: rgb(42 125 32 / 0.24);
+  --mode-pkg: #2d4fa0;
+  --mode-pkg-rgb: 45 79 160;
+  --mode-pkg-hover: #27448a;
+  --mode-pkg-tint-weak: rgb(45 79 160 / 0.10);
+  --mode-pkg-tint: rgb(45 79 160 / 0.16);
+  --mode-pkg-tint-strong: rgb(45 79 160 / 0.24);
+  --mode-help: #8f640a;
+  --mode-help-rgb: 143 100 10;
+  --mode-help-hover: #7b5609;
+  --mode-help-tint-weak: rgb(143 100 10 / 0.10);
+  --mode-help-tint: rgb(143 100 10 / 0.16);
+  --mode-help-tint-strong: rgb(143 100 10 / 0.24);
+  --mode-shell: #c0342a;
+  --mode-shell-rgb: 192 52 42;
+  --mode-shell-hover: #a52d24;
+  --mode-shell-tint-weak: rgb(192 52 42 / 0.10);
+  --mode-shell-tint: rgb(192 52 42 / 0.16);
+  --mode-shell-tint-strong: rgb(192 52 42 / 0.24);
+  --mode-brand: #7b3f9e;
+  --mode-brand-rgb: 123 63 158;
+  --mode-brand-hover: #6a3688;
+  --mode-brand-tint-weak: rgb(123 63 158 / 0.10);
+  --mode-brand-tint: rgb(123 63 158 / 0.16);
+  --mode-brand-tint-strong: rgb(123 63 158 / 0.24);
+
+  /* Status aliases — same colors, named by meaning */
+  --status-success: #2a7d20;
+  --status-info: #2d4fa0;
+  --status-warn: #8f640a;
+  --status-danger: #c0342a;
+  --status-success-tint: rgb(42 125 32 / 0.16);
+  --status-info-tint: rgb(45 79 160 / 0.16);
+  --status-warn-tint: rgb(143 100 10 / 0.16);
+  --status-danger-tint: rgb(192 52 42 / 0.16);
+
+  /* Syntax */
+  --syntax-keyword: #7b3f9e;
+  --syntax-type: #2d4fa0;
+  --syntax-func: #3a6bb8;
+  --syntax-macro: #c0342a;
+  --syntax-symbol: #96690a;
+  --syntax-string: #2a7d20;
+  --syntax-number: #0f7d6e;
+  --syntax-comment: #68737f;
+  --syntax-operator: #4c596b;
+
+  /* Elevation, scrim, editor */
+  --elev-1: 0 1px 2px rgb(14 17 22 / 0.06), 0 2px 8px rgb(14 17 22 / 0.06);
+  --elev-2: 0 2px 4px rgb(14 17 22 / 0.08), 0 8px 20px rgb(14 17 22 / 0.10);
+  --elev-3: 0 4px 8px rgb(14 17 22 / 0.10), 0 16px 48px rgb(14 17 22 / 0.16);
+  --scrim: rgb(14 17 22 / 0.35);
+  --editor-selection: #cddffa;
+  --editor-line-highlight: #f3f6fa;
+
+  /* Focus ring */
+  --border-focus: #7b3f9e;
+  --focus-ring: 0 0 0 2px rgb(123 63 158 / 0.55);
+
+  /* Scrollbars */
+  --scrollbar: #d7dee9;
+  --scrollbar-hover: #c3ccd9;
+
+  /* ── Legacy aliases ──────────────────────────────────────
+     Kept so the pre-redesign rules in src/styles/*.css keep
+     rendering while they are migrated onto the tokens above.
+     Remove once no stylesheet references them. */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f7fa;
+  --bg-tertiary: #ffffff;
+  --bg-hover: #e4e9f1;
+  --bg-active: #d7dee9;
+  --border: #dfe4ec;
+  --border-light: #c3ccd9;
+  --text-primary: #0e1116;
+  --text-secondary: #4c596b;
+  --text-muted: #6d7986;
+  --accent: #7b3f9e;
+  --accent-hover: #6a3688;
+  --accent-green: #2a7d20;
+  --accent-red: #c0342a;
+  --accent-blue: #2d4fa0;
+  --tab-active-bg: #ffffff;
+  --tab-inactive-bg: #f5f7fa;
+}

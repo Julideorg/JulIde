@@ -1,0 +1,136 @@
+/* =========================================================
+   BOTTOM PANEL
+   ========================================================= */
+.bottom-panel-resize-handle {
+  height: 4px;
+  background: transparent;
+  cursor: row-resize;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.bottom-panel-resize-handle:hover {
+  background: var(--mode-brand);
+}
+
+.ide-bottom-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-panel);
+  border-top: 1px solid var(--hairline);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.bottom-panel-tabs {
+  height: var(--panel-tabs-height);
+  display: flex;
+  align-items: center;
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--hairline);
+  padding: 0 4px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.bottom-tab {
+  background: none;
+  border: none;
+  color: var(--fg-mid);
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 11px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  transition:
+    color 0.1s,
+    background 0.1s;
+}
+.bottom-tab:hover {
+  background: var(--surface-hover);
+  color: var(--fg-hi);
+}
+.bottom-tab.active {
+  color: var(--fg-hi);
+  border-bottom: 2px solid var(--mode-brand);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.tab-badge {
+  background: var(--mode-shell);
+  color: white;
+  border-radius: var(--radius-lg);
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  text-align: center;
+}
+.tab-badge.debug-badge {
+  background: var(--mode-brand);
+  padding: 0 4px;
+}
+
+.bottom-panel-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* =========================================================
+   PROBLEMS PANEL
+   ========================================================= */
+.problems-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--fg-lo);
+  font-size: 12px;
+}
+.problems-list {
+  overflow-y: auto;
+  height: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
+}
+.problem-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--hairline);
+  cursor: pointer;
+}
+.problem-item:hover {
+  background: var(--surface-hover);
+}
+.problem-item.error .problem-severity {
+  color: var(--mode-shell);
+}
+.problem-item.warning .problem-severity {
+  color: var(--mode-help);
+}
+.problem-severity {
+  font-size: 12px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+.problem-message {
+  flex: 1;
+  color: var(--fg-hi);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.problem-location {
+  color: var(--fg-lo);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  flex-shrink: 0;
+}

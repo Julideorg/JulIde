@@ -1,0 +1,74 @@
+/* ─── Update banner ──────────────────────────────────────────────────────── */
+
+.update-banner {
+  position: fixed;
+  right: 16px;
+  bottom: 40px;
+  z-index: 1900;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 520px;
+  padding: 10px 12px 10px 16px;
+  border: 1px solid var(--mode-brand);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--fg-hi);
+  font-size: 12px;
+  box-shadow: var(--elev-3);
+}
+
+.update-banner-text {
+  flex: 1;
+  line-height: 1.5;
+}
+
+.update-banner-reason {
+  display: block;
+  margin-top: 3px;
+  color: var(--fg-mid);
+  font-size: 11px;
+}
+
+.update-banner-error {
+  display: block;
+  margin-top: 3px;
+  color: var(--mode-shell);
+  font-size: 11px;
+}
+
+.update-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.update-banner-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--mode-brand);
+  color: var(--fg-inverse);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.update-banner-actions button:hover {
+  background: var(--mode-brand-hover);
+}
+
+.update-banner-dismiss {
+  background: transparent !important;
+  color: var(--fg-mid) !important;
+  padding: 4px !important;
+}
+
+.update-banner-dismiss:hover {
+  background: var(--surface-hover) !important;
+  color: var(--fg-hi) !important;
+}

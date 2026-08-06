@@ -1,0 +1,228 @@
+/* =========================================================
+   FILE EXPLORER
+   ========================================================= */
+.file-explorer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.file-explorer-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 8px 4px;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.file-explorer-title {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--fg-mid);
+  letter-spacing: 0.06em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-explorer-actions {
+  display: flex;
+  gap: 2px;
+}
+.file-explorer-actions button {
+  background: none;
+  border: none;
+  color: var(--fg-mid);
+  cursor: pointer;
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+}
+.file-explorer-actions button:hover {
+  background: var(--surface-hover);
+  color: var(--fg-hi);
+}
+
+.file-explorer-tree {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
+}
+.file-explorer-tree::-webkit-scrollbar {
+  width: 6px;
+}
+.file-explorer-tree::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+  border-radius: var(--radius-sm);
+}
+
+.file-explorer-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 16px;
+  color: var(--fg-lo);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* File tree nodes */
+.file-tree-node {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  border-radius: var(--radius-xs);
+  padding-right: 8px;
+}
+.file-tree-node:hover {
+  background: var(--surface-hover);
+}
+.file-tree-node.drag-over {
+  background: var(--mode-brand-tint);
+  outline: 1px dashed var(--mode-brand);
+  outline-offset: -1px;
+}
+.file-tree-chevron {
+  width: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--fg-lo);
+}
+.file-tree-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.folder-icon {
+  color: var(--mode-help);
+}
+.file-icon {
+  color: var(--fg-mid);
+}
+.ext-jl {
+  color: var(--mode-brand);
+}
+.ext-toml {
+  color: var(--mode-help);
+}
+.ext-md {
+  color: var(--mode-pkg);
+}
+.ext-json {
+  color: var(--mode-run);
+}
+
+.file-tree-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: var(--fg-hi);
+}
+
+.file-tree-rename-input {
+  flex: 1;
+  background: var(--surface-canvas);
+  border: 1px solid var(--mode-brand);
+  color: var(--fg-hi);
+  border-radius: var(--radius-xs);
+  padding: 1px 4px;
+  font-size: 13px;
+  outline: none;
+}
+
+/* Inline prompt (replaces window.prompt which doesn't work in Tauri) */
+.inline-prompt {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 0;
+}
+.inline-prompt-input {
+  flex: 1;
+  background: var(--surface-canvas);
+  border: 1px solid var(--mode-brand);
+  color: var(--fg-hi);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  font-size: 12px;
+  outline: none;
+  min-width: 0;
+}
+.inline-prompt-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 3px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.inline-prompt-btn.confirm {
+  color: var(--mode-run);
+}
+.inline-prompt-btn.confirm:hover {
+  background: var(--mode-run-tint);
+}
+.inline-prompt-btn.cancel {
+  color: var(--mode-shell);
+}
+.inline-prompt-btn.cancel:hover {
+  background: var(--mode-shell-tint);
+}
+
+/* Context menu */
+.context-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+}
+.context-menu {
+  position: fixed;
+  z-index: 1000;
+  background: var(--surface-raised);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  min-width: 160px;
+  box-shadow: var(--elev-2);
+}
+.context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--fg-hi);
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+}
+.context-menu button:hover {
+  background: var(--surface-hover);
+}
+.context-menu button.danger {
+  color: var(--mode-shell);
+}
+.context-menu button.danger:hover {
+  background: var(--mode-shell-tint);
+}
+.context-menu-separator {
+  height: 1px;
+  background: var(--hairline);
+  margin: 4px 0;
+}

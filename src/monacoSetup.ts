@@ -1,5 +1,7 @@
 import * as monaco from "monaco-editor";
 import { loader } from "@monaco-editor/react";
+import { registerJuliaLanguage } from "./components/Editor/juliaLanguage";
+import { defineThemes } from "./themes/themes";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 import cssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";
@@ -46,3 +48,15 @@ self.MonacoEnvironment = {
 };
 
 loader.config({ monaco });
+
+/**
+ * Register the Julia language and the julIDE themes once, globally.
+ *
+ * These used to live in a `beforeMount` on the git DiffViewer — the only
+ * component that had one. The main editor passes `theme="julide-dark"` without
+ * registering it, so until a diff happened to open, Monaco fell back to its
+ * built-in `vs` theme and julIDE showed a light editor inside a dark app.
+ * Doing it here covers every editor, including ones added later.
+ */
+registerJuliaLanguage(monaco);
+defineThemes(monaco);

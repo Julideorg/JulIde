@@ -1,0 +1,43 @@
+/* =========================================================
+   julIDE stylesheet entry point.
+
+   This replaced a single 4,454-line App.css. The files below are that
+   stylesheet's own sections, split along its banner comments.
+
+   The import order is deliberately the original document order rather than a
+   tidier thematic grouping: re-ordering could silently flip which of two
+   equal-specificity rules wins. Keep new imports in the position their rules
+   would have occupied, or verify there is no conflict before moving one.
+
+   tokens.css is generated — see src/themes/tokens.ts.
+   ========================================================= */
+
+@import "./tokens.css";
+@import "./fonts.css";
+@import "./base.css";
+@import "./ui.css";
+
+@import "./layout.css";
+@import "./toolbar.css";
+@import "./file-explorer.css";
+@import "./editor.css";
+@import "./panels.css";
+@import "./output.css";
+@import "./terminal.css";
+@import "./debug.css";
+@import "./status-bar.css";
+@import "./mode-bar.css";
+@import "./dialogs.css";
+@import "./package-manager.css";
+@import "./utility.css";
+@import "./welcome.css";
+@import "./git.css";
+@import "./settings.css";
+@import "./search.css";
+@import "./container.css";
+@import "./test-runner.css";
+@import "./variables.css";
+@import "./plot-pane.css";
+@import "./outline.css";
+@import "./error-boundary.css";
+@import "./update-banner.css";

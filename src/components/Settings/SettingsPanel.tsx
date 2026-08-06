@@ -159,9 +159,23 @@ export function SettingsPanel() {
                 value={settings.theme}
                 onChange={(e) => updateSettings({ theme: e.target.value })}
               >
-                <option value="julide-dark">JulIDE Dark</option>
-                <option value="julide-light">JulIDE Light</option>
+                <option value="julide-dark">julIDE Ink (dark)</option>
+                <option value="julide-light">julIDE Paper (light)</option>
               </select>
+            </SettingRow>
+
+            <SettingRow label="Activity Bar Labels">
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={settings.activityBarLabels}
+                  onChange={(e) => updateSettings({ activityBarLabels: e.target.checked })}
+                />
+                <span className="settings-toggle-label">
+                  {settings.activityBarLabels ? "Icons and labels" : "Icons only"}
+                </span>
+              </label>
+              <span className="settings-hint">Labels make views easier to find</span>
             </SettingRow>
 
             <SettingRow label="Start Maximized">

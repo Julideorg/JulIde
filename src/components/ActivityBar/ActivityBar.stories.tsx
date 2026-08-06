@@ -25,7 +25,7 @@ const meta: Meta<typeof ActivityBar> = {
         order: 4,
       });
       return (
-        <div style={{ height: "400px", background: "var(--bg-sidebar, #181825)" }}>
+        <div style={{ height: "400px", background: "var(--surface-chrome)" }}>
           <Story />
         </div>
       );

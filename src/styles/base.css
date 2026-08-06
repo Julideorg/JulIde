@@ -1,0 +1,73 @@
+/* =========================================================
+   BASE — reset, document defaults, shared behaviours
+   ========================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--surface-canvas);
+  color: var(--fg-hi);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  color: inherit;
+}
+
+/* Numerals in chrome should line up in columns — line counts, versions,
+   ahead/behind counters, byte sizes. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: var(--editor-selection);
+}
+
+/*
+ * A visible focus ring is the default, not something each component opts into.
+ * The stylesheet this replaced called `outline: none` in a dozen places without
+ * providing a replacement, which left several controls with no keyboard
+ * affordance at all. Components may restyle the ring; they must not remove it.
+ */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+  border-radius: var(--radius-xs);
+}
+
+/* Pointer interaction shouldn't paint a ring, keyboard interaction must. */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

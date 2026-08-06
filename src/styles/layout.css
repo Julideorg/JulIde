@@ -1,0 +1,144 @@
+/* =========================================================
+   IDE ROOT LAYOUT
+   ========================================================= */
+.ide-root {
+  display: grid;
+  grid-template-rows: var(--toolbar-height) 1fr var(--statusbar-height);
+  grid-template-columns: var(--activitybar-width, 56px) var(--sidebar-width, 240px) 1fr;
+  grid-template-areas:
+    "toolbar toolbar toolbar"
+    "activitybar sidebar main"
+    "statusbar statusbar statusbar";
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.ide-toolbar-area {
+  grid-area: toolbar;
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* Activity Bar */
+.activity-bar {
+  grid-area: activitybar;
+  background: var(--surface-chrome);
+  border-right: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: stretch;
+  padding: var(--space-2) 0;
+  overflow: hidden;
+}
+.activity-bar-top,
+.activity-bar-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+}
+.activity-bar-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-1);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--fg-lo);
+  cursor: pointer;
+  transition:
+    color var(--dur-1) var(--ease-out),
+    background var(--dur-1) var(--ease-out);
+}
+.activity-bar-btn:hover {
+  color: var(--fg-hi);
+  background: var(--surface-hover);
+}
+.activity-bar-btn.active {
+  color: var(--mode-brand);
+}
+/* The active marker sits on the leading edge, clear of the label. */
+.activity-bar-btn.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: var(--space-2);
+  bottom: var(--space-2);
+  width: 2px;
+  background: var(--mode-brand);
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+}
+
+/*
+ * Labels are the point of the wider rail: an icon-only bar hides the outline,
+ * variable and dev-container views behind glyphs nobody recognises. Condensed
+ * type keeps "Source Control" on one line inside 56px.
+ */
+.activity-bar-label {
+  font-family: var(--font-condensed);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-2xs);
+  letter-spacing: 0.02em;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Compact mode drops back to icons only. */
+.activity-bar.compact .activity-bar-label {
+  display: none;
+}
+.activity-bar.compact .activity-bar-btn {
+  padding: var(--space-4) var(--space-1);
+}
+
+.ide-sidebar {
+  grid-area: sidebar;
+  background: var(--surface-panel);
+  border-right: 1px solid var(--hairline);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.ide-main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.ide-editor-area {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ide-statusbar-area {
+  grid-area: statusbar;
+}
+
+/* Sidebar resize handle */
+.sidebar-resize-handle {
+  position: fixed;
+  top: var(--toolbar-height);
+  width: 4px;
+  bottom: var(--statusbar-height);
+  cursor: col-resize;
+  background: transparent;
+  z-index: 100;
+  transform: translateX(-2px);
+}
+.sidebar-resize-handle:hover {
+  background: var(--mode-brand);
+}

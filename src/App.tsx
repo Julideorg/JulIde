@@ -4,8 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Toolbar } from "./components/Toolbar/Toolbar";
 import { EditorSplitContainer } from "./components/Editor/EditorSplitContainer";
 import { StatusBar } from "./components/StatusBar/StatusBar";
-import { CommandPalette } from "./components/CommandPalette/CommandPalette";
-import { QuickOpen } from "./components/QuickOpen/QuickOpen";
+import { ModeBar, useModeBarShortcuts } from "./components/ModeBar/ModeBar";
 import { SettingsPanel } from "./components/Settings/SettingsPanel";
 import { InputDialog } from "./components/InputDialog/InputDialog";
 import { BestieTemplateDialog } from "./components/BestieTemplateDialog/BestieTemplateDialog";
@@ -16,6 +15,9 @@ import { PluginPanel } from "./components/Plugin/PluginPanel";
 import { PluginConsentDialog } from "./components/Plugin/PluginConsentDialog";
 import { WorkspaceTrustDialog } from "./components/Container/WorkspaceTrustDialog";
 import { UpdateBanner } from "./components/Update/UpdateBanner";
+import { ConfirmDialogHost, EmptyState, ToastHost } from "./components/ui";
+import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { iconSize } from "./themes/tokens";
 import { useSettingsStore } from "./stores/useSettingsStore";
 import { useIdeStore } from "./stores/useIdeStore";
 import { usePluginStore } from "./stores/usePluginStore";
@@ -31,7 +33,7 @@ import type {
   DevContainerConfig,
   Problem,
 } from "./types";
-import "./App.css";
+import "./styles/index.css";
 
 export default function App() {
   const activeBottomPanel = useIdeStore((s) => s.activeBottomPanel);
@@ -453,13 +455,33 @@ export default function App() {
     }
   }, [activeBottomPanel]);
 
+  // ⌘K, plus ⌘P and ⌘⇧P routed into the matching Mode Bar mode.
+  useModeBarShortcuts();
+
+  const activityBarLabels = useSettingsStore((s) => s.settings.activityBarLabels);
   const currentTheme = useSettingsStore((s) => s.settings.theme);
   const themeClass = currentTheme === "julide-light" ? "theme-light" : "theme-dark";
+
+  // Mirror the theme onto <html>. The class used to live only on .ide-root,
+  // but html/body resolve their background from :root — so in light mode the
+  // document behind the app stayed dark and showed through during resize and
+  // at the window edges.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove("theme-dark", "theme-light");
+    root.classList.add(themeClass);
+  }, [themeClass]);
 
   return (
     <div
       className={`ide-root ${themeClass}`}
-      style={{ "--sidebar-width": `${sidebarWidth}px` } as React.CSSProperties}
+      style={
+        {
+          "--sidebar-width": `${sidebarWidth}px`,
+          // Labelled rail needs the extra width; compact mode gives it back.
+          "--activitybar-width": activityBarLabels ? "56px" : "48px",
+        } as React.CSSProperties
+      }
     >
       {/* Toolbar spans full width */}
       <div className="ide-toolbar-area">
@@ -561,8 +583,7 @@ export default function App() {
       </div>
 
       {/* Overlays */}
-      <CommandPalette />
-      <QuickOpen />
+      <ModeBar />
       <SettingsPanel />
       <InputDialog />
       <BestieTemplateDialog />
@@ -570,26 +591,43 @@ export default function App() {
       <PluginConsentDialog />
       <WorkspaceTrustDialog />
       <UpdateBanner />
+      <ConfirmDialogHost />
+      <ToastHost />
     </div>
   );
 }
 
 function ProblemsPanel() {
   const problems = useIdeStore((s) => s.problems);
+  const lspStatus = useIdeStore((s) => s.lspStatus);
+
   if (problems.length === 0) {
     return (
-      <div className="problems-empty">
-        <span>No problems detected.</span>
-      </div>
+      <EmptyState
+        icon={<CheckCircle2 size={28} />}
+        title={lspStatus === "ready" ? "No problems found" : "Waiting for the language server"}
+        hint={
+          lspStatus === "ready"
+            ? "Errors and warnings from LanguageServer.jl appear here as you type."
+            : "Diagnostics appear once the language server has finished starting."
+        }
+      />
     );
   }
+
   return (
     <div className="problems-list">
       {problems.map((p) => (
         <div key={p.id} className={`problem-item ${p.severity}`}>
-          <span className="problem-severity">{p.severity === "error" ? "✕" : "⚠"}</span>
+          <span className="problem-severity">
+            {p.severity === "error" ? (
+              <XCircle size={iconSize.xs} aria-label="Error" />
+            ) : (
+              <AlertTriangle size={iconSize.xs} aria-label="Warning" />
+            )}
+          </span>
           <span className="problem-message">{p.message}</span>
-          <span className="problem-location">
+          <span className="problem-location tabular">
             {p.file.split(/[/\\]/).pop()}:{p.line}:{p.col}
           </span>
         </div>

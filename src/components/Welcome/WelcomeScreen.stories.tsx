@@ -7,7 +7,7 @@ const meta: Meta<typeof WelcomeScreen> = {
   component: WelcomeScreen,
   decorators: [
     (Story) => (
-      <div style={{ width: "100%", height: "100vh", background: "var(--bg-main, #1e1e2e)" }}>
+      <div style={{ width: "100%", height: "100vh", background: "var(--surface-canvas)" }}>
         <Story />
       </div>
     ),

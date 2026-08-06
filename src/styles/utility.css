@@ -1,0 +1,52 @@
+/* =========================================================
+   UTILITY
+   ========================================================= */
+.btn-primary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--mode-brand);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: white;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background 0.1s;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--mode-brand-hover);
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Global scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+  border-radius: var(--radius-sm);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+}

@@ -106,14 +106,6 @@ interface IdeStore {
   editorInstance: Monaco.editor.IStandaloneCodeEditor | null;
   setEditorInstance: (editor: Monaco.editor.IStandaloneCodeEditor | null) => void;
 
-  // Command palette
-  commandPaletteOpen: boolean;
-  setCommandPaletteOpen: (open: boolean) => void;
-
-  // Quick Open
-  quickOpenOpen: boolean;
-  setQuickOpenOpen: (open: boolean) => void;
-
   // Sidebar view
   activeSidebarView: SidebarView;
   setActiveSidebarView: (view: SidebarView) => void;
@@ -420,20 +412,6 @@ export const useIdeStore = create<IdeStore>()(
       set((s) => {
         // Cast to draft-compatible — Immer can't proxy the Monaco editor object
         s.editorInstance = editor as any;
-      }),
-
-    // Command palette
-    commandPaletteOpen: false,
-    setCommandPaletteOpen: (open) =>
-      set((s) => {
-        s.commandPaletteOpen = open;
-      }),
-
-    // Quick Open
-    quickOpenOpen: false,
-    setQuickOpenOpen: (open) =>
-      set((s) => {
-        s.quickOpenOpen = open;
       }),
 
     // Sidebar view

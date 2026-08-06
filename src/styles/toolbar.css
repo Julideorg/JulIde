@@ -1,0 +1,146 @@
+/* =========================================================
+   TOOLBAR
+   ========================================================= */
+.toolbar {
+  height: var(--toolbar-height);
+  background: var(--surface-raised);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Holds the Mode Bar trigger. Sized so it stays genuinely centred rather than
+   drifting with the width of the run/debug controls to its left. */
+.toolbar-center {
+  display: flex;
+  justify-content: center;
+  flex: 0 1 520px;
+  min-width: 0;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 20px;
+  background: var(--hairline-strong);
+  margin: 0 4px;
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fg-hi);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background 0.1s;
+  white-space: nowrap;
+}
+.toolbar-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.toolbar-btn:active:not(:disabled) {
+  background: var(--surface-active);
+}
+.toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.toolbar-btn.btn-icon {
+  padding: 4px 6px;
+}
+.toolbar-btn.btn-run {
+  color: var(--mode-run);
+}
+.toolbar-btn.btn-run:hover:not(:disabled) {
+  background: var(--mode-run-tint);
+}
+.toolbar-btn.btn-precompile {
+  color: var(--mode-help);
+}
+.toolbar-btn.btn-precompile:hover:not(:disabled) {
+  background: var(--mode-help-tint-weak);
+}
+.toolbar-btn.btn-clean {
+  color: var(--fg-mid);
+}
+.toolbar-btn.btn-debug {
+  color: var(--mode-brand);
+}
+.toolbar-btn.btn-debug:hover:not(:disabled) {
+  background: var(--mode-brand-tint);
+}
+.toolbar-btn.btn-danger {
+  color: var(--mode-shell);
+}
+.toolbar-btn.btn-danger:hover:not(:disabled) {
+  background: var(--mode-shell-tint);
+}
+.toolbar-btn.btn-revise {
+  color: var(--fg-mid);
+}
+.toolbar-btn.btn-revise-on {
+  color: var(--mode-run);
+  background: var(--mode-run-tint-weak);
+}
+.toolbar-btn.btn-revise-on:hover {
+  background: var(--mode-run-tint-strong);
+}
+.toolbar-btn.btn-pluto {
+  color: var(--mode-brand);
+}
+.toolbar-btn.btn-pluto:hover {
+  background: var(--mode-brand-tint);
+}
+
+.toolbar-debug-controls {
+  display: flex;
+  gap: 2px;
+}
+
+.env-selector-label {
+  color: var(--fg-mid);
+  font-size: 11px;
+}
+.env-selector {
+  background: var(--surface-canvas);
+  border: 1px solid var(--hairline);
+  color: var(--fg-hi);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.env-selector:focus {
+  outline: 1px solid var(--mode-brand);
+}
+
+/* ─── Toolbar Container Button ────────────────────────────────────────────── */
+
+.toolbar-btn.btn-container {
+  color: var(--mode-pkg);
+}
+
+.toolbar-btn.btn-container:hover:not(:disabled) {
+  background: var(--mode-pkg-tint);
+}

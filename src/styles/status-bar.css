@@ -1,0 +1,139 @@
+/* =========================================================
+   STATUS BAR
+
+   Previously a solid purple band (VS Code's shape) with white text at
+   assorted alphas. That made the mode colours unusable on it: the LSP "ready"
+   indicator was green on purple, and the Pluto "ready" indicator was
+   var(--accent) on a var(--accent) background — a 1:1 contrast ratio, i.e.
+   invisible.
+
+   The bar is now chrome-coloured, so every mode colour reads against it (the
+   floor is enforced by src/themes/tokens.test.ts) and state is carried by the
+   indicator itself rather than by tinting the whole bar.
+   ========================================================= */
+.status-bar {
+  height: var(--statusbar-height);
+  background: var(--surface-chrome);
+  border-top: 1px solid var(--hairline);
+  color: var(--fg-mid);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+  overflow: hidden;
+}
+.status-bar-left,
+.status-bar-right {
+  display: flex;
+  align-items: center;
+}
+.status-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 100%;
+  padding: 0 var(--space-4);
+  border: none;
+  background: transparent;
+  color: var(--fg-mid);
+  font-family: var(--font-condensed);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  cursor: default;
+  transition:
+    background var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+/* Segments that actually do something get a pointer and a hover response.
+   Read-only readouts deliberately get neither. */
+.status-item[role="button"],
+button.status-item {
+  cursor: pointer;
+}
+.status-item[role="button"]:hover,
+button.status-item:hover {
+  background: var(--surface-hover);
+  color: var(--fg-hi);
+}
+
+/* Values the user reads rather than labels: versions, paths, line numbers. */
+.status-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.status-julia.running {
+  color: var(--mode-run);
+}
+.status-julia.debugging {
+  color: var(--mode-brand);
+}
+.status-filename {
+  color: var(--fg-hi);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.status-language,
+.status-encoding {
+  color: var(--fg-lo);
+}
+
+.status-lsp {
+  color: var(--fg-lo);
+}
+.status-lsp-starting {
+  color: var(--mode-help);
+}
+.status-lsp-ready {
+  color: var(--mode-run);
+}
+.status-lsp-error {
+  color: var(--mode-shell);
+}
+
+/* Revise.jl indicator */
+.status-revise {
+  color: var(--mode-run);
+}
+
+/* Pluto.jl indicator */
+.status-pluto {
+  color: var(--fg-lo);
+}
+.status-pluto-starting {
+  color: var(--mode-help);
+}
+.status-pluto-ready {
+  color: var(--mode-brand);
+}
+.status-pluto-error {
+  color: var(--mode-shell);
+}
+
+/* ─── Status Bar Container Indicator ──────────────────────────────────────── */
+
+.status-container-running {
+  color: var(--mode-run);
+}
+
+.status-container-building,
+.status-container-starting {
+  color: var(--mode-pkg);
+}
+
+.status-container-error {
+  color: var(--mode-shell);
+}
+
+.status-container-stopped,
+.status-container-none {
+  color: var(--fg-lo);
+}

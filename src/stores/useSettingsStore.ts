@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { invoke } from "@tauri-apps/api/core";
+import { fontStack } from "../themes/tokens";
 
 export interface Settings {
   fontSize: number;
@@ -23,6 +24,8 @@ export interface Settings {
   juliaPath: string;
   lspBackend: string;
   startMaximized: boolean;
+  /** Show text labels under the activity bar icons. */
+  activityBarLabels: boolean;
   /** Sidebar width in px — persisted so a resized layout survives a restart. */
   sidebarWidth: number;
   /** Bottom panel height in px. */
@@ -45,12 +48,13 @@ interface SettingsStore {
 
 export const defaultSettings: Settings = {
   fontSize: 14,
-  fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Noto Sans Mono', monospace",
+  fontFamily: fontStack.mono,
   tabSize: 4,
   minimapEnabled: true,
   wordWrap: "off",
   autoSave: true,
   theme: "julide-dark",
+  activityBarLabels: true,
   terminalFontSize: 13,
   recentWorkspaces: [],
   containerRuntime: "auto",
