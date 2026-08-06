@@ -379,7 +379,7 @@ export const useIdeStore = create<IdeStore>()(
     // LSP
     lspStatus: "off",
     lspErrorMessage: null,
-    lspBackend: "languageserver",
+    lspBackend: "fatou",
     setLspStatus: (status, message) =>
       set((s) => {
         s.lspStatus = status;

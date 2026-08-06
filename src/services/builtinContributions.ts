@@ -8,7 +8,7 @@ import { startDevcontainer } from "./devcontainer";
 import { showInputDialog } from "../components/InputDialog/InputDialog";
 import { showBestieTemplateDialog } from "../components/BestieTemplateDialog/BestieTemplateDialog";
 import { useModeBarStore } from "../components/ModeBar/ModeBar";
-import type { FileNode, JuliaOutputEvent } from "../types";
+import type { FileNode, JuliaOutputEvent, Problem } from "../types";
 
 // Lazy component imports — these are imported by the consumers (App.tsx) already,
 // but we reference them here to register sidebar/bottom panels.
@@ -715,6 +715,25 @@ function registerBuiltinCommands() {
     id: "editor.format-document",
     label: "Format Document",
     execute: () => ide().editorInstance?.getAction("editor.action.formatDocument")?.run(),
+  });
+
+  store.registerCommand({
+    id: "lint.workspace",
+    label: "Lint Workspace",
+    execute: async () => {
+      const s = ide();
+      if (!s.workspacePath) return;
+      const found = await invoke<Problem[]>("fatou_lint_workspace", {
+        path: s.workspacePath,
+      });
+      // Keep the language server's live diagnostics and replace only the
+      // previous lint pass. Files with an open buffer already have per-keystroke
+      // diagnostics, so dropping the lint copy for those avoids showing each
+      // finding twice — and avoids stale ones for unsaved edits.
+      const fromLsp = ide().problems.filter((p) => p.id.startsWith("lsp-"));
+      const liveFiles = new Set(fromLsp.map((p) => p.file));
+      ide().setProblems([...fromLsp, ...found.filter((p) => !liveFiles.has(p.file))]);
+    },
   });
 
   store.registerCommand({

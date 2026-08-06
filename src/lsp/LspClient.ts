@@ -116,16 +116,172 @@ export interface LspCallHierarchyOutgoingCall {
   fromRanges: LspRange[];
 }
 
+export interface LspSemanticTokensLegend {
+  tokenTypes: string[];
+  tokenModifiers: string[];
+}
+
+/**
+ * The subset of `ServerCapabilities` we branch on.
+ *
+ * Backends differ in what they implement — Fatou has no inlay hints but does
+ * support range formatting, LanguageServer.jl is the other way round — so
+ * providers must ask rather than assume. Anything absent is simply undefined.
+ */
+export interface LspServerCapabilities {
+  completionProvider?: unknown;
+  hoverProvider?: unknown;
+  definitionProvider?: unknown;
+  referencesProvider?: unknown;
+  documentHighlightProvider?: unknown;
+  renameProvider?: unknown;
+  codeActionProvider?: unknown;
+  documentFormattingProvider?: unknown;
+  documentRangeFormattingProvider?: unknown;
+  documentSymbolProvider?: unknown;
+  workspaceSymbolProvider?: unknown;
+  signatureHelpProvider?: unknown;
+  inlayHintProvider?: unknown;
+  callHierarchyProvider?: unknown;
+  typeHierarchyProvider?: unknown;
+  foldingRangeProvider?: unknown;
+  selectionRangeProvider?: unknown;
+  documentLinkProvider?: unknown;
+  semanticTokensProvider?: { legend?: LspSemanticTokensLegend };
+}
+
+/** Options for {@link LspClient.start} — which backend, and its configuration. */
+export interface LspStartOptions {
+  /** Backend id from settings: "fatou" | "languageserver" | "jetls". */
+  backend: string;
+  /**
+   * `initializationOptions` payload. Fatou parses the same schema here that it
+   * parses from `fatou.toml`; the Julia-hosted backends want null.
+   */
+  initializationOptions?: unknown;
+}
+
 // ── Notification handler type ─────────────────────────────────────────────────
 
 export type LspNotificationHandler = (method: string, params: unknown) => void;
+
+/** Called once the handshake completes, with whatever the server advertised. */
+export type LspReadyHandler = (capabilities: LspServerCapabilities) => void;
+
+// ── Client capabilities ───────────────────────────────────────────────────────
+
+/**
+ * What JulIDE tells the server it can handle.
+ *
+ * Deliberately omits `general.positionEncodings`: Fatou negotiates UTF-8 byte
+ * offsets when a client offers them, and Monaco counts in UTF-16 code units.
+ * Staying silent keeps the LSP-mandated UTF-16 default, which is what Monaco
+ * wants — advertising UTF-8 here would silently misplace every range in a file
+ * containing non-ASCII text.
+ *
+ * Also omits `textDocument.diagnostic`, which would switch Fatou into pull
+ * mode; the push `publishDiagnostics` path is what App.tsx consumes.
+ */
+const CLIENT_CAPABILITIES = {
+  textDocument: {
+    completion: {
+      completionItem: {
+        snippetSupport: true,
+        documentationFormat: ["markdown", "plaintext"],
+      },
+    },
+    hover: { contentFormat: ["markdown", "plaintext"] },
+    definition: {},
+    references: {},
+    rename: { prepareSupport: true },
+    codeAction: {
+      codeActionLiteralSupport: {
+        codeActionKind: {
+          valueSet: [
+            "quickfix",
+            "refactor",
+            "refactor.extract",
+            "refactor.inline",
+            "refactor.rewrite",
+            "source",
+            "source.organizeImports",
+          ],
+        },
+      },
+    },
+    formatting: {},
+    rangeFormatting: {},
+    signatureHelp: {
+      signatureInformation: {
+        documentationFormat: ["markdown", "plaintext"],
+        parameterInformation: { labelOffsetSupport: true },
+      },
+    },
+    publishDiagnostics: { relatedInformation: false },
+    documentSymbol: {
+      hierarchicalDocumentSymbolSupport: true,
+    },
+    inlayHint: {},
+    semanticTokens: {
+      dynamicRegistration: false,
+      requests: { full: { delta: false }, range: false },
+      tokenTypes: [
+        "namespace",
+        "type",
+        "class",
+        "enum",
+        "interface",
+        "struct",
+        "typeParameter",
+        "parameter",
+        "variable",
+        "property",
+        "enumMember",
+        "event",
+        "function",
+        "method",
+        "macro",
+        "keyword",
+        "modifier",
+        "comment",
+        "string",
+        "number",
+        "regexp",
+        "operator",
+        "decorator",
+      ],
+      tokenModifiers: [
+        "declaration",
+        "definition",
+        "readonly",
+        "static",
+        "deprecated",
+        "abstract",
+        "async",
+        "modification",
+        "documentation",
+        "defaultLibrary",
+      ],
+      formats: ["relative"],
+      multilineTokenSupport: false,
+    },
+    callHierarchy: { dynamicRegistration: false },
+  },
+} as const;
 
 // ── LspClient class ───────────────────────────────────────────────────────────
 
 class LspClient {
   private notificationUnlisten: (() => void) | null = null;
   private notificationHandlers: LspNotificationHandler[] = [];
+  private readyHandlers: LspReadyHandler[] = [];
   private rootUri = "";
+
+  /** What the server advertised in its initialize response; null until ready. */
+  private _capabilities: LspServerCapabilities | null = null;
+
+  /** Backend id the current session was started with. */
+  private _backend = "";
 
   /**
    * Whether initialization is complete and the server is ready to receive
@@ -149,18 +305,45 @@ class LspClient {
     return this._isReady;
   }
 
+  /** Backend id ("fatou" | "languageserver" | "jetls") of the running session. */
+  get backend(): string {
+    return this._backend;
+  }
+
+  get capabilities(): LspServerCapabilities | null {
+    return this._capabilities;
+  }
+
+  /**
+   * Whether the server advertised a given capability.
+   *
+   * LSP treats `false` and absent the same way, so both are "no". Everything
+   * else — `true`, or an options object — is "yes".
+   */
+  supports(capability: keyof LspServerCapabilities): boolean {
+    const value = this._capabilities?.[capability];
+    return value !== undefined && value !== null && value !== false;
+  }
+
+  /** The server's semantic-token legend, or null if it publishes no tokens. */
+  get semanticTokensLegend(): LspSemanticTokensLegend | null {
+    return this._capabilities?.semanticTokensProvider?.legend ?? null;
+  }
+
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   /** Start the LSP server and run the initialize handshake. */
-  async start(workspacePath: string): Promise<void> {
+  async start(workspacePath: string, options?: LspStartOptions): Promise<void> {
     this._isReady = false;
+    this._capabilities = null;
+    this._backend = options?.backend ?? "";
     this._openDocuments.clear();
     this._pendingOpens.clear();
     this.rootUri = `file://${workspacePath}`;
 
     await invoke("lsp_start", { workspacePath });
     await this.listenForNotifications();
-    await this.initialize(workspacePath);
+    await this.initialize(workspacePath, options?.initializationOptions ?? null);
 
     // Fully initialized — mark ready then flush any queued opens
     this._isReady = true;
@@ -168,16 +351,54 @@ class LspClient {
       await this._sendDidOpen(uri, text);
     }
     this._pendingOpens.clear();
+
+    // Only now do subscribers know what the server can do. Providers that
+    // depend on the advertised legend (semantic tokens) cannot be registered
+    // before this point.
+    for (const handler of this.readyHandlers) {
+      try {
+        handler(this._capabilities ?? {});
+      } catch (e) {
+        console.error("LSP ready handler failed:", e);
+      }
+    }
   }
 
   /** Stop the LSP server and reset all state. */
   async stop(): Promise<void> {
     this._isReady = false;
+    this._capabilities = null;
+    this._backend = "";
     this._openDocuments.clear();
     this._pendingOpens.clear();
     this.notificationUnlisten?.();
     this.notificationUnlisten = null;
     await invoke("lsp_stop");
+  }
+
+  /**
+   * Stop the running server and start the one settings now name.
+   *
+   * Both halves are needed: the Rust side re-reads the backend setting when it
+   * starts a server, and the client has to redo the handshake because the new
+   * backend advertises a different capability set.
+   */
+  async restart(workspacePath: string, options?: LspStartOptions): Promise<void> {
+    await this.stop();
+    await this.start(workspacePath, options);
+  }
+
+  /**
+   * Register a handler that runs after each successful handshake — including
+   * after a backend switch, so capability-dependent registrations can be
+   * rebuilt. Returns an unlisten function.
+   */
+  onReady(handler: LspReadyHandler): () => void {
+    this.readyHandlers.push(handler);
+    if (this._isReady && this._capabilities) handler(this._capabilities);
+    return () => {
+      this.readyHandlers = this.readyHandlers.filter((h) => h !== handler);
+    };
   }
 
   /**
@@ -238,107 +459,46 @@ class LspClient {
 
   // ── LSP initialization handshake ─────────────────────────────────────────────
 
-  private async initialize(workspacePath: string): Promise<void> {
+  private async initialize(workspacePath: string, initializationOptions: unknown): Promise<void> {
     const workspaceName = workspacePath.split("/").pop() ?? "workspace";
-    await invoke("lsp_send_request", {
-      method: "initialize",
-      params: {
-        processId: null,
-        rootUri: this.rootUri,
-        capabilities: {
-          textDocument: {
-            completion: {
-              completionItem: {
-                snippetSupport: true,
-                documentationFormat: ["markdown", "plaintext"],
-              },
-            },
-            hover: { contentFormat: ["markdown", "plaintext"] },
-            definition: {},
-            references: {},
-            rename: { prepareSupport: true },
-            codeAction: {
-              codeActionLiteralSupport: {
-                codeActionKind: {
-                  valueSet: [
-                    "quickfix",
-                    "refactor",
-                    "refactor.extract",
-                    "refactor.inline",
-                    "refactor.rewrite",
-                    "source",
-                    "source.organizeImports",
-                  ],
-                },
-              },
-            },
-            formatting: {},
-            signatureHelp: {
-              signatureInformation: {
-                documentationFormat: ["markdown", "plaintext"],
-                parameterInformation: { labelOffsetSupport: true },
-              },
-            },
-            publishDiagnostics: { relatedInformation: false },
-            documentSymbol: {
-              hierarchicalDocumentSymbolSupport: true,
-            },
-            inlayHint: {},
-            semanticTokens: {
-              dynamicRegistration: false,
-              requests: { full: { delta: false }, range: false },
-              tokenTypes: [
-                "namespace",
-                "type",
-                "class",
-                "enum",
-                "interface",
-                "struct",
-                "typeParameter",
-                "parameter",
-                "variable",
-                "property",
-                "enumMember",
-                "event",
-                "function",
-                "method",
-                "macro",
-                "keyword",
-                "modifier",
-                "comment",
-                "string",
-                "number",
-                "regexp",
-                "operator",
-                "decorator",
-              ],
-              tokenModifiers: [
-                "declaration",
-                "definition",
-                "readonly",
-                "static",
-                "deprecated",
-                "abstract",
-                "async",
-                "modification",
-                "documentation",
-                "defaultLibrary",
-              ],
-              formats: ["relative"],
-              multilineTokenSupport: false,
-            },
-            callHierarchy: { dynamicRegistration: false },
-          },
+    const result = await invoke<{ capabilities?: LspServerCapabilities } | null>(
+      "lsp_send_request",
+      {
+        method: "initialize",
+        params: {
+          processId: null,
+          rootUri: this.rootUri,
+          capabilities: CLIENT_CAPABILITIES,
+          initializationOptions,
+          workspaceFolders: [{ uri: this.rootUri, name: workspaceName }],
         },
-        initializationOptions: null,
-        workspaceFolders: [{ uri: this.rootUri, name: workspaceName }],
       },
-    });
+    );
+
+    // What the server can actually do. Providers branch on this instead of
+    // assuming a fixed feature set, because the backends differ.
+    this._capabilities = result?.capabilities ?? {};
 
     // Send initialized notification (required by LSP spec after initialize response)
     await invoke("lsp_send_notification", {
       method: "initialized",
       params: {},
+    });
+  }
+
+  /**
+   * Push new settings to the server (`workspace/didChangeConfiguration`).
+   *
+   * Fatou re-reads its format style and lint rules from this payload, so
+   * changing line width in Settings takes effect without a restart. A project
+   * `fatou.toml` still shadows whatever is sent here — that is Fatou's
+   * documented precedence, not a bug.
+   */
+  async didChangeConfiguration(settings: unknown): Promise<void> {
+    if (!this._isReady) return;
+    await invoke("lsp_send_notification", {
+      method: "workspace/didChangeConfiguration",
+      params: { settings },
     });
   }
 
@@ -531,6 +691,26 @@ class LspClient {
       method: "textDocument/formatting",
       params: {
         textDocument: { uri },
+        options: { tabSize, insertSpaces },
+      },
+    });
+    return result ?? [];
+  }
+
+  /** Format just a selection. Fatou supports this; LanguageServer.jl does not. */
+  async rangeFormatting(
+    uri: string,
+    range: LspRange,
+    tabSize: number,
+    insertSpaces: boolean,
+  ): Promise<LspTextEdit[]> {
+    if (!this._isReady || !this._openDocuments.has(uri)) return [];
+
+    const result = await invoke<LspTextEdit[] | null>("lsp_send_request", {
+      method: "textDocument/rangeFormatting",
+      params: {
+        textDocument: { uri },
+        range,
         options: { tabSize, insertSpaces },
       },
     });

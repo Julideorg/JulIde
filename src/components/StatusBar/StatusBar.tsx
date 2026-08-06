@@ -8,6 +8,20 @@ import { Bug, Container, GitBranch, Play, Zap } from "lucide-react";
 import { Dot, Menu, MenuItem, Popover } from "../ui";
 import { iconSize } from "../../themes/tokens";
 
+/** Full backend names, for the status item's tooltip. */
+const LSP_BACKEND_NAMES: Record<string, string> = {
+  fatou: "Fatou",
+  jetls: "JETLS.jl",
+  languageserver: "LanguageServer.jl",
+};
+
+/** Short labels — the status bar has room for a few characters, not a name. */
+const LSP_BACKEND_LABELS: Record<string, string> = {
+  fatou: "Fatou",
+  jetls: "JETLS",
+  languageserver: "LSP",
+};
+
 export function StatusBar() {
   const juliaVersion = useIdeStore((s) => s.juliaVersion);
   const juliaStatus = useJuliaStore((s) => s.status);
@@ -233,7 +247,7 @@ export function StatusBar() {
           title={
             lspStatus === "error"
               ? (lspErrorMessage ?? "LSP error")
-              : `${lspBackend === "jetls" ? "JETLS.jl" : "LanguageServer.jl"}: ${lspStatus}`
+              : `${LSP_BACKEND_NAMES[lspBackend] ?? "LanguageServer.jl"}: ${lspStatus}`
           }
         >
           {lspStatus !== "off" && (
@@ -241,7 +255,7 @@ export function StatusBar() {
               tone={lspStatus === "ready" ? "run" : lspStatus === "starting" ? "help" : "shell"}
             />
           )}
-          {lspBackend === "jetls" ? "JETLS" : "LSP"}
+          {LSP_BACKEND_LABELS[lspBackend] ?? "LSP"}
         </span>
       </div>
     </div>

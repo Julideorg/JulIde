@@ -1,7 +1,9 @@
+use lsp_server::{Connection, Message};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::panic::AssertUnwindSafe;
 use std::process::Stdio;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
@@ -26,9 +28,26 @@ pub struct LspStatusEvent {
     pub backend: Option<String>,
 }
 
+/// How messages reach the running language server.
+///
+/// The JSON-RPC layer above this is backend-agnostic; only the sink differs.
+/// LanguageServer.jl and JETLS.jl are Julia programs, so they can only be
+/// talked to as child processes over stdio. Fatou is a Rust library linked into
+/// this binary, so it runs on a thread here and is talked to over an in-memory
+/// channel — no process, no pipes, and none of the spawn failures those bring.
+#[derive(Clone)]
+enum Transport {
+    /// Framed `Content-Length` JSON-RPC over a child process's stdin.
+    Stdio(
+        // Separate Arc so we can write stdin without holding the whole state lock
+        Arc<Mutex<ChildStdin>>,
+    ),
+    /// Structured messages straight into Fatou's `lsp_server::Connection`.
+    InProcess(crossbeam_channel::Sender<Message>),
+}
+
 struct LspState {
-    // Separate Arc so we can write stdin without holding the whole state lock
-    stdin: Option<Arc<Mutex<ChildStdin>>>,
+    transport: Option<Transport>,
     pending: HashMap<u64, oneshot::Sender<Result<Value, String>>>,
     next_id: u64,
     status: LspStatus,
@@ -38,7 +57,7 @@ struct LspState {
 impl Default for LspState {
     fn default() -> Self {
         Self {
-            stdin: None,
+            transport: None,
             pending: HashMap::new(),
             next_id: 1,
             status: LspStatus::Off,
@@ -69,17 +88,76 @@ fn emit_status(
     );
 }
 
-async fn write_lsp_message(stdin_arc: &Arc<Mutex<ChildStdin>>, msg: &Value) -> Result<(), String> {
-    let body = serde_json::to_string(msg).map_err(|e| e.to_string())?;
-    let frame = format!("Content-Length: {}\r\n\r\n{}", body.len(), body);
-    let mut stdin = stdin_arc.lock().await;
-    stdin
-        .write_all(frame.as_bytes())
-        .await
-        .map_err(|e| e.to_string())
+/// Convert an outgoing JSON-RPC value into an `lsp_server::Message`.
+///
+/// `Message` is an untagged enum, so letting serde guess would silently pick
+/// the wrong variant for an edge case (a response carrying only an error, say).
+/// The shape is unambiguous from which fields are present, so decide here and
+/// deserialize into the known variant.
+fn value_to_message(msg: &Value) -> Result<Message, String> {
+    let has_id = msg.get("id").is_some();
+    let has_method = msg.get("method").is_some();
+    let parsed = match (has_id, has_method) {
+        (true, true) => serde_json::from_value(msg.clone()).map(Message::Request),
+        (true, false) => serde_json::from_value(msg.clone()).map(Message::Response),
+        (false, true) => serde_json::from_value(msg.clone()).map(Message::Notification),
+        (false, false) => return Err("JSON-RPC message has neither id nor method".to_string()),
+    };
+    parsed.map_err(|e| format!("Could not encode LSP message: {e}"))
+}
+
+async fn write_lsp_message(transport: &Transport, msg: &Value) -> Result<(), String> {
+    match transport {
+        Transport::Stdio(stdin_arc) => {
+            let body = serde_json::to_string(msg).map_err(|e| e.to_string())?;
+            let frame = format!("Content-Length: {}\r\n\r\n{}", body.len(), body);
+            let mut stdin = stdin_arc.lock().await;
+            stdin
+                .write_all(frame.as_bytes())
+                .await
+                .map_err(|e| e.to_string())
+        }
+        Transport::InProcess(sender) => {
+            // `Connection::memory()` channels are unbounded, so this never
+            // blocks the caller even if Fatou is mid-analysis.
+            sender
+                .send(value_to_message(msg)?)
+                .map_err(|_| "Fatou language server is not running".to_string())
+        }
+    }
 }
 
 // ── Stdout reader ─────────────────────────────────────────────────────────────
+
+/// The server's message stream ended: fail everything still waiting on it.
+///
+/// `reason` is `None` when the stream simply ended, which is also what a
+/// deliberate `lsp_stop` looks like from here — dropping the transport is how
+/// both backends are asked to quit. Status is only moved to `Error` if we were
+/// not already stopped, so a normal shutdown does not light up the status bar.
+async fn handle_backend_exit(
+    state: &Arc<Mutex<LspState>>,
+    app: &tauri::AppHandle,
+    reason: Option<String>,
+) {
+    let mut s = state.lock().await;
+    let was_stopped = s.status == LspStatus::Off;
+    let display_name = backend_display_name(&s.backend_name).to_string();
+    let backend = s.backend_name.clone();
+    let message = reason.unwrap_or_else(|| format!("{} exited unexpectedly", display_name));
+
+    s.transport = None;
+    for (_, sender) in s.pending.drain() {
+        let _ = sender.send(Err(message.clone()));
+    }
+    if was_stopped {
+        return;
+    }
+    s.status = LspStatus::Error;
+    drop(s);
+
+    emit_status(app, LspStatus::Error, Some(message), Some(backend));
+}
 
 async fn read_lsp_stdout(
     stdout: tokio::process::ChildStdout,
@@ -96,33 +174,11 @@ async fn read_lsp_stdout(
             match reader.read_line(&mut line).await {
                 Ok(0) => {
                     // EOF — server exited; fail all pending requests immediately
-                    let mut s = state.lock().await;
-                    s.status = LspStatus::Error;
-                    s.stdin = None;
-                    let display_name = backend_display_name(&s.backend_name).to_string();
-                    let backend = s.backend_name.clone();
-                    for (_, sender) in s.pending.drain() {
-                        let _ = sender.send(Err(format!("{} exited", display_name)));
-                    }
-                    drop(s);
-                    emit_status(
-                        &app,
-                        LspStatus::Error,
-                        Some(format!("{} exited unexpectedly", display_name)),
-                        Some(backend),
-                    );
+                    handle_backend_exit(&state, &app, None).await;
                     return;
                 }
                 Err(e) => {
-                    let mut s = state.lock().await;
-                    s.status = LspStatus::Error;
-                    s.stdin = None;
-                    let backend = s.backend_name.clone();
-                    for (_, sender) in s.pending.drain() {
-                        let _ = sender.send(Err(e.to_string()));
-                    }
-                    drop(s);
-                    emit_status(&app, LspStatus::Error, Some(e.to_string()), Some(backend));
+                    handle_backend_exit(&state, &app, Some(e.to_string())).await;
                     return;
                 }
                 Ok(_) => {}
@@ -145,12 +201,7 @@ async fn read_lsp_stdout(
         // 2. Read exactly `len` bytes — NEVER use read_line here
         let mut body = vec![0u8; len];
         if let Err(e) = reader.read_exact(&mut body).await {
-            let mut s = state.lock().await;
-            s.status = LspStatus::Error;
-            s.stdin = None;
-            let backend = s.backend_name.clone();
-            drop(s);
-            emit_status(&app, LspStatus::Error, Some(e.to_string()), Some(backend));
+            handle_backend_exit(&state, &app, Some(e.to_string())).await;
             return;
         }
 
@@ -161,6 +212,85 @@ async fn read_lsp_stdout(
 
         dispatch_message(msg, &state, &app).await;
     }
+}
+
+// ── In-process reader ─────────────────────────────────────────────────────────
+
+/// Pump Fatou's outgoing messages into the same dispatch path stdio uses.
+///
+/// Two hops, both load-bearing. `crossbeam`'s `recv` blocks, so it cannot run
+/// on the async runtime and gets a dedicated thread. That thread hands off to a
+/// tokio channel drained by a *single* task, which is what keeps ordering
+/// intact — spawning a task per message would let a `publishDiagnostics`
+/// overtake the response it was sent after.
+fn spawn_inprocess_reader(
+    receiver: crossbeam_channel::Receiver<Message>,
+    state: Arc<Mutex<LspState>>,
+    app: tauri::AppHandle,
+) {
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<Value>();
+
+    std::thread::spawn(move || {
+        for msg in receiver {
+            let Ok(value) = serde_json::to_value(&msg) else {
+                continue;
+            };
+            if tx.send(value).is_err() {
+                break;
+            }
+        }
+        // Falling out means Fatou dropped its sender: it has finished shutting
+        // down. Dropping `tx` ends the drain task below.
+    });
+
+    tokio::spawn(async move {
+        while let Some(value) = rx.recv().await {
+            dispatch_message(value, &state, &app).await;
+        }
+        handle_backend_exit(&state, &app, None).await;
+    });
+}
+
+/// Start Fatou on a thread and return the channel that talks to it.
+///
+/// Nothing is spawned as a process and nothing is looked up on `PATH`; the
+/// server is this binary's own code.
+fn start_fatou(app: &tauri::AppHandle, state: Arc<Mutex<LspState>>) -> Result<Transport, String> {
+    let (client, server) = Connection::memory();
+    let Connection { sender, receiver } = client;
+
+    let panic_app = app.clone();
+    std::thread::Builder::new()
+        .name("fatou-lsp".into())
+        .spawn(move || {
+            // Fatou guards its own request handlers, so this catches only a
+            // panic in its main loop. Without it such a panic would surface as
+            // nothing but a closed channel, i.e. "exited unexpectedly" with no
+            // hint why. Unwinding reaches us because the release profile
+            // deliberately keeps `panic = "unwind"` (see Cargo.toml).
+            let outcome = std::panic::catch_unwind(AssertUnwindSafe(|| fatou::lsp::serve(&server)));
+            let detail = match outcome {
+                Ok(Ok(())) => return,
+                Ok(Err(e)) => format!("Fatou language server stopped: {e}"),
+                Err(_) => "Fatou language server panicked".to_string(),
+            };
+            // The other backends report trouble on stderr, which is drained
+            // into the Output panel. In-process there is no stderr, so put the
+            // message on the same channel by hand.
+            use tauri::Emitter;
+            let _ = panic_app.emit(
+                "julia-output",
+                crate::julia::JuliaOutputEvent {
+                    kind: "stderr".into(),
+                    text: format!("[Fatou] {detail}"),
+                    exit_code: None,
+                },
+            );
+        })
+        .map_err(|e| format!("Could not start the Fatou language server thread: {e}"))?;
+
+    spawn_inprocess_reader(receiver, state, app.clone());
+    Ok(Transport::InProcess(sender))
 }
 
 async fn dispatch_message(msg: Value, state: &Arc<Mutex<LspState>>, app: &tauri::AppHandle) {
@@ -213,25 +343,20 @@ async fn dispatch_message(msg: Value, state: &Arc<Mutex<LspState>>, app: &tauri:
 
 fn backend_display_name(backend: &str) -> &str {
     match backend {
+        "fatou" => "Fatou",
         "jetls" => "JETLS.jl",
         _ => "LanguageServer.jl",
     }
 }
 
-#[tauri::command]
-pub async fn lsp_start(app: tauri::AppHandle, workspace_path: String) -> Result<(), String> {
-    // Already running?
-    {
-        let s = LSP_STATE.lock().await;
-        if s.status == LspStatus::Starting || s.status == LspStatus::Ready {
-            return Ok(());
-        }
-    }
-
-    let settings = crate::settings::settings_load();
-    let backend = settings.lsp_backend.clone();
-
-    // Build the LSP server command based on the chosen backend
+/// Build the child-process command for a Julia-hosted backend.
+///
+/// Runs before any state is touched so a missing install fails cleanly, with
+/// the status untouched and an actionable message.
+async fn build_child_command(
+    backend: &str,
+    workspace_path: &str,
+) -> Result<tokio::process::Command, String> {
     let mut cmd = if backend == "jetls" {
         // ── JETLS.jl ────────────────────────────────────────────────────
         let home = dirs::home_dir().ok_or("Cannot determine home directory")?;
@@ -252,7 +377,7 @@ pub async fn lsp_start(app: tauri::AppHandle, workspace_path: String) -> Result<
         c.args(["serve", "--stdio"]);
         c
     } else {
-        // ── LanguageServer.jl (default) ─────────────────────────────────
+        // ── LanguageServer.jl ───────────────────────────────────────────
         let julia = crate::julia::find_julia()
             .await
             .ok_or("Julia not found. Install Julia or set JULIA_PATH.")?;
@@ -294,10 +419,7 @@ pub async fn lsp_start(app: tauri::AppHandle, workspace_path: String) -> Result<
             "-e",
             "using LanguageServer; runserver()",
         ])
-        .env(
-            "JULIA_LOAD_PATH",
-            format!("{}:@v#.#:@stdlib", workspace_path),
-        );
+        .env("JULIA_LOAD_PATH", julia_load_path(workspace_path));
         c
     };
 
@@ -312,27 +434,30 @@ pub async fn lsp_start(app: tauri::AppHandle, workspace_path: String) -> Result<
         cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
     }
 
-    // Set status → Starting
-    {
-        let mut s = LSP_STATE.lock().await;
-        s.status = LspStatus::Starting;
-        s.pending.clear();
-        s.next_id = 1;
-        s.stdin = None;
-        s.backend_name = backend.clone();
-    }
-    emit_status(&app, LspStatus::Starting, None, Some(backend.clone()));
+    Ok(cmd)
+}
 
+/// `JULIA_LOAD_PATH` for a workspace, using the platform's path separator.
+///
+/// Julia splits this variable on `;` on Windows and `:` everywhere else. It was
+/// hard-coded to `:`, which on Windows turned the whole value into one
+/// nonsensical entry — right after the drive letter's own colon — so the
+/// workspace project silently failed to load.
+fn julia_load_path(workspace_path: &str) -> String {
+    let separator = if cfg!(windows) { ';' } else { ':' };
+    format!("{workspace_path}{separator}@v#.#{separator}@stdlib")
+}
+
+/// Spawn a Julia-hosted backend and wire up its stdio.
+async fn start_child_backend(
+    app: &tauri::AppHandle,
+    mut cmd: tokio::process::Command,
+    backend: &str,
+) -> Result<Transport, String> {
     let mut child = cmd.spawn().map_err(|e| e.to_string())?;
     let child_stdin = child.stdin.take().unwrap();
     let child_stdout = child.stdout.take().unwrap();
     let child_stderr = child.stderr.take().unwrap();
-
-    let stdin_arc = Arc::new(Mutex::new(child_stdin));
-    {
-        let mut s = LSP_STATE.lock().await;
-        s.stdin = Some(stdin_arc);
-    }
 
     // Stdout reader task
     let state_clone = LSP_STATE.clone();
@@ -343,7 +468,7 @@ pub async fn lsp_start(app: tauri::AppHandle, workspace_path: String) -> Result<
 
     // Stderr drain task — forward to Output panel so crashes are visible
     let app_stderr = app.clone();
-    let stderr_label = backend_display_name(&backend).to_string();
+    let stderr_label = backend_display_name(backend).to_string();
     tokio::spawn(async move {
         use tauri::Emitter;
         let mut reader = BufReader::new(child_stderr).lines();
@@ -364,17 +489,78 @@ pub async fn lsp_start(app: tauri::AppHandle, workspace_path: String) -> Result<
         let _ = child.wait().await;
     });
 
+    Ok(Transport::Stdio(Arc::new(Mutex::new(child_stdin))))
+}
+
+#[tauri::command]
+pub async fn lsp_start(app: tauri::AppHandle, workspace_path: String) -> Result<(), String> {
+    // Already running?
+    {
+        let s = LSP_STATE.lock().await;
+        if s.status == LspStatus::Starting || s.status == LspStatus::Ready {
+            return Ok(());
+        }
+    }
+
+    let settings = crate::settings::settings_load();
+    let backend = settings.lsp_backend.clone();
+
+    // Validate before touching any state: a missing Julia install or package
+    // should leave the status where it was, not strand it in `Starting`.
+    let command = if backend == "fatou" {
+        // Fatou is linked in, so there is nothing to find and nothing to probe.
+        None
+    } else {
+        Some(build_child_command(&backend, &workspace_path).await?)
+    };
+
+    // Set status → Starting
+    {
+        let mut s = LSP_STATE.lock().await;
+        s.status = LspStatus::Starting;
+        s.pending.clear();
+        s.next_id = 1;
+        s.transport = None;
+        s.backend_name = backend.clone();
+    }
+    emit_status(&app, LspStatus::Starting, None, Some(backend.clone()));
+
+    let started = match command {
+        Some(cmd) => start_child_backend(&app, cmd, &backend).await,
+        None => start_fatou(&app, LSP_STATE.clone()),
+    };
+
+    let transport = match started {
+        Ok(transport) => transport,
+        Err(e) => {
+            // Reset to Off rather than leaving `Starting` behind — the guard at
+            // the top of this function would otherwise refuse every retry for
+            // the rest of the session.
+            let mut s = LSP_STATE.lock().await;
+            s.status = LspStatus::Off;
+            s.backend_name.clear();
+            drop(s);
+            emit_status(&app, LspStatus::Error, Some(e.clone()), Some(backend));
+            return Err(e);
+        }
+    };
+
+    LSP_STATE.lock().await.transport = Some(transport);
     Ok(())
 }
 
 #[tauri::command]
 pub async fn lsp_stop(app: tauri::AppHandle) -> Result<(), String> {
     let mut s = LSP_STATE.lock().await;
-    s.stdin = None; // drop ChildStdin → EOF → server exits
+    // Dropping the transport is how both kinds of backend are asked to quit:
+    // a child process sees EOF on stdin, and Fatou's main loop sees its
+    // receiver disconnect and shuts its analysis thread down on the way out.
+    // Status goes to Off first so the reader treats the exit as intentional.
+    s.status = LspStatus::Off;
+    s.transport = None;
     for (_, sender) in s.pending.drain() {
         let _ = sender.send(Err("LSP server stopped".to_string()));
     }
-    s.status = LspStatus::Off;
     s.backend_name.clear();
     drop(s);
     emit_status(&app, LspStatus::Off, None, None);
@@ -383,17 +569,16 @@ pub async fn lsp_stop(app: tauri::AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn lsp_send_request(method: String, params: Value) -> Result<Value, String> {
-    let (id, rx, stdin_arc) = {
+    let (id, rx, transport) = {
         let mut s = LSP_STATE.lock().await;
-        if s.stdin.is_none() {
+        let Some(transport) = s.transport.clone() else {
             return Err("LSP server not running".to_string());
-        }
+        };
         let id = s.next_id;
         s.next_id += 1;
         let (tx, rx) = oneshot::channel();
         s.pending.insert(id, tx);
-        let stdin_arc = s.stdin.clone().unwrap();
-        (id, rx, stdin_arc)
+        (id, rx, transport)
     };
 
     let msg = json!({
@@ -403,7 +588,7 @@ pub async fn lsp_send_request(method: String, params: Value) -> Result<Value, St
         "params": params,
     });
 
-    write_lsp_message(&stdin_arc, &msg).await?;
+    write_lsp_message(&transport, &msg).await?;
 
     // Wait up to 30s for a response
     tokio::time::timeout(std::time::Duration::from_secs(30), rx)
@@ -414,9 +599,9 @@ pub async fn lsp_send_request(method: String, params: Value) -> Result<Value, St
 
 #[tauri::command]
 pub async fn lsp_send_notification(method: String, params: Value) -> Result<(), String> {
-    let stdin_arc = {
+    let transport = {
         let s = LSP_STATE.lock().await;
-        s.stdin.clone().ok_or("LSP server not running")?
+        s.transport.clone().ok_or("LSP server not running")?
     };
 
     let msg = json!({
@@ -425,16 +610,16 @@ pub async fn lsp_send_notification(method: String, params: Value) -> Result<(), 
         "params": params,
     });
 
-    write_lsp_message(&stdin_arc, &msg).await
+    write_lsp_message(&transport, &msg).await
 }
 
 /// Send a JSON-RPC response to a server-initiated request (e.g. workspace/configuration).
 /// The `id` must match the `id` from the server's request.
 #[tauri::command]
 pub async fn lsp_send_response(id: Value, result: Value) -> Result<(), String> {
-    let stdin_arc = {
+    let transport = {
         let s = LSP_STATE.lock().await;
-        s.stdin.clone().ok_or("LSP server not running")?
+        s.transport.clone().ok_or("LSP server not running")?
     };
 
     let msg = json!({
@@ -443,5 +628,225 @@ pub async fn lsp_send_response(id: Value, result: Value) -> Result<(), String> {
         "result": result,
     });
 
-    write_lsp_message(&stdin_arc, &msg).await
+    write_lsp_message(&transport, &msg).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── value_to_message ───────────────────────────────────────────────────
+    //
+    // The in-process transport hands Fatou typed messages rather than framed
+    // bytes, so every shape the client sends has to survive this conversion.
+    // Getting a variant wrong here is invisible until the server ignores a
+    // request at runtime.
+
+    #[test]
+    fn encodes_a_request() {
+        let msg = json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}});
+        match value_to_message(&msg).unwrap() {
+            Message::Request(r) => {
+                assert_eq!(r.method, "initialize");
+                assert_eq!(r.id, 1.into());
+            }
+            other => panic!("expected a request, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn encodes_a_notification() {
+        // No id — must not be mistaken for a request.
+        let msg = json!({"jsonrpc": "2.0", "method": "initialized", "params": {}});
+        match value_to_message(&msg).unwrap() {
+            Message::Notification(n) => assert_eq!(n.method, "initialized"),
+            other => panic!("expected a notification, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn encodes_a_response() {
+        // An id but no method — this is how the client answers a
+        // server-initiated request such as workspace/configuration.
+        let msg = json!({"jsonrpc": "2.0", "id": 7, "result": null});
+        match value_to_message(&msg).unwrap() {
+            Message::Response(r) => assert_eq!(r.id, 7.into()),
+            other => panic!("expected a response, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn rejects_a_message_that_is_neither() {
+        assert!(value_to_message(&json!({"jsonrpc": "2.0"})).is_err());
+    }
+
+    // ── Fatou over an in-memory connection ─────────────────────────────────
+
+    /// Drive the real Fatou server through a handshake.
+    ///
+    /// This is the payoff of linking it in rather than shipping a sidecar:
+    /// a genuine end-to-end LSP exchange with no binary to locate, no process
+    /// to spawn, and no Julia toolchain anywhere in sight.
+    #[test]
+    fn fatou_completes_a_handshake_over_an_in_memory_connection() {
+        let (client, server) = Connection::memory();
+        let handle = std::thread::spawn(move || fatou::lsp::serve(&server));
+        // Split exactly as start_fatou does: the sender lives in the transport,
+        // the receiver in the reader. They are released separately, and the
+        // order matters for a clean shutdown.
+        let Connection { sender, receiver } = client;
+
+        sender
+            .send(
+                value_to_message(&json!({
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "initialize",
+                    "params": { "capabilities": {}, "processId": null },
+                }))
+                .unwrap(),
+            )
+            .unwrap();
+
+        let reply = receiver.recv().unwrap();
+        let Message::Response(response) = reply else {
+            panic!("expected an initialize response, got {reply:?}");
+        };
+        let result = response
+            .response_result
+            .expect("initialize returned an error");
+        let capabilities = &result["capabilities"];
+
+        // The features JulIDE's Monaco providers are gated on.
+        for capability in [
+            "completionProvider",
+            "hoverProvider",
+            "definitionProvider",
+            "referencesProvider",
+            "renameProvider",
+            "codeActionProvider",
+            "documentFormattingProvider",
+            "documentRangeFormattingProvider",
+            "documentSymbolProvider",
+            "semanticTokensProvider",
+        ] {
+            assert!(
+                !capabilities[capability].is_null(),
+                "Fatou did not advertise {capability}: {capabilities}"
+            );
+        }
+
+        // Monaco counts in UTF-16 code units. We deliberately do not offer
+        // `general.positionEncodings`, which must leave Fatou on the LSP
+        // default; UTF-8 here would misplace every range in a file with
+        // non-ASCII text.
+        assert_eq!(capabilities["positionEncoding"], "utf-16");
+
+        // Inlay hints are the one provider Fatou does not implement, which is
+        // why the providers ask before requesting rather than assuming.
+        assert!(capabilities["inlayHintProvider"].is_null());
+
+        // `initialize_finish` blocks until this arrives — the server does not
+        // reach its main loop without it. LspClient sends it immediately after
+        // the initialize response for exactly this reason.
+        sender
+            .send(
+                value_to_message(&json!({
+                    "jsonrpc": "2.0",
+                    "method": "initialized",
+                    "params": {},
+                }))
+                .unwrap(),
+            )
+            .unwrap();
+
+        // Dropping the sender disconnects Fatou's receiver, which is how
+        // lsp_stop asks it to quit. The reader keeps its end alive until Fatou
+        // drops the other side — tearing both down at once instead makes
+        // Fatou's own outgoing sends fail and it exits with a protocol error.
+        drop(sender);
+        for _ in receiver {}
+        handle
+            .join()
+            .expect("Fatou panicked on shutdown")
+            .expect("Fatou returned an error on shutdown");
+    }
+
+    /// The document lifecycle the editor actually drives, end to end.
+    ///
+    /// The `didChange` shape is the part worth pinning down: Fatou advertises
+    /// `INCREMENTAL` sync, but MonacoEditor sends a whole-document change with
+    /// no range. That is legal — a rangeless change means "replace everything" —
+    /// and this proves Fatou applies it rather than ignoring it, which is what
+    /// makes the existing editor wiring work unchanged.
+    #[test]
+    fn fatou_diagnoses_an_open_document_and_tracks_full_text_edits() {
+        let (client, server) = Connection::memory();
+        let handle = std::thread::spawn(move || fatou::lsp::serve(&server));
+        let Connection { sender, receiver } = client;
+
+        let send = |value: Value| sender.send(value_to_message(&value).unwrap()).unwrap();
+
+        send(json!({
+            "jsonrpc": "2.0", "id": 1, "method": "initialize",
+            "params": { "capabilities": {}, "processId": null },
+        }));
+        receiver.recv().unwrap();
+        send(json!({"jsonrpc": "2.0", "method": "initialized", "params": {}}));
+
+        let uri = "file:///tmp/julide-lsp-test/a.jl";
+        // Unterminated argument list — a guaranteed parse error.
+        send(json!({
+            "jsonrpc": "2.0", "method": "textDocument/didOpen",
+            "params": { "textDocument": {
+                "uri": uri, "languageId": "julia", "version": 1, "text": "function f(\n",
+            }},
+        }));
+
+        let diagnostics = |receiver: &crossbeam_channel::Receiver<Message>| -> Vec<Value> {
+            // Diagnostics are published asynchronously off the analysis thread,
+            // so skip anything else that arrives first.
+            let deadline = std::time::Duration::from_secs(30);
+            loop {
+                let msg = receiver
+                    .recv_timeout(deadline)
+                    .expect("timed out waiting for diagnostics");
+                if let Message::Notification(n) = msg {
+                    if n.method == "textDocument/publishDiagnostics" && n.params["uri"] == uri {
+                        return n.params["diagnostics"]
+                            .as_array()
+                            .cloned()
+                            .unwrap_or_default();
+                    }
+                }
+            }
+        };
+
+        assert!(
+            !diagnostics(&receiver).is_empty(),
+            "expected a parse error for an unterminated function"
+        );
+
+        // The same whole-document change MonacoEditor sends: one entry, no
+        // range. If Fatou ignored it the diagnostics would never clear.
+        send(json!({
+            "jsonrpc": "2.0", "method": "textDocument/didChange",
+            "params": {
+                "textDocument": { "uri": uri, "version": 2 },
+                "contentChanges": [{ "text": "f(x) = x + 1\n" }],
+            },
+        }));
+
+        assert!(
+            diagnostics(&receiver).is_empty(),
+            "fixing the source should clear the diagnostics"
+        );
+
+        drop(sender);
+        for _ in receiver {}
+        handle
+            .join()
+            .expect("Fatou panicked")
+            .expect("Fatou errored");
+    }
 }

@@ -23,6 +23,14 @@ export interface Settings {
   plutoPort: number;
   juliaPath: string;
   lspBackend: string;
+  /** Target line length Fatou formats to. Ignored by the Julia-hosted backends. */
+  fatouLineWidth: number;
+  /** Spaces per indent level Fatou formats with. */
+  fatouIndentWidth: number;
+  /** Format through the language server before an explicit save. */
+  formatOnSave: boolean;
+  /** Schema version of the persisted file; owned by the Rust migration. */
+  settingsVersion: number;
   startMaximized: boolean;
   /** Show text labels under the activity bar icons. */
   activityBarLabels: boolean;
@@ -66,7 +74,11 @@ export const defaultSettings: Settings = {
   persistJuliaPackages: true,
   plutoPort: 3000,
   juliaPath: "",
-  lspBackend: "languageserver",
+  lspBackend: "fatou",
+  fatouLineWidth: 92,
+  fatouIndentWidth: 4,
+  formatOnSave: false,
+  settingsVersion: 1,
   startMaximized: true,
   sidebarWidth: 240,
   bottomPanelHeight: 220,

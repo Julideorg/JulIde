@@ -22,6 +22,7 @@ import { useSettingsStore } from "./stores/useSettingsStore";
 import { useIdeStore } from "./stores/useIdeStore";
 import { usePluginStore } from "./stores/usePluginStore";
 import { lspClient } from "./lsp/LspClient";
+import { fatouConfigPayload, lspStartOptions } from "./lsp/lspConfig";
 import { setMonacoMarkers } from "./lsp/juliaProviders";
 import type { JuliaOutputEvent } from "./types";
 import { parseMimeLine } from "./utils/juliaOutput";
@@ -144,17 +145,32 @@ export default function App() {
 
   // LSP lifecycle: start when workspace opens, stop when it closes
   useEffect(() => {
-    if (!workspacePath) return;
-    lspClient.start(workspacePath).catch((e: unknown) => {
-      const msg = e instanceof Error ? e.message : String(e);
-      setLspStatus("error", msg);
-    });
+    if (!workspacePath || !settingsLoaded) return;
+    lspClient
+      .start(workspacePath, lspStartOptions(useSettingsStore.getState().settings))
+      .catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message : String(e);
+        setLspStatus("error", msg);
+      });
     return () => {
       lspClient.stop().catch(console.error);
     };
-    // setLspStatus is a stable store action; restarting the language server on any
-    // other change would be wrong — it must track the workspace only.
-  }, [workspacePath]); // eslint-disable-line react-hooks/exhaustive-deps -- see above
+    // Waits for settingsLoaded so the handshake is built from the user's real
+    // backend choice rather than the defaults. setLspStatus is a stable store
+    // action; restarting the language server on any other change would be wrong
+    // — it must track the workspace only.
+  }, [workspacePath, settingsLoaded]); // eslint-disable-line react-hooks/exhaustive-deps -- see above
+
+  // Push formatter settings to the server when they change. Fatou re-reads them
+  // live, so this avoids a restart just to change line width.
+  const fatouLineWidth = useSettingsStore((s) => s.settings.fatouLineWidth);
+  const fatouIndentWidth = useSettingsStore((s) => s.settings.fatouIndentWidth);
+  useEffect(() => {
+    if (lspClient.backend !== "fatou") return;
+    lspClient
+      .didChangeConfiguration(fatouConfigPayload(useSettingsStore.getState().settings))
+      .catch(console.error);
+  }, [fatouLineWidth, fatouIndentWidth]);
 
   // Mirror Rust lsp-status events into the store
   useEffect(() => {

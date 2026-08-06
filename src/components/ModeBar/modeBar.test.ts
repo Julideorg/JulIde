@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { flattenTree, fuzzyMatch, rank } from "./fuzzy";
 import { MODES, parseInput } from "./modes";
+import type { ModeId } from "./modes";
 import type { FileNode } from "../../types";
 
 describe("fuzzyMatch", () => {
@@ -83,7 +84,12 @@ describe("parseInput", () => {
   });
 
   // The grammar is Julia's REPL grammar; these prefixes are the whole premise.
-  test.each([
+  //
+  // Annotated rather than inferred: `test.each` widens a bare array of string
+  // pairs to `string[][]`, which does not satisfy `toBe(expected: ModeId)`.
+  // Naming the tuple keeps the check — a mistyped mode id fails to compile
+  // instead of failing at runtime.
+  test.each<[string, ModeId]>([
     ["]", "packages"],
     ["?", "lookup"],
     [";", "shell"],

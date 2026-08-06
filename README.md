@@ -32,14 +32,51 @@ A modern, fully-featured IDE for the [Julia](https://julialang.org/) programming
 
 ### Language Intelligence (LSP)
 
-- Powered by [LanguageServer.jl](https://github.com/julia-vscode/LanguageServer.jl)
+- Powered by **[Fatou](https://github.com/jolars/fatou)** — a Julia language server, formatter,
+  and linter written in Rust, **built into julIDE** and used by default
 - **Autocompletion**, **hover documentation**, **go-to-definition**, **find references**
 - **Signature help** with parameter info
 - **Real-time diagnostics** (errors and warnings) shown inline and in the Problems panel
 - **Error lens** — inline diagnostic messages displayed at the end of each line
-- **InlayHints** — type and parameter hints displayed inline in the editor
 - **Semantic tokens** — rich semantic highlighting beyond syntax-level tokenization
 - **Workspace and document symbol search**
+- **Formatting** — format document, format selection, and optional format-on-save
+- **Workspace linting** — check every `.jl` file in the project, not just the open ones
+- Swappable backends — [LanguageServer.jl](https://github.com/julia-vscode/LanguageServer.jl)
+  and [JETLS.jl](https://github.com/aviatesk/JETLS.jl) remain selectable in Settings
+
+#### Language server backends
+
+Fatou is **vendored as a Rust library and runs inside julIDE's own process**, over an
+in-memory channel rather than a pipe. There is nothing to install, no subprocess to
+spawn, no `PATH` lookup, and no first-run precompilation — which also removes the class
+of connection failures that made an external server flaky, particularly on Windows.
+
+The trade-off is real and worth knowing: Fatou **never runs Julia**. It analyses source
+text the way `rust-analyzer` analyses Rust, so it cannot infer types and does not know
+the symbols, methods, or docstrings of your installed dependencies. If you work in a
+package-heavy project and want completion for third-party symbols, switch to
+LanguageServer.jl under **Settings → Julia → Language Server**.
+
+|                       | **Fatou** (default) | **LanguageServer.jl**     | **JETLS.jl**           |
+| --------------------- | ------------------- | ------------------------- | ---------------------- |
+| Implementation        | Rust, built in      | Julia package             | Julia package          |
+| Needs a Julia install | No                  | Yes                       | Yes (1.12+)            |
+| Startup cost          | None                | Precompile + index (mins) | Precompilation         |
+| Type-aware analysis   | No                  | Best-effort               | Yes — its core feature |
+| Dependency symbols    | No                  | Yes                       | Yes                    |
+| Formatter             | Built in            | JuliaFormatter.jl / Runic | Runic / JuliaFormatter |
+| Linter                | Built in            | Built in                  | Built in               |
+| Inlay hints           | No                  | Yes                       | Yes                    |
+| Maturity              | Young               | Mature, de-facto default  | Experimental           |
+
+Formatting is configurable under **Settings → Julia** (`fatouLineWidth`,
+`fatouIndentWidth`). A [`fatou.toml`](https://fatou.dev/reference/configuration.html) in
+the project takes precedence over those settings — that is Fatou's documented behaviour,
+so per-project config wins over the IDE's defaults.
+
+> Existing installs are migrated to Fatou once, on first launch after upgrading. If you
+> pick a backend yourself afterwards, that choice is kept.
 
 ### Julia Runtime
 
@@ -145,7 +182,7 @@ catalog cannot be called at all.
 | `julia:configure`                  | Change the Julia interpreter, scaffold projects |
 | `terminal`                         | Open PTY sessions and write to them             |
 | `debugger`                         | Breakpoints, stepping, variable inspection      |
-| `lsp`                              | Send LanguageServer.jl requests                 |
+| `lsp`                              | Send language server requests, lint the project |
 | `git:read`                         | Status, diff, log, branches, blame, PRs, issues |
 | `git:write`                        | Stage, commit, branch, merge, stash, push, pull |
 | `git:credentials`                  | Read and modify stored access tokens            |
@@ -173,11 +210,13 @@ Install these globally for the best experience:
 
 ```julia
 using Pkg
-Pkg.add("LanguageServer")  # LSP support
 Pkg.add("Revise")          # Hot-reload
 Pkg.add("Debugger")        # Debugger integration
 Pkg.add("Pluto")           # Reactive notebooks
+Pkg.add("LanguageServer")  # Only if you switch off the built-in Fatou backend
 ```
+
+Language support needs nothing installed — Fatou ships with julIDE.
 
 ---
 
@@ -292,7 +331,8 @@ julIDE
 │       ├── main.rs             # Entry point
 │       ├── lib.rs              # Command registry and plugin setup
 │       ├── julia.rs            # Julia discovery, execution, Pkg commands
-│       ├── lsp.rs              # LanguageServer.jl JSON-RPC bridge
+│       ├── lsp.rs              # LSP bridge: in-process Fatou or a stdio child
+│       ├── fatou_tools.rs      # Workspace-wide linting via Fatou's Rust API
 │       ├── pty.rs              # PTY terminal management
 │       ├── debugger.rs         # Debugger.jl integration
 │       ├── fs.rs               # File system operations and dialogs
@@ -317,21 +357,21 @@ julIDE
 
 ### Tech Stack
 
-| Layer             | Technology                                    |
-| ----------------- | --------------------------------------------- |
-| Desktop framework | Tauri 2 (Rust)                                |
-| Frontend          | React 19, TypeScript, Vite                    |
-| Code editor       | Monaco Editor                                 |
-| Terminal          | xterm.js with PTY                             |
-| State management  | Zustand with Immer middleware                 |
-| Icons             | Lucide React                                  |
-| Git operations    | git2 (libgit2 bindings)                       |
-| File watching     | notify crate                                  |
-| File search       | walkdir + regex crates                        |
-| LSP               | LanguageServer.jl via JSON-RPC over stdio     |
-| Git provider API  | reqwest (HTTP client for GitHub/GitLab/Gitea) |
-| Token storage     | keyring crate (OS keychain)                   |
-| Container runtime | Docker / Podman CLI (auto-detected)           |
+| Layer             | Technology                                             |
+| ----------------- | ------------------------------------------------------ |
+| Desktop framework | Tauri 2 (Rust)                                         |
+| Frontend          | React 19, TypeScript, Vite                             |
+| Code editor       | Monaco Editor                                          |
+| Terminal          | xterm.js with PTY                                      |
+| State management  | Zustand with Immer middleware                          |
+| Icons             | Lucide React                                           |
+| Git operations    | git2 (libgit2 bindings)                                |
+| File watching     | notify crate                                           |
+| File search       | walkdir + regex crates                                 |
+| LSP               | Fatou, linked in and driven over an in-process channel |
+| Git provider API  | reqwest (HTTP client for GitHub/GitLab/Gitea)          |
+| Token storage     | keyring crate (OS keychain)                            |
+| Container runtime | Docker / Podman CLI (auto-detected)                    |
 
 ---
 
@@ -358,26 +398,30 @@ Settings are stored in `~/.config/julide/settings.json` (Linux), `~/Library/Appl
 
 Available settings:
 
-| Setting                | Default               | Description                                         |
-| ---------------------- | --------------------- | --------------------------------------------------- |
-| `fontSize`             | `14`                  | Editor font size                                    |
-| `fontFamily`           | `JetBrains Mono, ...` | Editor font family                                  |
-| `tabSize`              | `4`                   | Indentation width                                   |
-| `minimapEnabled`       | `true`                | Show minimap                                        |
-| `wordWrap`             | `off`                 | Word wrap mode                                      |
-| `autoSave`             | `true`                | Auto-save on change                                 |
-| `theme`                | `julide-dark`         | Color theme (`julide-dark` or `julide-light`)       |
-| `terminalFontSize`     | `13`                  | Terminal font size                                  |
-| `containerRuntime`     | `auto`                | Container runtime (`auto`, `docker`, or `podman`)   |
-| `containerRemoteHost`  | `""`                  | Remote Docker/Podman host URL                       |
-| `containerAutoDetect`  | `true`                | Auto-detect devcontainer.json on workspace open     |
-| `displayForwarding`    | `true`                | Forward X11/Wayland display into containers         |
-| `gpuPassthrough`       | `false`               | Pass GPU devices into containers                    |
-| `selinuxLabel`         | `true`                | Apply SELinux labels to bind mounts                 |
-| `persistJuliaPackages` | `true`                | Persist Julia packages across container rebuilds    |
-| `plutoPort`            | `3000`                | Port for the Pluto.jl notebook server               |
-| `juliaPath`            | `""`                  | Custom Julia binary path (overrides auto-detection) |
-| `startMaximized`       | `true`                | Start the window maximized                          |
+| Setting                | Default               | Description                                          |
+| ---------------------- | --------------------- | ---------------------------------------------------- |
+| `fontSize`             | `14`                  | Editor font size                                     |
+| `fontFamily`           | `JetBrains Mono, ...` | Editor font family                                   |
+| `tabSize`              | `4`                   | Indentation width                                    |
+| `minimapEnabled`       | `true`                | Show minimap                                         |
+| `wordWrap`             | `off`                 | Word wrap mode                                       |
+| `autoSave`             | `true`                | Auto-save on change                                  |
+| `theme`                | `julide-dark`         | Color theme (`julide-dark` or `julide-light`)        |
+| `terminalFontSize`     | `13`                  | Terminal font size                                   |
+| `containerRuntime`     | `auto`                | Container runtime (`auto`, `docker`, or `podman`)    |
+| `containerRemoteHost`  | `""`                  | Remote Docker/Podman host URL                        |
+| `containerAutoDetect`  | `true`                | Auto-detect devcontainer.json on workspace open      |
+| `displayForwarding`    | `true`                | Forward X11/Wayland display into containers          |
+| `gpuPassthrough`       | `false`               | Pass GPU devices into containers                     |
+| `selinuxLabel`         | `true`                | Apply SELinux labels to bind mounts                  |
+| `persistJuliaPackages` | `true`                | Persist Julia packages across container rebuilds     |
+| `plutoPort`            | `3000`                | Port for the Pluto.jl notebook server                |
+| `juliaPath`            | `""`                  | Custom Julia binary path (overrides auto-detection)  |
+| `lspBackend`           | `fatou`               | Language server (`fatou`, `languageserver`, `jetls`) |
+| `fatouLineWidth`       | `92`                  | Target line length Fatou formats to                  |
+| `fatouIndentWidth`     | `4`                   | Spaces per indent level Fatou formats with           |
+| `formatOnSave`         | `false`               | Format through the language server on explicit save  |
+| `startMaximized`       | `true`                | Start the window maximized                           |
 
 ---
 

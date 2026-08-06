@@ -43,6 +43,18 @@ pub struct Settings {
     pub julia_path: String,
     #[serde(default = "default_lsp_backend")]
     pub lsp_backend: String,
+    /// Target line length Fatou formats to. Ignored by the Julia-hosted backends.
+    #[serde(default = "default_fatou_line_width")]
+    pub fatou_line_width: u32,
+    /// Spaces per indent level Fatou formats with.
+    #[serde(default = "default_fatou_indent_width")]
+    pub fatou_indent_width: u32,
+    /// Format the file through the language server before an explicit save.
+    #[serde(default)]
+    pub format_on_save: bool,
+    /// Bumped when a stored `settings.json` needs rewriting; see [`Settings::migrated`].
+    #[serde(default)]
+    pub settings_version: u32,
     #[serde(default = "default_true")]
     pub start_maximized: bool,
     /// Sidebar width in pixels. Persisted so a resized layout survives a restart.
@@ -87,8 +99,17 @@ fn default_container_runtime() -> String {
     "auto".into()
 }
 fn default_lsp_backend() -> String {
-    "languageserver".into()
+    "fatou".into()
 }
+fn default_fatou_line_width() -> u32 {
+    92
+}
+fn default_fatou_indent_width() -> u32 {
+    4
+}
+
+/// Current `settings_version`. Bump when a migration is added below.
+const SETTINGS_VERSION: u32 = 1;
 
 impl Default for Settings {
     fn default() -> Self {
@@ -112,6 +133,10 @@ impl Default for Settings {
             pluto_port: default_pluto_port(),
             julia_path: String::new(),
             lsp_backend: default_lsp_backend(),
+            fatou_line_width: default_fatou_line_width(),
+            fatou_indent_width: default_fatou_indent_width(),
+            format_on_save: false,
+            settings_version: SETTINGS_VERSION,
             start_maximized: default_true(),
             sidebar_width: default_sidebar_width(),
             bottom_panel_height: default_bottom_panel_height(),
@@ -151,12 +176,33 @@ impl Settings {
         ) {
             self.container_runtime = default_container_runtime();
         }
-        if !matches!(self.lsp_backend.as_str(), "languageserver" | "jetls") {
+        if !matches!(
+            self.lsp_backend.as_str(),
+            "fatou" | "languageserver" | "jetls"
+        ) {
             self.lsp_backend = default_lsp_backend();
         }
+        self.fatou_line_width = self.fatou_line_width.clamp(40, 200);
+        self.fatou_indent_width = self.fatou_indent_width.clamp(1, 8);
 
         // A recent list that grew unbounded through hand-editing would slow startup.
         self.recent_workspaces.truncate(10);
+        self
+    }
+
+    /// Apply one-time upgrades to a settings file written by an older build.
+    ///
+    /// Changing a `#[serde(default)]` only reaches users who have never saved
+    /// that field, and `settings_save` writes every field — so every existing
+    /// install has `lspBackend` on disk and would keep the old backend forever.
+    /// Version 1 moves those users onto Fatou once. A backend chosen
+    /// deliberately after this point is written at the current version and is
+    /// never touched again.
+    fn migrated(mut self) -> Self {
+        if self.settings_version < 1 && self.lsp_backend == "languageserver" {
+            self.lsp_backend = default_lsp_backend();
+        }
+        self.settings_version = SETTINGS_VERSION;
         self
     }
 }
@@ -186,6 +232,7 @@ pub fn settings_load() -> Settings {
     if let Ok(content) = fs::read_to_string(&path) {
         serde_json::from_str::<Settings>(&content)
             .unwrap_or_default()
+            .migrated()
             .clamped()
     } else {
         Settings::default()
@@ -242,7 +289,10 @@ mod tests {
         assert_eq!(s.terminal_font_size, 13);
         assert_eq!(s.container_runtime, "auto");
         assert_eq!(s.pluto_port, 3000);
-        assert_eq!(s.lsp_backend, "languageserver");
+        assert_eq!(s.lsp_backend, "fatou");
+        assert_eq!(s.fatou_line_width, 92);
+        assert_eq!(s.fatou_indent_width, 4);
+        assert!(!s.format_on_save);
         assert!(s.recent_workspaces.is_empty());
     }
 
@@ -347,6 +397,56 @@ mod tests {
         }
         .clamped();
         assert_eq!(s.recent_workspaces.len(), 10);
+    }
+
+    #[test]
+    fn clamped_bounds_fatou_format_widths() {
+        let s = Settings {
+            fatou_line_width: 5,
+            fatou_indent_width: 99,
+            ..Default::default()
+        }
+        .clamped();
+        assert_eq!(s.fatou_line_width, 40);
+        assert_eq!(s.fatou_indent_width, 8);
+    }
+
+    // ── migrated() ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn migration_moves_pre_existing_installs_onto_fatou() {
+        // Everyone who ran an older build has "languageserver" written to disk,
+        // so a changed serde default alone would never reach them.
+        let stored = Settings {
+            lsp_backend: "languageserver".into(),
+            settings_version: 0,
+            ..Default::default()
+        };
+        let migrated = stored.migrated();
+        assert_eq!(migrated.lsp_backend, "fatou");
+        assert_eq!(migrated.settings_version, SETTINGS_VERSION);
+    }
+
+    #[test]
+    fn migration_leaves_other_backends_alone() {
+        let stored = Settings {
+            lsp_backend: "jetls".into(),
+            settings_version: 0,
+            ..Default::default()
+        };
+        assert_eq!(stored.migrated().lsp_backend, "jetls");
+    }
+
+    #[test]
+    fn migration_does_not_undo_a_deliberate_choice() {
+        // Picking LanguageServer.jl after migrating stores the current version,
+        // which must stop the migration from reverting it on the next launch.
+        let chosen = Settings {
+            lsp_backend: "languageserver".into(),
+            settings_version: SETTINGS_VERSION,
+            ..Default::default()
+        };
+        assert_eq!(chosen.migrated().lsp_backend, "languageserver");
     }
 
     #[test]

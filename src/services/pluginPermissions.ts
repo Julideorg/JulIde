@@ -83,7 +83,7 @@ export const PERMISSION_CATALOG: Record<PluginPermission, PermissionInfo> = {
   },
   lsp: {
     title: "Talk to the language server",
-    description: "Send requests to LanguageServer.jl and read its responses.",
+    description: "Send requests to the Julia language server and read its responses.",
     risk: "normal",
   },
   "git:read": {
@@ -198,6 +198,7 @@ export const COMMAND_PERMISSIONS: Record<string, PluginPermission> = {
   lsp_send_request: "lsp",
   lsp_send_notification: "lsp",
   lsp_send_response: "lsp",
+  fatou_lint_workspace: "lsp",
 
   // ── Pluto ─────────────────────────────────────────────────────────────
   pluto_open: "pluto",

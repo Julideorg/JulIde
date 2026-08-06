@@ -46,6 +46,18 @@ keyring = { version = "3", features = ["apple-native", "windows-native", "sync-s
 url = "2"
 async-trait = "0.1"
 openssl-sys = { version = "0.9", features = ["vendored"], optional = true }
+# The built-in language server. Linked as a library rather than shipped as a
+# sidecar binary: `fatou::lsp::serve` takes an `lsp_server::Connection`, so the
+# server runs on a thread inside this process over an in-memory channel pair —
+# no child process, no stdio pipes, no PATH lookup, and none of the spawn
+# failures those cause (see src/lsp.rs).
+#
+# `lsp-server` must stay on the same version fatou depends on, or `Connection`
+# is a different type and `fatou::lsp::serve` cannot be called at all.
+# `cargo tree -d | grep lsp-server` catches a divergence after a fatou bump.
+fatou = "0.10"
+lsp-server = "0.10"
+crossbeam-channel = "0.5"
 
 [features]
 vendored-ssl = ["openssl-sys", "git2/vendored-openssl"]

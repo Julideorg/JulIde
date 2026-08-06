@@ -2,6 +2,7 @@ import * as monaco from "monaco-editor";
 import { loader } from "@monaco-editor/react";
 import { registerJuliaLanguage } from "./components/Editor/juliaLanguage";
 import { defineThemes } from "./themes/themes";
+import { registerJuliaLspProviders } from "./lsp/juliaProviders";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 import cssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";
@@ -60,3 +61,15 @@ loader.config({ monaco });
  */
 registerJuliaLanguage(monaco);
 defineThemes(monaco);
+
+/**
+ * Register the LSP-backed Monaco providers (completion, hover, go-to-definition,
+ * rename, code actions, formatting, …) once, globally — for the same reason.
+ *
+ * These were previously registered from MonacoEditor's `beforeMount`, which was
+ * removed in 76110f4 while cutting per-mount work. Nothing else called them, so
+ * every LSP feature in the editor — including the inline diagnostic squiggles,
+ * which need the Monaco instance this also caches — went quietly dead. Doing it
+ * here restores them without putting the work back on the mount path.
+ */
+registerJuliaLspProviders(monaco);

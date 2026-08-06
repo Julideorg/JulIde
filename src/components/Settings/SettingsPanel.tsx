@@ -3,6 +3,9 @@ import type { ReactElement, ReactNode } from "react";
 import { AlertTriangle, X } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { useSettingsStore } from "../../stores/useSettingsStore";
+import { useIdeStore } from "../../stores/useIdeStore";
+import { lspClient } from "../../lsp/LspClient";
+import { lspStartOptions } from "../../lsp/lspConfig";
 import { useModalA11y } from "../../hooks/useModalA11y";
 import { PluginSettings } from "./PluginSettings";
 import { GitAuthSettings } from "../Git/GitAuthSettings";
@@ -17,6 +20,26 @@ export function SettingsPanel() {
   const flushSettings = useSettingsStore((s) => s.flushSettings);
   const panelRef = useModalA11y<HTMLDivElement>(open);
   const titleId = useId();
+  const workspacePath = useIdeStore((s) => s.workspacePath);
+
+  /**
+   * Switch language server backends and restart onto the new one.
+   *
+   * The debounced write has to land first: the Rust side reads the backend from
+   * settings.json when it starts a server, so restarting before the flush would
+   * bring the old one straight back up.
+   */
+  const switchBackend = async (backend: string) => {
+    await updateSettings({ lspBackend: backend });
+    await flushSettings();
+    if (!workspacePath) return;
+    const settingsNow = useSettingsStore.getState().settings;
+    try {
+      await lspClient.restart(workspacePath, lspStartOptions(settingsNow));
+    } catch (e) {
+      console.error("Failed to restart the language server:", e);
+    }
+  };
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -198,12 +221,19 @@ export function SettingsPanel() {
               <select
                 className="settings-select"
                 value={settings.lspBackend}
-                onChange={(e) => updateSettings({ lspBackend: e.target.value })}
+                onChange={(e) => void switchBackend(e.target.value)}
               >
+                <option value="fatou">Fatou (built-in)</option>
                 <option value="languageserver">LanguageServer.jl</option>
                 <option value="jetls">JETLS.jl (Experimental)</option>
               </select>
-              <span className="settings-hint">Requires LSP restart to take effect</span>
+              {settings.lspBackend === "fatou" && (
+                <span className="settings-hint">
+                  Built in — nothing to install, and it does not need Julia. Fatou analyses source
+                  text rather than running it, so it cannot offer types or symbols from installed
+                  packages; choose LanguageServer.jl if you need those.
+                </span>
+              )}
               {settings.lspBackend === "jetls" && (
                 <span className="settings-hint">
                   JETLS.jl requires Julia 1.12.2+. See{" "}
@@ -218,6 +248,48 @@ export function SettingsPanel() {
                   for installation instructions.
                 </span>
               )}
+            </SettingRow>
+
+            {settings.lspBackend === "fatou" && (
+              <>
+                <SettingRow label="Format Line Width">
+                  <input
+                    type="number"
+                    className="settings-input settings-number"
+                    value={settings.fatouLineWidth}
+                    min={40}
+                    max={200}
+                    onChange={(e) => updateSettings({ fatouLineWidth: Number(e.target.value) })}
+                  />
+                  <span className="settings-hint">
+                    A <code>fatou.toml</code> in the project overrides this.
+                  </span>
+                </SettingRow>
+
+                <SettingRow label="Format Indent Width">
+                  <input
+                    type="number"
+                    className="settings-input settings-number"
+                    value={settings.fatouIndentWidth}
+                    min={1}
+                    max={8}
+                    onChange={(e) => updateSettings({ fatouIndentWidth: Number(e.target.value) })}
+                  />
+                </SettingRow>
+              </>
+            )}
+
+            <SettingRow label="Format on Save">
+              <label className="settings-checkbox">
+                <input
+                  type="checkbox"
+                  checked={settings.formatOnSave}
+                  onChange={(e) => updateSettings({ formatOnSave: e.target.checked })}
+                />
+                <span className="settings-checkbox-label">
+                  Format the file when you save it explicitly
+                </span>
+              </label>
             </SettingRow>
 
             <SettingRow label="Julia Executable Path">

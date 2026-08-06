@@ -144,9 +144,7 @@ export function MonacoEditor() {
     });
 
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      if (activeTab) {
-        saveFile(activeTab.id, activeTab.path, editor.getValue());
-      }
+      void saveActiveTab(editor);
     });
 
     editor.onKeyDown((e) => {
@@ -308,6 +306,40 @@ export function MonacoEditor() {
       }
     },
     [markTabSaved],
+  );
+
+  /**
+   * Save the tab that is active *now*, formatting first if the user asked for it.
+   *
+   * Bound only to the explicit Ctrl+S path. Autosave writes on a debounce while
+   * you type, and reformatting there would rearrange the buffer under the
+   * cursor mid-keystroke.
+   *
+   * The tab is read from the store rather than taken from the render closure:
+   * the editor is mounted once and reused across tabs, so a captured `activeTab`
+   * would go stale as soon as you switched files.
+   */
+  const saveActiveTab = useCallback(
+    async (editor: Monaco.editor.IStandaloneCodeEditor) => {
+      const { openTabs: tabs, activeTabId: id } = useIdeStore.getState();
+      const tab = tabs.find((t) => t.id === id);
+      if (!tab) return;
+
+      const shouldFormat =
+        useSettingsStore.getState().settings.formatOnSave &&
+        tab.path.endsWith(".jl") &&
+        lspClient.supports("documentFormattingProvider");
+      if (shouldFormat) {
+        try {
+          await editor.getAction("editor.action.formatDocument")?.run();
+        } catch (e) {
+          // A formatter failure must not cost the user their save.
+          console.error("Format on save failed:", e);
+        }
+      }
+      await saveFile(tab.id, tab.path, editor.getValue());
+    },
+    [saveFile],
   );
 
   // LSP Management

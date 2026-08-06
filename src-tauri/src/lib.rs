@@ -1,5 +1,6 @@
 mod container;
 mod debugger;
+mod fatou_tools;
 mod fs;
 mod git;
 mod git_auth;
@@ -121,6 +122,8 @@ pub fn run() {
             lsp::lsp_send_request,
             lsp::lsp_send_notification,
             lsp::lsp_send_response,
+            // Fatou tools (workspace-wide, beyond what the LSP session covers)
+            fatou_tools::fatou_lint_workspace,
             // Pluto
             pluto::pluto_open,
             pluto::pluto_stop,
