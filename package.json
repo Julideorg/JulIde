@@ -42,18 +42,16 @@
     "@xterm/addon-web-links": "^0.12.0",
     "@xterm/xterm": "^6.0.0",
     "immer": "^11.1.4",
-    "lucide-react": "^0.577.0",
-    "monaco-editor": "^0.55.1",
+    "lucide-react": "^1.28.0",
+    "monaco-editor": "^0.56.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@storybook/addon-essentials": "^8.6.18",
-    "@storybook/addon-interactions": "^8.6.18",
-    "@storybook/react": "^8.6.18",
-    "@storybook/react-vite": "^8.6.18",
+    "@storybook/react": "^10.5.5",
+    "@storybook/react-vite": "^10.5.5",
     "@tauri-apps/cli": "^2.10.1",
     "@types/bun": "^1.3.11",
     "@types/react": "^19.2.14",
@@ -65,8 +63,8 @@
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^17.9.0",
     "prettier": "^3.9.6",
-    "storybook": "^8.6.18",
-    "typescript": "~5.8.3",
+    "storybook": "^10.5.5",
+    "typescript": "~6.0.3",
     "typescript-eslint": "^8.66.0",
     "vite": "^7.3.1"
   }

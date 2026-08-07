@@ -258,7 +258,7 @@ pub fn git_log(workspace_path: String, limit: u32) -> Result<Vec<GitCommitInfo>,
         let commit = repo.find_commit(oid).map_err(|e| e.to_string())?;
         commits.push(GitCommitInfo {
             id: oid.to_string()[..8].to_string(),
-            message: commit.summary().unwrap_or("").to_string(),
+            message: commit.summary().ok().flatten().unwrap_or("").to_string(),
             author: commit.author().name().unwrap_or("Unknown").to_string(),
             time: commit.time().seconds(),
         });
@@ -299,7 +299,9 @@ pub fn git_remotes(workspace_path: String) -> Result<Vec<GitRemote>, String> {
     let repo = open_repo(&workspace_path)?;
     let remote_names = repo.remotes().map_err(|e| e.to_string())?;
     let mut remotes = Vec::new();
-    for name in remote_names.iter().flatten() {
+    // `iter()` yields Result<Option<&str>> — Err for a non-UTF-8 name, Ok(None)
+    // for an unnamed remote. Neither is addressable by name, so both are skipped.
+    for name in remote_names.iter().filter_map(|n| n.ok().flatten()) {
         let remote = repo.find_remote(name).map_err(|e| e.to_string())?;
         let url = remote.url().unwrap_or("").to_string();
         remotes.push(GitRemote {
@@ -601,7 +603,7 @@ pub fn git_ahead_behind(workspace_path: String) -> Result<(usize, usize), String
     // Find the upstream branch
     let branch_name = head
         .shorthand()
-        .ok_or_else(|| "Could not get branch name".to_string())?
+        .map_err(|_| "Could not get branch name".to_string())?
         .to_string();
     let branch = repo
         .find_branch(&branch_name, git2::BranchType::Local)
@@ -660,13 +662,19 @@ pub fn git_blame_file(
 
     let mut results = Vec::new();
     for hunk in blame.iter() {
+        // git2 0.21 makes the signature optional — a hunk for a line that is not
+        // committed yet has none. Fall back instead of skipping the hunk: skipping
+        // would drop its lines and shift every later line in the blame gutter.
         let sig = hunk.final_signature();
-        let author = String::from_utf8_lossy(sig.name_bytes()).to_string();
-        let time = sig.when();
-        let secs = time.seconds();
+        let author = sig
+            .as_ref()
+            .map(|s| String::from_utf8_lossy(s.name_bytes()).to_string())
+            .unwrap_or_else(|| "Unknown".to_string());
+        let time = sig.as_ref().map(|s| s.when());
+        let secs = time.map_or(0, |t| t.seconds());
         // Format as YYYY-MM-DD
         let date = {
-            let dt = secs + (time.offset_minutes() as i64) * 60;
+            let dt = secs + (time.map_or(0, |t| t.offset_minutes()) as i64) * 60;
             let days = dt / 86400 + 719468;
             let era = if days >= 0 { days } else { days - 146096 } / 146097;
             let doe = (days - era * 146097) as u32;
@@ -682,7 +690,7 @@ pub fn git_blame_file(
         let oid = hunk.final_commit_id();
         let summary = repo
             .find_commit(oid)
-            .map(|c| c.summary().unwrap_or("").to_string())
+            .map(|c| c.summary().ok().flatten().unwrap_or("").to_string())
             .unwrap_or_default();
         let start_line = hunk.final_start_line();
         let lines_in_hunk = hunk.lines_in_hunk();

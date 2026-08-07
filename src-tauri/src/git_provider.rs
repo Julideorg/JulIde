@@ -187,7 +187,7 @@ fn get_origin_url(workspace_path: &str) -> Result<String, String> {
     remote
         .url()
         .map(|s| s.to_string())
-        .ok_or_else(|| "Remote URL is not valid UTF-8".to_string())
+        .map_err(|_| "Remote URL is not valid UTF-8".to_string())
 }
 
 fn get_provider_and_token(

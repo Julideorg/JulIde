@@ -13,19 +13,24 @@ const preview: Preview = {
     // Taken from the design tokens rather than typed in — the previous
     // hardcoded "dark" backdrop was #1e1e2e, which never matched the app.
     backgrounds: {
-      default: "dark",
-      values: [
-        { name: "dark", value: palettes.dark.surface.canvas },
-        { name: "light", value: palettes.light.surface.canvas },
-      ],
+      options: {
+        dark: { name: "dark", value: palettes.dark.surface.canvas },
+        light: { name: "light", value: palettes.light.surface.canvas },
+      },
     },
+  },
+  // Storybook 9 replaced `backgrounds.default` and `globalTypes[].defaultValue`
+  // with a single initial-globals block. `defaultValue` still type-checks but is
+  // ignored at runtime, which would silently start every story on the wrong theme.
+  initialGlobals: {
+    backgrounds: { value: "dark" },
+    theme: "theme-dark",
   },
   // Stories render inside the theme class so tokens resolve the same way they
   // do in the app, where App.tsx puts this class on the document element.
   globalTypes: {
     theme: {
       description: "julIDE theme",
-      defaultValue: "theme-dark",
       toolbar: {
         title: "Theme",
         icon: "paintbrush",

@@ -34,7 +34,7 @@ jobs:
   preflight:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check updater signing is configured
         env:
@@ -87,7 +87,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -144,7 +144,7 @@ jobs:
       # to the same draft release. Hand-assembling that file is easy to get subtly
       # wrong, and a wrong manifest means every installed client fails to update.
       - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Signs the updater manifest. This is the updater's OWN keypair and is
@@ -160,13 +160,16 @@ jobs:
           tagName: ${{ steps.tag.outputs.value }}
           releaseName: julIDE ${{ steps.tag.outputs.value }}
           releaseDraft: true
-          includeUpdaterJson: true
+          # Renamed from `includeUpdaterJson` in tauri-action v1. The old name is
+          # not an input any more, so leaving it would silently stop generating
+          # latest.json and break in-app updates for everyone already installed.
+          uploadUpdaterJson: true
 
       # ── Also keep the installers as workflow artifacts ─────────
       # Useful for non-tag builds, and for grabbing a build without publishing.
       - name: Upload build artifacts (Linux)
         if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: julide-${{ matrix.name }}
           path: |
@@ -177,7 +180,7 @@ jobs:
 
       - name: Upload build artifacts (Windows)
         if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: julide-${{ matrix.name }}
           path: |
@@ -187,7 +190,7 @@ jobs:
 
       - name: Upload build artifacts (macOS)
         if: runner.os == 'macOS'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: julide-${{ matrix.name }}
           path: |

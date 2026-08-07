@@ -7,6 +7,44 @@ julIDE aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Security
+
+- **Cleared every advisory `cargo audit` was reporting as a vulnerability.** Three
+  transitive crates were affected: `quick-xml` (quadratic parse time on duplicate
+  attribute names, and unbounded namespace allocation — RUSTSEC-2026-0194/0195),
+  `quinn-proto` (remote memory exhaustion via out-of-order stream reassembly —
+  RUSTSEC-2026-0185), and `rustls-webpki` (three certificate-validation issues —
+  RUSTSEC-2026-0098/0099/0104). All are lockfile-only updates. The remaining audit
+  output is unmaintained/unsound warnings for the GTK3 binding stack, which Tauri
+  pins and julIDE cannot move on its own.
+
+### Changed
+
+- **Rust dependencies refreshed**, including `tauri` 2.11.5, `tauri-build` 2.6.3,
+  `anyhow` 1.0.104, `uuid` 1.24, `serde_json` 1.0.151 and `regex` 1.13.
+- **`git2` 0.20 → 0.21**, which also clears two unsound advisories
+  (RUSTSEC-2026-0183/0184). The release makes several APIs fallible —
+  `Commit::summary()`, `Remote::url()` and `Reference::shorthand()` now return
+  `Result`, `BlameHunk::final_signature()` returns an `Option`, and `StringArray`
+  iterates `Result<Option<&str>>`. Call sites in `git.rs` and `git_provider.rs` were
+  updated; blame hunks with no signature now fall back to an "Unknown" author rather
+  than being dropped, which would have misaligned the blame gutter.
+- **`monaco-editor` 0.55 → 0.56.** The package gained an `exports` map, so the
+  worker entry points moved from `monaco-editor/esm/vs/…` to `monaco-editor/…`.
+  Without that change the production build fails to resolve any of the five workers.
+- **`lucide-react` 0.577 → 1.x** and **TypeScript 5.8 → 6.0**.
+- **Storybook 8 → 10.** `addon-essentials` and `addon-interactions` stopped
+  publishing at 9 — controls, backgrounds and the toolbar now ship in core, so both
+  were dropped. `backgrounds.values` became `backgrounds.options`, and the initial
+  theme moved from `globalTypes[].defaultValue` to `initialGlobals`. `main.ts` is
+  also loaded as real ESM now, so `__dirname` had to be derived from
+  `import.meta.url`.
+- **GitHub Actions bumped:** `actions/checkout` 4 → 7, `actions/upload-artifact`
+  4 → 7, and `tauri-apps/tauri-action` 0 → 1. The last one renames
+  `includeUpdaterJson` to `uploadUpdaterJson`; the old name is no longer an input, so
+  leaving it would have silently stopped generating `latest.json` and broken in-app
+  updates for existing installs.
+
 ## [0.3.0] - 2026-08-06
 
 Two big changes: the interface was rebuilt on a design system, and the language server
