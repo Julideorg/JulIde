@@ -222,8 +222,20 @@ Language support needs nothing installed — Fatou ships with julIDE.
 
 ## Installation
 
+### macOS — Homebrew
+
+```bash
+brew tap Julideorg/tap
+brew install --cask julide
+```
+
+The [tap](https://github.com/Julideorg/homebrew-tap) clears the Gatekeeper quarantine
+flag for you, so there is no extra step after installing.
+
+### Any platform — direct download
+
 Download the latest build from the
-[releases page](https://github.com/sinisterMage/julide/releases).
+[releases page](https://github.com/Julideorg/JulIde/releases).
 
 | Platform  | Download         | Notes                                                                             |
 | --------- | ---------------- | --------------------------------------------------------------------------------- |
@@ -248,6 +260,9 @@ julIDE is not yet code-signed, so your OS will warn you on first launch:
   ```bash
   xattr -dr com.apple.quarantine /Applications/julide.app
   ```
+
+  This applies to the `.dmg` download only — `brew install --cask julide` already does
+  it for you.
 
 - **Linux** — no warning; AppImages just need the executable bit.
 

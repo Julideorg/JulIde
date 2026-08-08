@@ -417,6 +417,16 @@ Version numbers in the manifests must stay plain `major.minor.patch` — Tauri r
 pre-release suffixes in `tauri.conf.json`. Tag as `v0.2.0-rc1` if you need one; the CI
 check accepts a tag whose base version matches the manifests.
 
+### After publishing
+
+The [Homebrew tap](https://github.com/Julideorg/homebrew-tap) polls for the newest
+published release once a day and commits the new version and DMG checksums itself. It
+only ever picks up published, non-prerelease tags. To skip the wait:
+
+```bash
+gh workflow run bump-cask.yml --repo Julideorg/homebrew-tap
+```
+
 ---
 
 ## Questions?
