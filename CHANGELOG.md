@@ -50,6 +50,16 @@ brought up to date — which also cleared every advisory `cargo audit` was repor
   `@tauri-apps/api` differ in major or minor, so every platform failed at the very
   start of `tauri build`. CI never caught it because `ci.yml` does not run a bundle
   build.
+- **The Rust toolchain is now genuinely pinned, to 1.95.0.** `rust-toolchain.toml`
+  said `channel = "stable"`, which pins nothing — each CI run took whatever stable
+  had become that day. 1.97.1 duly arrived mid-release and rejected a `warn!(…)`
+  tail expression inside `zune-jpeg` 0.5.15, which julIDE never asked for and reaches
+  through `tauri-plugin-clipboard-manager` → `arboard` → `image` → `tiff`. Nothing in
+  julIDE had changed. The workflows pin the same version explicitly, because
+  `dtolnay/rust-toolchain` cannot read the toml and the macOS cross-compile target
+  has to be installed onto the toolchain cargo actually uses. The audit job is left
+  floating on purpose: it never compiles julIDE, so pinning it would only risk
+  `cargo-audit` outgrowing the pinned compiler.
 - **`git2` 0.20 → 0.21**, which also clears two unsound advisories
   (RUSTSEC-2026-0183/0184). The release makes several APIs fallible —
   `Commit::summary()`, `Remote::url()` and `Reference::shorthand()` now return

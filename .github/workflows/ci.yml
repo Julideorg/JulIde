@@ -48,9 +48,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Pinned to match rust-toolchain.toml — see the note there. rustfmt and
+      # clippy must land on the pinned toolchain, not on whatever stable is today,
+      # or their output drifts and unrelated PRs start failing.
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: 1.95.0
           components: rustfmt, clippy
 
       - name: Rust cache
@@ -96,6 +100,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Deliberately left floating, unlike the jobs above: this one never compiles
+      # julIDE, it builds cargo-audit from source and reads Cargo.lock. Pinning it
+      # would only risk cargo-audit outgrowing the pinned compiler's MSRV.
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 

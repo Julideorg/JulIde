@@ -1,6 +1,16 @@
-# Pin the toolchain so contributors and CI format and lint identically.
+# Pin the toolchain so contributors and CI compile, format and lint identically.
 # `cargo fmt`/`clippy` output differs between Rust releases, which otherwise shows
 # up as spurious CI failures on unrelated PRs.
+#
+# This said `channel = "stable"` until 0.3.1, which pinned nothing — every CI run
+# took whatever stable had become that day. That is how 1.97.1 arrived on its own
+# and broke the release build: it rejects a `warn!(…)` tail expression in
+# zune-jpeg 0.5.15 (reached through tauri-plugin-clipboard-manager → arboard →
+# image → tiff) that 1.95.0 accepts. A floating toolchain means any transitive
+# dependency can start failing without a single line of julIDE changing.
+#
+# Bumping this is a deliberate act: change it here AND in the `toolchain:` inputs
+# in .github/workflows/{build,ci}.yml, which cannot read this file.
 [toolchain]
-channel = "stable"
+channel = "1.95.0"
 components = ["rustfmt", "clippy"]
