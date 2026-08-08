@@ -43,6 +43,13 @@ brought up to date — which also cleared every advisory `cargo audit` was repor
 
 - **Rust dependencies refreshed**, including `tauri` 2.11.5, `tauri-build` 2.6.3,
   `anyhow` 1.0.104, `uuid` 1.24, `serde_json` 1.0.151 and `regex` 1.13.
+- **The npm side of Tauri was brought back in line with the crates** —
+  `@tauri-apps/api` 2.10.1 → 2.11.1, `@tauri-apps/cli` 2.10.1 → 2.11.4, and
+  `@tauri-apps/plugin-opener` 2.5.3 → 2.5.4. The Rust bump above had moved `tauri` to
+  2.11.5 on its own, and the CLI refuses to build when the crate and
+  `@tauri-apps/api` differ in major or minor, so every platform failed at the very
+  start of `tauri build`. CI never caught it because `ci.yml` does not run a bundle
+  build.
 - **`git2` 0.20 → 0.21**, which also clears two unsound advisories
   (RUSTSEC-2026-0183/0184). The release makes several APIs fallible —
   `Commit::summary()`, `Remote::url()` and `Reference::shorthand()` now return
