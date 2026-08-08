@@ -956,21 +956,23 @@ Plugin Discovery (pluginHost.ts)
 
 ## 18. Known Limitations
 
-### Wayland compatibility
+### Linux rendering (DMA-BUF)
 
-`bun run tauri dev` may show a blank/white window or crash on certain Wayland setups. This is an upstream issue in the WebKitGTK / wry rendering layer used by Tauri, not a julIDE bug. It primarily affects systems running NVIDIA proprietary drivers under Wayland, where the DMA-BUF renderer fails to allocate GPU buffers. Some tiling Wayland compositors (e.g. Hyprland, Sway) are also known to be affected.
+WebKitGTK renders the page into a DMA-BUF and passes that buffer to the UI process. On some Linux systems the buffer can never be allocated, and julIDE then either shows a blank/white window or never opens one at all, printing only `libEGL warning: …` on stderr. This is an upstream issue in the WebKitGTK / wry rendering layer used by Tauri, not a julIDE bug. Known-affected setups include NVIDIA proprietary drivers under Wayland, some tiling compositors (e.g. Hyprland, Sway), WSL, and VMs or containers without a working DRI render node.
 
-**Workarounds:**
+Because the failure is silent and the list of affected setups keeps growing, julIDE **disables the DMA-BUF renderer itself** on Linux, before the webview starts (`disable_webkit_dmabuf_renderer` in `src-tauri/src/lib.rs`). WebKit falls back to shared-memory buffers, which start everywhere at some cost to compositing performance. This applies to `bun run tauri dev`, `bun run tauri build`, and every distributed Linux artifact — .deb, .rpm and AppImage alike — so no wrapper script or post-install step is involved.
 
-- Disable the DMA-BUF renderer to fall back to shared memory buffers:
-  ```bash
-  WEBKIT_DISABLE_DMABUF_RENDERER=1 bun run tauri dev
-  ```
-- Alternatively, force X11 mode:
-  ```bash
-  GDK_BACKEND=x11 bun run tauri dev
-  ```
-- Production builds (`bun run tauri build`) are generally unaffected.
+If your GPU path works and you would rather have the accelerated one, opt back in per launch:
+
+```bash
+WEBKIT_DISABLE_DMABUF_RENDERER=0 julide
+```
+
+Any explicit value for that variable wins over the built-in default, so `=1` is still honoured and other values pass through untouched. If a blank window survives all of that, the remaining lever is forcing X11:
+
+```bash
+GDK_BACKEND=x11 julide
+```
 
 See [tauri-apps/tauri#9394](https://github.com/tauri-apps/tauri/issues/9394) for upstream tracking.
 

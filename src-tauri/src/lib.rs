@@ -24,8 +24,45 @@ mod watcher;
 use julia::new_julia_state;
 use tauri::Manager;
 
+/// WebKitGTK renders into a DMA-BUF and hands the buffer to the UI process. On a
+/// long tail of Linux setups that buffer can never be allocated — NVIDIA's
+/// proprietary driver under Wayland, WSL, VMs and containers without a working
+/// DRI render node — and the failure mode is the worst kind: no window at all,
+/// with nothing but `libEGL warning: …` on stderr to go on. See issue #36.
+///
+/// Turning the renderer off makes WebKit fall back to shared-memory buffers.
+/// That path costs some compositing performance on machines where DMA-BUF would
+/// have worked, which is the deliberate trade: an IDE that starts slightly
+/// slower everywhere beats one that does not start at all somewhere.
+///
+/// Doing this here rather than in packaging is what makes it uniform — the .deb,
+/// the .rpm, the AppImage, distro and source builds, and binaries swapped in by
+/// the updater all enter through `run`, and none of them need a wrapper script.
+///
+/// The variable has to be in place before the webview spawns WebKit's child
+/// processes, hence the call at the top of `run` while we are still
+/// single-threaded and nothing has touched the environment yet.
+#[cfg(target_os = "linux")]
+fn disable_webkit_dmabuf_renderer() {
+    const VAR: &str = "WEBKIT_DISABLE_DMABUF_RENDERER";
+
+    match std::env::var_os(VAR) {
+        // Anyone whose GPU path works can opt back in with
+        // `WEBKIT_DISABLE_DMABUF_RENDERER=0 julide`. Unset the variable instead
+        // of forwarding the "0", because WebKitGTK has historically tested some
+        // of these switches for presence alone and would keep the renderer off.
+        Some(value) if matches!(value.to_str(), Some("0") | Some("")) => std::env::remove_var(VAR),
+        // Any other explicit value is the user's decision; leave it untouched.
+        Some(_) => {}
+        None => std::env::set_var(VAR, "1"),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "linux")]
+    disable_webkit_dmabuf_renderer();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         // The shell and fs plugins are deliberately not registered: the frontend
@@ -213,4 +250,36 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    use super::*;
+
+    const VAR: &str = "WEBKIT_DISABLE_DMABUF_RENDERER";
+
+    // One test rather than three: the environment is process-global, so separate
+    // cases would race against each other under the threaded test harness.
+    #[test]
+    fn dmabuf_renderer_default_and_overrides() {
+        // Unset: the workaround applies, which is the whole point.
+        std::env::remove_var(VAR);
+        disable_webkit_dmabuf_renderer();
+        assert_eq!(std::env::var(VAR).as_deref(), Ok("1"));
+
+        // Already disabled by the caller: left exactly as it was found.
+        std::env::set_var(VAR, "2");
+        disable_webkit_dmabuf_renderer();
+        assert_eq!(std::env::var(VAR).as_deref(), Ok("2"));
+
+        // Opting back in has to clear the variable, not set it to "0", or a
+        // presence-only check inside WebKitGTK would still see it as disabled.
+        for opt_in in ["0", ""] {
+            std::env::set_var(VAR, opt_in);
+            disable_webkit_dmabuf_renderer();
+            assert!(std::env::var_os(VAR).is_none(), "{opt_in:?} should unset");
+        }
+
+        std::env::remove_var(VAR);
+    }
 }

@@ -7,6 +7,27 @@ julIDE aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-08-08
+
+A maintenance release. julIDE now starts on Linux machines where WebKitGTK could not
+allocate a DMA-BUF and the window silently never appeared, and the dependency stack was
+brought up to date — which also cleared every advisory `cargo audit` was reporting.
+
+### Fixed
+
+- **julIDE no longer fails to open a window on Linux systems where WebKitGTK cannot
+  allocate a DMA-BUF.** The symptom was the app simply never appearing, with nothing
+  but `libEGL warning: …` on stderr to explain it, and it hit NVIDIA proprietary
+  drivers under Wayland, WSL, and VMs and containers without a working DRI render
+  node ([#36](https://github.com/Julideorg/JulIde/issues/36)). julIDE now sets
+  `WEBKIT_DISABLE_DMABUF_RENDERER=1` for itself at startup, so WebKit uses
+  shared-memory buffers instead — a small compositing cost on machines where DMA-BUF
+  would have worked, in exchange for starting on the ones where it does not. The
+  default is applied in-process rather than in packaging, so the .deb, .rpm,
+  AppImage, distro and source builds all behave the same. Setting the variable
+  yourself still wins; `WEBKIT_DISABLE_DMABUF_RENDERER=0 julide` opts back into the
+  accelerated path.
+
 ### Security
 
 - **Cleared every advisory `cargo audit` was reporting as a vulnerability.** Three
@@ -215,7 +236,8 @@ distribution plumbing a public release needs.
 Earlier beta releases were not accompanied by a changelog. See the
 [releases page](https://github.com/sinisterMage/julide/releases) for their notes.
 
-[Unreleased]: https://github.com/sinisterMage/julide/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/sinisterMage/julide/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/sinisterMage/julide/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/sinisterMage/julide/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/sinisterMage/julide/compare/v0.1.0-beta4...v0.2.0
 [0.1.0-beta4]: https://github.com/sinisterMage/julide/releases/tag/v0.1.0-beta4
