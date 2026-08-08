@@ -27,6 +27,13 @@ brought up to date — which also cleared every advisory `cargo audit` was repor
   AppImage, distro and source builds all behave the same. Setting the variable
   yourself still wins; `WEBKIT_DISABLE_DMABUF_RENDERER=0 julide` opts back into the
   accelerated path.
+- **The macOS build compiles again.** `Cargo.lock` pinned `zune-core` 0.5.2, which has
+  since been yanked: its logging macros expanded to nothing, so `zune-jpeg`'s
+  `warn!(…)` in trailing-expression position was not an expression at all and failed
+  to compile. A lockfile keeps resolving a yanked version, so nothing surfaced until a
+  build actually reached that crate — and only macOS does, through
+  `tauri-plugin-clipboard-manager` → `arboard` → `image` → `tiff`. Updating to 0.5.3,
+  where the macros expand to a block, fixes it.
 
 ### Security
 
@@ -52,14 +59,13 @@ brought up to date — which also cleared every advisory `cargo audit` was repor
   build.
 - **The Rust toolchain is now genuinely pinned, to 1.95.0.** `rust-toolchain.toml`
   said `channel = "stable"`, which pins nothing — each CI run took whatever stable
-  had become that day. 1.97.1 duly arrived mid-release and rejected a `warn!(…)`
-  tail expression inside `zune-jpeg` 0.5.15, which julIDE never asked for and reaches
-  through `tauri-plugin-clipboard-manager` → `arboard` → `image` → `tiff`. Nothing in
-  julIDE had changed. The workflows pin the same version explicitly, because
-  `dtolnay/rust-toolchain` cannot read the toml and the macOS cross-compile target
-  has to be installed onto the toolchain cargo actually uses. The audit job is left
-  floating on purpose: it never compiles julIDE, so pinning it would only risk
-  `cargo-audit` outgrowing the pinned compiler.
+  had become that day, and the compiler a contributor saw locally had no relation to
+  the one that built the release. The workflows pin the same version explicitly,
+  because `dtolnay/rust-toolchain` cannot read the toml and the macOS cross-compile
+  target has to be installed onto the toolchain cargo actually uses. The audit job is
+  left floating on purpose: it never compiles julIDE, so pinning it would only risk
+  `cargo-audit` outgrowing the pinned compiler. This is reproducibility hygiene, not
+  a fix for anything.
 - **`git2` 0.20 → 0.21**, which also clears two unsound advisories
   (RUSTSEC-2026-0183/0184). The release makes several APIs fallible —
   `Commit::summary()`, `Remote::url()` and `Reference::shorthand()` now return

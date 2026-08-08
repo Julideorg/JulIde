@@ -89,10 +89,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      # Pinned, not @stable. A floating toolchain broke the 0.3.1 release when
-      # 1.97.1 shipped and rejected code inside a transitive dependency. Keep the
-      # version in step with rust-toolchain.toml — this action cannot read it, and
-      # the target below has to be installed onto the same toolchain cargo will use.
+      # Pinned, not @stable, so a release is built by a known compiler rather than
+      # whatever shipped that morning. Keep the version in step with
+      # rust-toolchain.toml — this action cannot read it, and the target below has
+      # to be installed onto the same toolchain cargo will actually use.
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
