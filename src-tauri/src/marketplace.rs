@@ -42,7 +42,7 @@ use tar::{Archive, EntryType};
 /// pinned key would then be verifying a document from an attacker-chosen host. The
 /// trade is that self-hosted registries are unsupported.
 const REGISTRY_BASE: &str =
-    "https://raw.githubusercontent.com/Julideorg/julide-plugin-registry/main/registry";
+    "https://raw.githubusercontent.com/Julideorg/julide-plugin-registry/master/registry";
 
 /// The pinned registry signing key.
 ///
@@ -211,6 +211,16 @@ async fn read_capped(
     what: &str,
 ) -> Result<Vec<u8>, String> {
     if !response.status().is_success() {
+        // 404 on raw.githubusercontent.com means the file is not at that path on that
+        // branch — which for a registry that has not been published yet is the normal
+        // state, not a fault. Saying "HTTP 404" leaves the reader to guess between
+        // "not published", "wrong branch" and "something is broken".
+        if response.status() == tauri::http::StatusCode::NOT_FOUND {
+            return Err(format!(
+                "{what} was not found at {}. The plugin registry may not be published yet.",
+                response.url()
+            ));
+        }
         return Err(format!("{what}: HTTP {}", response.status()));
     }
     if matches!(response.content_length(), Some(n) if n > cap as u64) {
@@ -891,6 +901,28 @@ mod tests {
         let i = tampered.len() / 2;
         tampered[i] ^= 0x01;
         assert!(verify_signature(&tampered, FIXTURE_SIG).is_err());
+    }
+
+    const FIXTURE_INDEX: &[u8] = include_bytes!("../tests/fixtures/index.json");
+    const FIXTURE_INDEX_SIG: &str = include_str!("../tests/fixtures/index.json.minisig");
+
+    #[test]
+    fn an_index_signed_by_the_registry_verifies_here() {
+        // The index carries the sha256 of every artifact this module verifies a download
+        // against, so an index julIDE cannot verify means no plugin can be installed at
+        // all. Worth pinning against the registry's real output rather than assuming the
+        // two implementations of minisign agree.
+        verify_signature(FIXTURE_INDEX, FIXTURE_INDEX_SIG)
+            .expect("the pinned key should verify the registry's own index signature");
+    }
+
+    #[test]
+    fn a_substituted_index_fails() {
+        // The attack signing exists to stop: serving a different index, with different
+        // digests, from a host that otherwise looks legitimate.
+        let substituted =
+            br#"{"schemaVersion":1,"generatedAt":"x","paused":false,"count":0,"plugins":[]}"#;
+        assert!(verify_signature(substituted, FIXTURE_INDEX_SIG).is_err());
     }
 
     #[test]

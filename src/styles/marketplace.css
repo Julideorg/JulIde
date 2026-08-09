@@ -90,6 +90,19 @@
   color: var(--fg-hi);
 }
 
+/* An unpublished or unreachable registry is a normal state, not a fault. A red banner
+   for it would train people to ignore the banner that does mean something. */
+.marketplace-notice.info {
+  background: var(--bg-tertiary);
+  color: var(--fg-mid);
+}
+
+.marketplace-detail {
+  display: block;
+  margin-top: 3px;
+  opacity: 0.7;
+}
+
 .marketplace-list {
   border: 1px solid var(--hairline);
   border-radius: var(--radius-sm);

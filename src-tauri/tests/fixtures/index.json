@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-09T05:53:33Z",
+  "paused": false,
+  "revocations": {
+    "url": "https://raw.githubusercontent.com/Julideorg/julide-plugin-registry/master/registry/revocations.json",
+    "signatureUrl": "https://raw.githubusercontent.com/Julideorg/julide-plugin-registry/master/registry/revocations.json.minisig",
+    "serial": 1
+  },
+  "count": 0,
+  "plugins": []
+}

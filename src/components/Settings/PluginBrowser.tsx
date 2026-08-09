@@ -36,6 +36,12 @@ export function PluginBrowser() {
   const installed = new Set(pluginHost.getPlugins().map((p) => p.name));
   const entries = results();
 
+  // "Not published yet" and "your network is broken" are both normal, and neither is a
+  // fault in julIDE — so they get an informational tone rather than a red warning. A
+  // signature failure is a different matter and keeps the warning.
+  const unreachable =
+    error !== "" && (error.includes("not found") || error.includes("error sending request"));
+
   return (
     <div className="settings-section">
       <div className="marketplace-header">
@@ -69,8 +75,16 @@ export function PluginBrowser() {
       )}
 
       {error && (
-        <p className="marketplace-notice warn">
-          <AlertTriangle size={iconSize.xs} /> {error}
+        <p className={`marketplace-notice ${unreachable ? "info" : "warn"}`}>
+          <AlertTriangle size={iconSize.xs} />
+          {unreachable ? (
+            <span>
+              The plugin registry is not reachable, so there is nothing to browse yet. Plugins you
+              install by hand still work. <span className="marketplace-detail">{error}</span>
+            </span>
+          ) : (
+            error
+          )}
         </p>
       )}
 
@@ -82,7 +96,9 @@ export function PluginBrowser() {
           title={query ? "No plugins match that search" : "No plugins available"}
           hint={
             error
-              ? "The registry could not be reached or its signature did not verify."
+              ? unreachable
+                ? "Nothing to browse until the registry is reachable."
+                : "The registry was reached but its signature did not verify — that is worth reporting."
               : "Plugins you install appear under Installed."
           }
         />
