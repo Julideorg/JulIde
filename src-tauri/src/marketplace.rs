@@ -865,6 +865,42 @@ mod tests {
         assert!(verify_signature(b"{}", "not a signature").is_err());
     }
 
+    // ── cross-language signature check ─────────────────────────────────────
+    //
+    // The registry signs in TypeScript over WebCrypto; julIDE verifies in Rust with
+    // minisign-verify. Two implementations of one format, in two languages, with no
+    // shared code — exactly the kind of assumption that holds until the day it does
+    // not, and whose failure mode is "the kill switch silently stops working".
+    //
+    // These fixtures are the real signed feed from the registry repository, verified
+    // against the real pinned key.
+
+    const FIXTURE_FEED: &[u8] = include_bytes!("../tests/fixtures/revocations.json");
+    const FIXTURE_SIG: &str = include_str!("../tests/fixtures/revocations.json.minisig");
+
+    #[test]
+    fn a_feed_signed_by_the_registry_verifies_here() {
+        verify_signature(FIXTURE_FEED, FIXTURE_SIG)
+            .expect("the pinned key should verify the registry's own signature");
+    }
+
+    #[test]
+    fn one_flipped_byte_in_the_feed_fails() {
+        let mut tampered = FIXTURE_FEED.to_vec();
+        // Flip a byte inside the JSON body rather than in trailing whitespace.
+        let i = tampered.len() / 2;
+        tampered[i] ^= 0x01;
+        assert!(verify_signature(&tampered, FIXTURE_SIG).is_err());
+    }
+
+    #[test]
+    fn an_edited_trusted_comment_fails() {
+        // The serial lives in the trusted comment, and the global signature is what
+        // makes it trustworthy — this is the anti-rollback defence.
+        let tampered = FIXTURE_SIG.replace("serial=1", "serial=9");
+        assert!(verify_signature(FIXTURE_FEED, &tampered).is_err());
+    }
+
     // ── swap_in_place ──────────────────────────────────────────────────────
 
     fn write_tree(dir: &Path, marker: &str) {

@@ -1,1 +1,17 @@
-BC765EE0B78D23FARWS8dl7gt40j+gU90oOlFxZ7TcQWLcYV+EwEPgOIdgtBmbOTX96pU6AS
+# Pinned public keys for the julIDE plugin registry.
+#
+# A SET, not a single key, from day one: retrofitting a set into one pinned key requires
+# a release, which is exactly what cannot be done during an incident. A rotation adds the
+# new key here in one release, and drops the old one in a later release once the overlap
+# window has passed.
+#
+# NOT the Tauri updater key. Sharing them would make a registry-signing compromise an
+# app-update compromise, which is a far larger blast radius than this feature warrants.
+#
+# One base64 key per line — the second line of a minisign .pub file, without its
+# "untrusted comment:" header and without the key id. Generate with the registry's
+# scripts/generate-signing-key.ts; the private half never leaves the maintainer's
+# machine and never enters CI.
+
+# BC765EE0B78D23FA — signs registry/index.json and registry/revocations.json.
+RWS8dl7gt40j+gU90oOlFxZ7TcQWLcYV+EwEPgOIdgtBmbOTX96pU6AS
