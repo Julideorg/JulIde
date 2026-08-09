@@ -144,7 +144,7 @@
 
 /* ── Fields ─────────────────────────────────────────────────────────── */
 .ui-input,
-.ui-select {
+.ui-select-trigger {
   width: 100%;
   height: 26px;
   padding: 0 var(--space-4);
@@ -160,19 +160,46 @@
   color: var(--fg-lo);
 }
 .ui-input:hover,
-.ui-select:hover {
+.ui-select-trigger:hover {
   border-color: var(--fg-lo);
 }
 .ui-input:focus-visible,
-.ui-select:focus-visible {
+.ui-select-trigger:focus-visible {
   border-color: var(--border-focus);
   outline-offset: 0;
 }
 .ui-input--mono {
   font-family: var(--font-mono);
 }
-.ui-input[aria-invalid="true"] {
+.ui-input[aria-invalid="true"],
+.ui-select-trigger[aria-invalid="true"] {
   border-color: var(--status-danger);
+}
+
+/* The Select trigger carries layout only — each call site keeps its own box, padding
+   and font size via the class it already had, so migrating off <select> changed no
+   densities. See src/components/ui/Select.tsx. */
+.ui-select-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  text-align: left;
+  cursor: pointer;
+}
+.ui-select-trigger:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ui-select-value {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ui-select-chevron {
+  flex-shrink: 0;
+  color: var(--fg-lo);
 }
 
 .ui-field {
@@ -507,6 +534,54 @@
   height: 1px;
   margin: var(--space-2) var(--space-3);
   background: var(--hairline);
+}
+
+/* Select listbox — the panel reuses .ui-popover for its surface, and overrides only
+   what a dropdown needs: trigger-matched width and a scrolling option list. */
+.ui-select-popover {
+  min-width: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
+}
+.ui-select-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--fg-hi);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+/* Keyboard and pointer share one highlight: the pointer sets the active index on
+   hover, so there is never a second, competing hover style. */
+.ui-select-option[data-active="true"] {
+  background: var(--surface-hover);
+}
+.ui-select-option[aria-selected="true"] {
+  color: var(--mode-brand);
+}
+.ui-select-option[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+}
+.ui-select-option-check {
+  display: inline-flex;
+  width: 12px;
+  flex-shrink: 0;
+  color: var(--mode-brand);
+}
+.ui-select-option-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ui-select-option-hint {
+  color: var(--fg-lo);
+  font-size: var(--text-2xs);
 }
 
 /* ── Spinner ────────────────────────────────────────────────────────── */

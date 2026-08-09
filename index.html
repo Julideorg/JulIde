@@ -1,9 +1,18 @@
 <!doctype html>
-<html lang="en">
+<!--
+  `theme-dark` is set here rather than waiting for App.tsx to mirror the setting onto
+  <html> after React mounts. Dark is the default, and without it the first paint carries
+  no theme class at all — a light flash before the app appears. A stored light-theme
+  setting swaps the class on mount, one frame later at worst.
+-->
+<html lang="en" class="theme-dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/julide-logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Same first-paint gap, for the chrome the platform draws. The .theme-* blocks in
+         tokens.css set the real value once the stylesheet lands. -->
+    <meta name="color-scheme" content="dark light" />
     <title>julIDE</title>
   </head>
 

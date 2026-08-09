@@ -92,6 +92,12 @@ bun test                 # Frontend tests
 bun run test:rust        # Rust tests
 bun run test:all         # Both test suites
 
+# Generated files must be regenerated and committed, not hand-edited.
+# CI fails if any of these is stale.
+bun run check:tokens              # src/styles/tokens.css      ← src/themes/tokens.ts
+bun run check:permission-catalog  # permission-catalog.json
+bun run check:plugin-bootstrap    # src-tauri/assets/plugin-bootstrap.js
+
 # Auto-fix what can be fixed
 bun run lint:fix
 bun run format

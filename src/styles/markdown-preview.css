@@ -1,0 +1,224 @@
+/* =========================================================
+   MARKDOWN PREVIEW
+
+   Rendered .md documents, shown either in place of the editor or in the split
+   pane. Everything is scoped under .markdown-preview, because the markup comes
+   from a document rather than from a component — bare `h1`/`table`/`code`
+   selectors would otherwise reach the whole app.
+
+   Tokens only: see src/themes/tokens.ts. src/styles/styles.test.ts fails the
+   build on a hex or rgba() literal in here.
+   ========================================================= */
+
+.markdown-preview {
+  height: 100%;
+  overflow-y: auto;
+  background: var(--surface-canvas);
+  color: var(--fg-hi);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+}
+
+/* A measure, not a full-width wall of text. */
+.markdown-preview-body {
+  max-width: 46em;
+  margin: 0 auto;
+  padding: var(--space-7) var(--space-6) var(--space-8);
+}
+
+.markdown-preview-body > *:first-child {
+  margin-top: 0;
+}
+
+/* ── Headings ───────────────────────────────────────────────────────────── */
+.markdown-preview-body h1,
+.markdown-preview-body h2,
+.markdown-preview-body h3,
+.markdown-preview-body h4,
+.markdown-preview-body h5,
+.markdown-preview-body h6 {
+  margin: var(--space-7) 0 var(--space-5);
+  font-weight: var(--weight-semibold);
+  line-height: 1.25;
+  /* Anchor links scroll headings to the top edge; keep them off it. */
+  scroll-margin-top: var(--space-6);
+}
+.markdown-preview-body h1 {
+  font-size: var(--text-xl);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+}
+.markdown-preview-body h2 {
+  font-size: var(--text-lg);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--hairline);
+}
+.markdown-preview-body h3 {
+  font-size: var(--text-md);
+}
+.markdown-preview-body h4,
+.markdown-preview-body h5,
+.markdown-preview-body h6 {
+  font-size: var(--text-base);
+  color: var(--fg-mid);
+}
+
+/* ── Flow ───────────────────────────────────────────────────────────────── */
+.markdown-preview-body p,
+.markdown-preview-body ul,
+.markdown-preview-body ol,
+.markdown-preview-body dl,
+.markdown-preview-body blockquote,
+.markdown-preview-body pre,
+.markdown-preview-body table {
+  margin: 0 0 var(--space-5);
+}
+.markdown-preview-body ul,
+.markdown-preview-body ol {
+  padding-left: var(--space-7);
+}
+.markdown-preview-body li {
+  margin-bottom: var(--space-2);
+}
+.markdown-preview-body li > ul,
+.markdown-preview-body li > ol {
+  margin: var(--space-2) 0 0;
+}
+.markdown-preview-body hr {
+  height: 1px;
+  margin: var(--space-7) 0;
+  border: none;
+  background: var(--hairline);
+}
+.markdown-preview-body blockquote {
+  padding-left: var(--space-5);
+  border-left: 3px solid var(--hairline-strong);
+  color: var(--fg-mid);
+}
+
+/* ── Links ──────────────────────────────────────────────────────────────── */
+.markdown-preview-body a {
+  color: var(--mode-pkg);
+  text-decoration: none;
+  cursor: pointer;
+}
+.markdown-preview-body a:hover {
+  color: var(--mode-pkg-hover);
+  text-decoration: underline;
+}
+
+/* ── Code ───────────────────────────────────────────────────────────────── */
+.markdown-preview-body code {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+.markdown-preview-body pre {
+  padding: var(--space-5);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  overflow-x: auto;
+}
+/* Inside a block the padding and background belong to the <pre>. */
+.markdown-preview-body pre code {
+  padding: 0;
+  background: none;
+  line-height: var(--leading-sm);
+}
+
+/* ── Tables ─────────────────────────────────────────────────────────────── */
+.markdown-preview-body table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--text-sm);
+}
+.markdown-preview-body th,
+.markdown-preview-body td {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--hairline);
+  text-align: left;
+}
+.markdown-preview-body th {
+  background: var(--surface-raised);
+  font-weight: var(--weight-semibold);
+}
+.markdown-preview-body tr:nth-child(even) td {
+  background: var(--surface-panel);
+}
+
+/* ── Task lists ─────────────────────────────────────────────────────────── */
+/* A ☐/☑ glyph rather than <input type="checkbox">, which the sanitizer strips —
+   see the checkbox renderer in src/markdown/renderer.ts. */
+.markdown-preview-body .md-task {
+  color: var(--fg-lo);
+  font-family: var(--font-mono);
+}
+.markdown-preview-body .md-task--done {
+  color: var(--mode-run);
+}
+
+/* ── Image placeholder ──────────────────────────────────────────────────── */
+/* No image in a markdown file can load: the CSP allows img-src 'self' data: blob:
+   only — no remote hosts — and there is no command to read local image bytes. So
+   the renderer emits this instead of an <img> that would fail and log a violation. */
+.markdown-preview-body .md-img-missing {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--mode-help-tint-weak);
+  color: var(--fg-lo);
+  font-size: var(--text-sm);
+  font-style: italic;
+}
+.markdown-preview-body .md-img-missing::before {
+  content: "🖼";
+  font-style: normal;
+}
+
+/* ── Tab-strip toggle ───────────────────────────────────────────────────── */
+/* Matches .editor-tab-close in editor.css, including its reveal-on-hover. */
+.editor-tab-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--fg-lo);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--dur-1) var(--ease-out),
+    background var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+.editor-tab:hover .editor-tab-preview,
+.editor-tab.active .editor-tab-preview,
+.editor-tab-preview[aria-pressed="true"] {
+  opacity: 1;
+}
+.editor-tab-preview:hover {
+  background: var(--surface-hover);
+  color: var(--fg-hi);
+}
+.editor-tab-preview[aria-pressed="true"] {
+  color: var(--mode-brand);
+}
+
+/* Keeps the hidden Monaco pane out of the flow without unmounting it — see the
+   comment in EditorSplitContainer.tsx for why it stays mounted. */
+.editor-view {
+  height: 100%;
+}
+.editor-view[hidden] {
+  display: none;
+}

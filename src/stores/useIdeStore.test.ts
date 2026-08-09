@@ -107,6 +107,88 @@ describe("tab management", () => {
   });
 });
 
+// ── Markdown preview ────────────────────────────────────────────────────────
+
+describe("markdown preview", () => {
+  const mdTab = (id: string) =>
+    makeTab({ id, path: `/ws/${id}.md`, name: `${id}.md`, language: "md" });
+
+  test("toggleTabViewMode flips between source and preview", () => {
+    const ide = useIdeStore.getState();
+    ide.openFile(mdTab("a"));
+
+    ide.toggleTabViewMode("a");
+    expect(useIdeStore.getState().openTabs[0].viewMode).toBe("preview");
+
+    ide.toggleTabViewMode("a");
+    expect(useIdeStore.getState().openTabs[0].viewMode).toBe("source");
+  });
+
+  test("toggleTabViewMode touches only the tab it names", () => {
+    const ide = useIdeStore.getState();
+    ide.openFile(mdTab("a"));
+    ide.openFile(mdTab("b"));
+
+    ide.toggleTabViewMode("a");
+
+    const tabs = useIdeStore.getState().openTabs;
+    expect(tabs.find((t) => t.id === "a")?.viewMode).toBe("preview");
+    expect(tabs.find((t) => t.id === "b")?.viewMode).toBeUndefined();
+  });
+
+  test("openPreviewSplit claims the split pane", () => {
+    useIdeStore.getState().openPreviewSplit("a");
+
+    const s = useIdeStore.getState();
+    expect(s.previewTabId).toBe("a");
+    expect(s.splitEditorOpen).toBe(true);
+  });
+
+  test("closePreviewSplit releases the pane when nothing else wants it", () => {
+    const ide = useIdeStore.getState();
+    ide.openPreviewSplit("a");
+    ide.closePreviewSplit();
+
+    const s = useIdeStore.getState();
+    expect(s.previewTabId).toBeNull();
+    expect(s.splitEditorOpen).toBe(false);
+  });
+
+  test("closePreviewSplit leaves the pane open for a split editor", () => {
+    const ide = useIdeStore.getState();
+    ide.openPreviewSplit("a");
+    ide.setSplitTab("b");
+    ide.closePreviewSplit();
+
+    const s = useIdeStore.getState();
+    expect(s.previewTabId).toBeNull();
+    expect(s.splitEditorOpen).toBe(true);
+  });
+
+  test("closing the previewed tab clears the preview rather than stranding it", () => {
+    const ide = useIdeStore.getState();
+    ide.openFile(mdTab("a"));
+    ide.openPreviewSplit("a");
+
+    ide.closeTab("a");
+
+    const s = useIdeStore.getState();
+    expect(s.previewTabId).toBeNull();
+    expect(s.splitEditorOpen).toBe(false);
+  });
+
+  test("closing an unrelated tab leaves the preview alone", () => {
+    const ide = useIdeStore.getState();
+    ide.openFile(mdTab("a"));
+    ide.openFile(mdTab("b"));
+    ide.openPreviewSplit("a");
+
+    ide.closeTab("b");
+
+    expect(useIdeStore.getState().previewTabId).toBe("a");
+  });
+});
+
 // ── Output ──────────────────────────────────────────────────────────────────
 
 describe("output", () => {

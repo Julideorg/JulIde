@@ -7,6 +7,140 @@ julIDE aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-08-09
+
+Markdown files can be read as well as edited. Dropdown menus finally follow the theme on
+every platform, and the Output panel no longer locks up under a talkative Julia program —
+which turns out to have been the same bug that was reddening CI.
+
+### Added
+
+- **Markdown preview.** `.md` files can now be rendered instead of only edited, either in
+  place — the eye button on the tab flips between source and preview — or side by side via
+  **View → Open Markdown Preview to the Side**. Both are in the command palette as
+  `Markdown: …`. The preview follows the editor as you type, and it is themed from the
+  same design tokens as the rest of the IDE, so it reads correctly in both light and dark.
+
+  Toggling in place keeps the editor mounted rather than tearing it down, so undo history,
+  cursor and scroll position all survive the round trip. That also closes a data-loss hole
+  that the obvious implementation would have opened: unmounting the editor discards its
+  pending autosave, and since typing does not mark a tab dirty there would have been
+  nothing to indicate the write never landed.
+
+  Links behave the way you would want and no way you would not. External links open in
+  your browser rather than navigating the IDE away from itself; a relative link to another
+  `.md` file opens it as a tab, in preview; `#heading` links scroll. A link that resolves
+  outside the workspace is refused with a note rather than followed — a README usually
+  arrives with a cloned repository, and the file-reading command behind it has no path
+  restriction of its own.
+
+  Two deliberate limits, both visible: **images do not render**, because julIDE's content
+  security policy permits neither remote images nor local file reads for them, so a
+  placeholder naming the missing image is shown instead of a broken-image icon. And **raw
+  HTML written inside a markdown file is shown as text rather than rendered**, which will
+  look wrong on READMEs that lean on `<details>` or inline HTML. That is the safer default
+  while the sanitizer allowlist gets some mileage; it is a small change to revisit.
+
+### Fixed
+
+- **Dropdown menus follow the IDE theme.** Every dropdown in julIDE was a native
+  `<select>`, and while the closed control was themed, the popup list is drawn by the
+  platform rather than the page — so it stayed white in dark mode everywhere. Two changes
+  fix it: the generated design tokens now declare `color-scheme` per theme, which also
+  brings scrollbars, spinners, checkboxes and the caret into line on every platform; and
+  the eleven native selects are replaced with a themed listbox (`ui/Select`) built on the
+  same anchored-surface machinery as `ui/Popover`. The component was necessary rather than
+  optional because on Linux/WebKitGTK the `<select>` popup is a native GTK menu living
+  outside the DOM, which no CSS — `color-scheme` included — can reach. It implements the
+  ARIA select-only combobox pattern, so arrow keys, Home/End, type-to-select, Enter, Tab
+  and Escape all behave, and a test now fails the build if a native `<select>` reappears.
+- **The Output panel no longer freezes when Julia produces sustained output.** `appendOutput`
+  pushed each line into an immer draft, and with auto-freeze on that deep-froze the entire
+  retained buffer once per line — quadratic work that took **30 seconds** for 5000 lines
+  once the 5000-line cap was reached. The buffer is now kept on a plain copy-on-write path
+  outside immer, which does the same work in about 20ms. `appendContainerLog` had the same
+  bug and the same fix. This is also what had been failing CI: the store's own truncation
+  test exceeded the 5s per-test budget on the runner.
+- **No more light flash on startup.** The theme class was only applied to `<html>` after
+  React mounted, so the first paint had no theme at all.
+
+## [0.4.0] - 2026-08-09
+
+Plugins now run in a sandbox. Before this release a plugin was evaluated in julIDE's own
+realm, where it reached `window.__TAURI_INTERNALS__` and through it every Tauri command,
+with no declared permission at all — the permission system existed, but nothing stopped a
+plugin from going around it. This release closes that, and adds a signed registry to
+install from.
+
+**This is a breaking change for plugin authors.** Plugins built against the v1 API are
+refused, with an explanation rather than a silent half-failure. See
+[docs/PLUGIN_API_V2.md](docs/PLUGIN_API_V2.md) for the migration.
+
+### Added
+
+- **Plugins run in an isolated frame.** Each plugin gets an
+  `<iframe sandbox="allow-scripts">` — no `allow-same-origin`, so the frame has an opaque
+  origin — served over a custom `julide-plugin://` scheme. The scheme is what makes this
+  possible at all: a per-plugin CSP has to arrive as a real response _header_, and a
+  `srcdoc`, `blob:` or `<meta>` document cannot carry one. (A frame created from those
+  inherits the embedder's policy container, and `'self'` inside an opaque origin matches
+  nothing — so such a frame either runs no script at all, or runs only because the main
+  realm's `script-src` was loosened, which is the exact capability this removes.) Inside
+  the frame there is no Tauri bridge, no parent DOM, and no origin storage; every
+  capability a plugin has arrives over a `MessagePort` the host hands it after a
+  handshake, and if a method is not in the dispatcher the plugin cannot do it.
+- **The sandbox checks itself.** On handshake the frame reports whether the Tauri bridge
+  is absent, the origin is opaque, storage is blocked and the CSP was applied. A frame
+  that fails any of those — or that does not report at all — is torn down instead of
+  being trusted. So a regression that quietly re-opened the sandbox would surface as a
+  plugin refusing to load, rather than as nothing at all.
+- **Per-plugin network policy.** A plugin declares the origins it needs in `plugin.json`
+  and gets exactly those in its frame's `connect-src`; declaring none means
+  `connect-src 'none'`. Wildcard subdomains, bare schemes, paths, credentials and
+  non-loopback `http://` are all rejected — each is a form a hostile manifest would like
+  accepted and none has an honest use an explicit origin does not cover. Rust re-validates
+  rather than trusting what the frontend passes it. This only became enforceable once
+  plugins had their own frame: previously everything shared julIDE's CSP, so widening
+  egress for one plugin widened it for every plugin and for the IDE itself.
+- **A permission catalog and a consent flow.** `permission-catalog.json` is generated from
+  the source of truth and checked in CI, so it cannot drift from what the code actually
+  enforces; it is also what the registry reads to describe a plugin's requests. The
+  consent dialog shows the permission table before anything is created for the plugin —
+  decline and its code is never fetched, let alone evaluated — and a stored grant that no
+  longer covers the manifest re-prompts.
+- **A signed plugin registry, and a browser for it in Settings.** The index is verified
+  with minisign in Rust, never in the webview, and every download is checked against the
+  sha256 the signed index names. Signing rather than trusting TLS is the point: otherwise
+  whoever controls the host controls the digest, and the digest would only prove "I
+  downloaded what the host meant to send". The registry key is deliberately _not_ the
+  Tauri updater key — sharing them would turn a registry compromise into an app-update
+  compromise. The registry commands are deliberately absent from the permission catalog:
+  a plugin that can install plugins is privilege escalation with no legitimate use.
+- **A revocation feed**, refreshed at startup and every six hours and applied before a
+  plugin loads. It fails _open_ on a network error — an IDE that will not load plugins on
+  a plane is worse than the exposure window — and _closed_ on a signature failure, keeping
+  the last verified copy. Two limits are worth stating plainly: it matches on the name and
+  version in the plugin's own manifest, so a deliberately malicious sideloaded plugin
+  renames itself past it, and it is a mitigation for supply-chain compromise of a registry
+  plugin the user chose to trust — not a defence against hostile local files.
+
+### Changed
+
+- **Plugin API v1 is no longer loaded.** v1 handed plugins a live `HTMLElement` from
+  `render(el)` and a synchronous `ctx`, neither of which can cross a frame boundary. Views
+  are now declared in `plugin.json` instead, which is also what lets a view frame be
+  created lazily on first show rather than every plugin spinning one up at startup.
+- CI now fails when a generated file is stale — `permission-catalog.json` and the plugin
+  bootstrap are both things a plugin depends on being accurate, and a stale one is silent
+  by construction.
+
+### Fixed
+
+- **An unreachable plugin registry no longer looks like something is broken.** "Not
+  published yet" and "your network is down" are both ordinary, and neither is a fault in
+  julIDE, so they now read as informational and say that hand-installed plugins still
+  work. A signature that fails to verify keeps the warning — that one is worth reporting.
+
 ## [0.3.1] - 2026-08-08
 
 A maintenance release. julIDE now starts on Linux machines where WebKitGTK could not
@@ -259,7 +393,9 @@ distribution plumbing a public release needs.
 Earlier beta releases were not accompanied by a changelog. See the
 [releases page](https://github.com/sinisterMage/julide/releases) for their notes.
 
-[Unreleased]: https://github.com/sinisterMage/julide/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/Julideorg/JulIde/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/Julideorg/JulIde/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/Julideorg/JulIde/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/sinisterMage/julide/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/sinisterMage/julide/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/sinisterMage/julide/compare/v0.1.0-beta4...v0.2.0

@@ -1,6 +1,7 @@
 import { useCallback, useRef } from "react";
-import { X } from "lucide-react";
+import { Code, Eye, X } from "lucide-react";
 import { useIdeStore } from "../../stores/useIdeStore";
+import { isMarkdownPath } from "../../markdown/renderer";
 
 export function EditorTabs() {
   const openTabs = useIdeStore((s) => s.openTabs);
@@ -8,6 +9,7 @@ export function EditorTabs() {
   const setActiveTab = useIdeStore((s) => s.setActiveTab);
   const closeTab = useIdeStore((s) => s.closeTab);
   const reorderTabs = useIdeStore((s) => s.reorderTabs);
+  const toggleTabViewMode = useIdeStore((s) => s.toggleTabViewMode);
 
   const dragIndexRef = useRef<number | null>(null);
 
@@ -17,6 +19,14 @@ export function EditorTabs() {
       closeTab(id);
     },
     [closeTab],
+  );
+
+  const handleTogglePreview = useCallback(
+    (e: React.MouseEvent, id: string) => {
+      e.stopPropagation();
+      toggleTabViewMode(id);
+    },
+    [toggleTabViewMode],
   );
 
   const handleMiddleClick = useCallback(
@@ -80,6 +90,17 @@ export function EditorTabs() {
             <span className="editor-tab-dirty" title="Unsaved changes">
               ●
             </span>
+          )}
+          {isMarkdownPath(tab.path) && (
+            <button
+              className="editor-tab-preview"
+              onClick={(e) => handleTogglePreview(e, tab.id)}
+              title={tab.viewMode === "preview" ? "Show source" : "Show preview"}
+              aria-label={tab.viewMode === "preview" ? "Show source" : "Show preview"}
+              aria-pressed={tab.viewMode === "preview"}
+            >
+              {tab.viewMode === "preview" ? <Code size={12} /> : <Eye size={12} />}
+            </button>
           )}
           <button
             className="editor-tab-close"

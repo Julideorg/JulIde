@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { openExternal } from "../../services/openExternal";
 import { CircleDot, Plus, ExternalLink, RefreshCw } from "lucide-react";
 import { useIdeStore } from "../../stores/useIdeStore";
+import { Select } from "../ui";
 import type { GitIssue } from "../../types/git";
 
 export function GitIssuesTab() {
@@ -59,15 +60,17 @@ export function GitIssuesTab() {
       <div className="git-section-header">
         <span>Issues</span>
         <div className="git-pr-actions">
-          <select
+          <Select
             className="git-pr-filter"
+            ariaLabel="Issue state"
             value={filter}
-            onChange={(e) => setFilter(e.target.value as typeof filter)}
-          >
-            <option value="open">Open</option>
-            <option value="closed">Closed</option>
-            <option value="all">All</option>
-          </select>
+            onChange={setFilter}
+            options={[
+              { value: "open", label: "Open" },
+              { value: "closed", label: "Closed" },
+              { value: "all", label: "All" },
+            ]}
+          />
           <button
             className="git-file-action"
             onClick={() => setCreating(!creating)}

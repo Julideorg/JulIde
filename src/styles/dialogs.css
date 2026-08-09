@@ -125,18 +125,12 @@
 .bestie-field-select:focus {
   border-color: var(--mode-brand);
 }
+/* The `appearance: none` + inline-SVG chevron that used to live here went with the
+   native <select> — ui/Select draws a lucide chevron that follows the theme, where the
+   data-URI's hardcoded fill never could. The `option` rule went too: it had no effect on
+   Linux/WebKitGTK, where the popup is a GTK menu outside the DOM. */
 .bestie-field-select {
   cursor: pointer;
-  -webkit-appearance: none;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  padding-right: 28px;
-}
-.bestie-field-select option {
-  background: var(--surface-raised);
-  color: var(--fg-hi);
 }
 
 /* ─── Julia setup dialog ─────────────────────────────────────────────────── */

@@ -145,6 +145,15 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .separator()
         .item(&cmd_item!("Split Editor", "editor.split"))
         .separator()
+        .item(&cmd_item!(
+            "Toggle Markdown Preview",
+            "markdown.toggle-preview"
+        ))
+        .item(&cmd_item!(
+            "Open Markdown Preview to the Side",
+            "markdown.open-preview-to-side"
+        ))
+        .separator()
         .item(&cmd_item!("Output", "panel.output"))
         .item(&cmd_item!("Terminal", "panel.terminal"))
         .item(&cmd_item!("Problems", "panel.problems"))

@@ -3,7 +3,8 @@ import { useState } from "react";
 import { FileText, FolderOpen, Play, RefreshCw, Trash2 } from "lucide-react";
 import { Button, IconButton, type Tone } from "./Button";
 import { Badge, Dot, EmptyState, Kbd, Panel, Spinner } from "./Panel";
-import { Input, Select } from "./Field";
+import { Input } from "./Field";
+import { Select } from "./Select";
 import { Dialog } from "./Dialog";
 import { Menu, MenuItem, MenuSeparator, Popover } from "./Popover";
 import { ToastHost, toast } from "./Toast";
@@ -46,6 +47,70 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
         {children}
       </div>
     </div>
+  );
+}
+
+/* Select is controlled-only, so each variant needs its own state holder. */
+
+function ThemeSelect() {
+  const [value, setValue] = useState("julide-dark");
+  return (
+    <Select
+      label="Theme"
+      value={value}
+      onChange={setValue}
+      options={[
+        { value: "julide-dark", label: "julIDE Ink (dark)" },
+        { value: "julide-light", label: "julIDE Paper (light)" },
+      ]}
+    />
+  );
+}
+
+/** Long enough to hit the panel's max height, so the scroll and flip logic show up. */
+function LongSelect() {
+  const [value, setValue] = useState("v1.11");
+  const versions = ["v1.6", "v1.7", "v1.8", "v1.9", "v1.10", "v1.11", "v1.12", "nightly"];
+  return (
+    <Select
+      label="Julia version"
+      value={value}
+      onChange={setValue}
+      options={versions.map((v) => ({ value: v, label: v }))}
+    />
+  );
+}
+
+function DisabledOptionSelect() {
+  const [value, setValue] = useState("fatou");
+  return (
+    <Select
+      label="Language server"
+      value={value}
+      onChange={setValue}
+      options={[
+        { value: "fatou", label: "Fatou", hint: "built-in" },
+        { value: "languageserver", label: "LanguageServer.jl" },
+        { value: "jetls", label: "JETLS.jl", disabled: true },
+      ]}
+    />
+  );
+}
+
+function ErrorSelect() {
+  const [value, setValue] = useState("podman");
+  return (
+    <Select
+      label="Container runtime"
+      value={value}
+      onChange={setValue}
+      error="Podman was not found on PATH"
+      options={[
+        { value: "auto", label: "Auto Detect" },
+        { value: "docker", label: "Docker" },
+        { value: "podman", label: "Podman" },
+      ]}
+    />
   );
 }
 
@@ -123,10 +188,25 @@ function Showcase() {
           <Input label="Name" defaultValue="bad name" error="Must be a valid identifier" />
         </div>
         <div style={{ width: 220 }}>
-          <Select label="Theme" defaultValue="dark">
-            <option value="dark">julIDE Ink</option>
-            <option value="light">julIDE Paper</option>
-          </Select>
+          <ThemeSelect />
+        </div>
+      </Row>
+
+      {/* The dropdown is the reason this component exists: a native <select> renders its
+          popup with the platform's own widget, which stayed white in dark mode. Flip the
+          Storybook theme toolbar to check both. */}
+      <Row label="Select">
+        <div style={{ width: 220 }}>
+          <ThemeSelect />
+        </div>
+        <div style={{ width: 220 }}>
+          <LongSelect />
+        </div>
+        <div style={{ width: 220 }}>
+          <DisabledOptionSelect />
+        </div>
+        <div style={{ width: 220 }}>
+          <ErrorSelect />
         </div>
       </Row>
 

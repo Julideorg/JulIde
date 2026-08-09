@@ -4,7 +4,7 @@ import { usePluginStore } from "../../stores/usePluginStore";
 import { lspClient } from "../../lsp/LspClient";
 import { toast } from "../ui";
 import type { Tone } from "../ui";
-import type { EditorTab } from "../../types";
+import { openFileAtPath } from "../../services/openFile";
 import { flattenTree, rank } from "./fuzzy";
 
 /**
@@ -43,20 +43,6 @@ export interface Mode {
   getResults: (query: string) => ModeResult[] | Promise<ModeResult[]>;
   /** Shown instead of "no results" when the mode can't work right now. */
   unavailable?: () => string | null;
-}
-
-function openFileAtPath(path: string, name: string) {
-  return invoke<string>("fs_read_file", { path }).then((content) => {
-    const tab: EditorTab = {
-      id: path,
-      path,
-      name,
-      content,
-      isDirty: false,
-      language: name.split(".").pop() ?? "plaintext",
-    };
-    useIdeStore.getState().openFile(tab);
-  });
 }
 
 function revealPosition(line: number, column: number) {

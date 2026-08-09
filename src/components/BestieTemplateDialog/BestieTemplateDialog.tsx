@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useModalA11y } from "../../hooks/useModalA11y";
+import { Select } from "../ui";
 import { create } from "zustand";
 
 export interface BestieTemplateData {
@@ -153,35 +154,34 @@ export function BestieTemplateDialog() {
             placeholder: "1.6",
           })}
 
-          <label className="bestie-field">
-            <span className="bestie-field-label">License</span>
-            <select
+          {/* <div> rather than <label>: these wrap a button now, and a label associated
+              with a button toggles it — which would re-close the dropdown on open. The
+              span is referenced by id instead. */}
+          <div className="bestie-field">
+            <span className="bestie-field-label" id="bestie-license-label">
+              License
+            </span>
+            <Select
               className="bestie-field-select"
+              ariaLabelledBy="bestie-license-label"
               value={data.license}
-              onChange={(e) => setData((d) => ({ ...d, license: e.target.value }))}
-            >
-              {LICENSES.map((l) => (
-                <option key={l} value={l}>
-                  {l}
-                </option>
-              ))}
-            </select>
-          </label>
+              onChange={(license) => setData((d) => ({ ...d, license }))}
+              options={LICENSES.map((l) => ({ value: l, label: l }))}
+            />
+          </div>
 
-          <label className="bestie-field">
-            <span className="bestie-field-label">Strategy</span>
-            <select
+          <div className="bestie-field">
+            <span className="bestie-field-label" id="bestie-strategy-label">
+              Strategy
+            </span>
+            <Select
               className="bestie-field-select"
+              ariaLabelledBy="bestie-strategy-label"
               value={data.strategyLevel}
-              onChange={(e) => setData((d) => ({ ...d, strategyLevel: Number(e.target.value) }))}
-            >
-              {STRATEGIES.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </label>
+              onChange={(strategyLevel) => setData((d) => ({ ...d, strategyLevel }))}
+              options={STRATEGIES.map((s) => ({ value: s.value, label: s.label }))}
+            />
+          </div>
 
           {error && <div className="input-dialog-error">{error}</div>}
         </div>

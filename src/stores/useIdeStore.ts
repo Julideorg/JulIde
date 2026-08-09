@@ -33,12 +33,22 @@ interface IdeStore {
   updateTabContent: (id: string, content: string, isDirty: boolean) => void;
   markTabSaved: (id: string) => void;
   reorderTabs: (fromIndex: number, toIndex: number) => void;
+  setTabViewMode: (id: string, mode: "source" | "preview") => void;
+  toggleTabViewMode: (id: string) => void;
 
   // Split editor
   splitTabId: string | null;
   setSplitTab: (id: string | null) => void;
   splitEditorOpen: boolean;
   toggleSplitEditor: () => void;
+
+  /**
+   * Tab rendered as a markdown preview in the split pane. Independent of `splitTabId`,
+   * which is a second *editor* — you can preview one file while splitting another.
+   */
+  previewTabId: string | null;
+  openPreviewSplit: (tabId: string) => void;
+  closePreviewSplit: () => void;
 
   // Julia
   juliaVersion: string;
@@ -175,8 +185,32 @@ interface IdeStore {
 
 let outputIdCounter = 0;
 
+/** Hard cap on retained output and container-log lines. */
+const MAX_OUTPUT_LINES = 5000;
+
+/**
+ * Append one line to a capped buffer, returning a new plain array.
+ *
+ * Deliberately copy-on-write instead of an immer recipe, and the callers hand the
+ * result to `set` as a plain object so it never reaches `produce` at all — zustand's
+ * immer middleware only routes *function* updaters through immer.
+ *
+ * The reason: immer's auto-freeze is on, so `draft.push(…)` here deep-froze all 5000
+ * entries on every single line. Appending 5000 lines while at the cap took ~30s, which
+ * stalled the Output panel whenever Julia produced sustained output and timed out the
+ * store's own test in CI. The version below does the same work in ~20ms.
+ *
+ * Please don't "tidy" this back into `set((s) => s.output.push(…))`.
+ */
+function appendCapped<T>(prev: readonly T[], line: T): T[] {
+  const next =
+    prev.length >= MAX_OUTPUT_LINES ? prev.slice(prev.length - MAX_OUTPUT_LINES + 1) : prev.slice();
+  next.push(line);
+  return next;
+}
+
 export const useIdeStore = create<IdeStore>()(
-  immer((set) => ({
+  immer((set, get) => ({
     // Workspace
     workspacePath: null,
     fileTree: null,
@@ -210,6 +244,11 @@ export const useIdeStore = create<IdeStore>()(
         if (s.activeTabId === id) {
           s.activeTabId = s.openTabs[Math.max(0, idx - 1)]?.id ?? s.openTabs[0]?.id ?? null;
         }
+        // Otherwise the split pane would keep pointing at a tab that no longer exists.
+        if (s.previewTabId === id) {
+          s.previewTabId = null;
+          if (!s.splitTabId && !s.plutoUrl) s.splitEditorOpen = false;
+        }
       }),
     setActiveTab: (id) =>
       set((s) => {
@@ -233,10 +272,33 @@ export const useIdeStore = create<IdeStore>()(
         const [tab] = s.openTabs.splice(fromIndex, 1);
         s.openTabs.splice(toIndex, 0, tab);
       }),
+    setTabViewMode: (id, mode) =>
+      set((s) => {
+        const tab = s.openTabs.find((t) => t.id === id);
+        if (tab) tab.viewMode = mode;
+      }),
+    toggleTabViewMode: (id) =>
+      set((s) => {
+        const tab = s.openTabs.find((t) => t.id === id);
+        if (tab) tab.viewMode = tab.viewMode === "preview" ? "source" : "preview";
+      }),
 
     // Split editor
     splitTabId: null,
     splitEditorOpen: false,
+    previewTabId: null,
+    // Mirrors the Pluto split actions below: open claims the pane, close gives it back
+    // only if nothing else is using it.
+    openPreviewSplit: (tabId) =>
+      set((s) => {
+        s.previewTabId = tabId;
+        s.splitEditorOpen = true;
+      }),
+    closePreviewSplit: () =>
+      set((s) => {
+        s.previewTabId = null;
+        if (!s.splitTabId && !s.plutoUrl) s.splitEditorOpen = false;
+      }),
     setSplitTab: (id) =>
       set((s) => {
         s.splitTabId = id;
@@ -278,16 +340,12 @@ export const useIdeStore = create<IdeStore>()(
     // Output
     output: [],
     appendOutput: (line) =>
-      set((s) => {
-        s.output.push({
+      set({
+        output: appendCapped(get().output, {
           id: String(outputIdCounter++),
           timestamp: Date.now(),
           ...line,
-        });
-        // Keep last 5000 lines
-        if (s.output.length > 5000) {
-          s.output.splice(0, s.output.length - 5000);
-        }
+        }),
       }),
     clearOutput: () =>
       set((s) => {
@@ -515,15 +573,12 @@ export const useIdeStore = create<IdeStore>()(
         s.devcontainerConfig = config as any;
       }),
     appendContainerLog: (line) =>
-      set((s) => {
-        s.containerLogs.push({
+      set({
+        containerLogs: appendCapped(get().containerLogs, {
           id: String(outputIdCounter++),
           timestamp: Date.now(),
           ...line,
-        });
-        if (s.containerLogs.length > 5000) {
-          s.containerLogs.splice(0, s.containerLogs.length - 5000);
-        }
+        }),
       }),
     clearContainerLogs: () =>
       set((s) => {

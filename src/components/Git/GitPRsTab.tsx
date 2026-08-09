@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { openExternal } from "../../services/openExternal";
 import { GitPullRequest, Plus, ExternalLink, GitMerge, RefreshCw } from "lucide-react";
 import { useIdeStore } from "../../stores/useIdeStore";
+import { Select } from "../ui";
 import type { GitPullRequest as PR } from "../../types/git";
 
 export function GitPRsTab() {
@@ -72,15 +73,17 @@ export function GitPRsTab() {
       <div className="git-section-header">
         <span>Pull Requests</span>
         <div className="git-pr-actions">
-          <select
+          <Select
             className="git-pr-filter"
+            ariaLabel="Pull request state"
             value={filter}
-            onChange={(e) => setFilter(e.target.value as typeof filter)}
-          >
-            <option value="open">Open</option>
-            <option value="closed">Closed</option>
-            <option value="all">All</option>
-          </select>
+            onChange={setFilter}
+            options={[
+              { value: "open", label: "Open" },
+              { value: "closed", label: "Closed" },
+              { value: "all", label: "All" },
+            ]}
+          />
           <button
             className="git-file-action"
             onClick={() => setCreating(!creating)}
@@ -119,17 +122,13 @@ export function GitPRsTab() {
             rows={3}
           />
           <div className="git-pr-branch-row">
-            <select
+            <Select
               className="git-pr-filter"
+              ariaLabel="Source branch"
               value={newPr.source || gitBranch}
-              onChange={(e) => setNewPr({ ...newPr, source: e.target.value })}
-            >
-              {gitBranches.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
+              onChange={(source) => setNewPr({ ...newPr, source })}
+              options={gitBranches.map((b) => ({ value: b, label: b }))}
+            />
             <span className="git-pr-arrow">→</span>
             <input
               className="git-commit-input"

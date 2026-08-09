@@ -8,6 +8,8 @@ import { startDevcontainer } from "./devcontainer";
 import { showInputDialog } from "../components/InputDialog/InputDialog";
 import { showBestieTemplateDialog } from "../components/BestieTemplateDialog/BestieTemplateDialog";
 import { useModeBarStore } from "../components/ModeBar/ModeBar";
+import { isMarkdownPath } from "../markdown/renderer";
+import { toast } from "../components/ui";
 import type { FileNode, JuliaOutputEvent, Problem } from "../types";
 
 // Lazy component imports — these are imported by the consumers (App.tsx) already,
@@ -320,6 +322,44 @@ function registerBuiltinCommands() {
     id: "editor.split",
     label: "Toggle Split Editor",
     execute: () => ide().toggleSplitEditor(),
+  });
+
+  /**
+   * The markdown-only guard lives inside `execute` rather than in `when`. The type has a
+   * `when` field, but the Mode Bar ranks every registered command without consulting it
+   * (see ModeBar/modes.ts), so a `when` here would look like it worked and quietly not.
+   */
+  const activeMarkdownTab = () => {
+    const s = ide();
+    const tab = s.openTabs.find((t) => t.id === s.activeTabId);
+    if (!tab || !isMarkdownPath(tab.path)) {
+      toast.info("Not a Markdown file", "Open a .md file to use the preview.");
+      return null;
+    }
+    return tab;
+  };
+
+  store.registerCommand({
+    id: "markdown.toggle-preview",
+    label: "Markdown: Toggle Preview",
+    description: "Switch the active Markdown tab between source and rendered preview",
+    execute: () => {
+      const tab = activeMarkdownTab();
+      if (tab) ide().toggleTabViewMode(tab.id);
+    },
+  });
+
+  store.registerCommand({
+    id: "markdown.open-preview-to-side",
+    label: "Markdown: Open Preview to the Side",
+    description: "Render the active Markdown file in the split pane",
+    execute: () => {
+      const tab = activeMarkdownTab();
+      if (!tab) return;
+      // Editing in preview mode makes no sense with the source pane alongside.
+      ide().setTabViewMode(tab.id, "source");
+      ide().openPreviewSplit(tab.id);
+    },
   });
 
   store.registerCommand({

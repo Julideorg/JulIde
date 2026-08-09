@@ -12,6 +12,12 @@ export interface EditorTab {
   content: string;
   isDirty: boolean;
   language: string;
+  /**
+   * Which view this tab renders in. Absent means source, and only markdown tabs offer
+   * anything else — optional so the several places that build a tab by hand need no
+   * change, and so closing a tab disposes the state with it.
+   */
+  viewMode?: "source" | "preview";
 }
 
 export interface OutputLine {

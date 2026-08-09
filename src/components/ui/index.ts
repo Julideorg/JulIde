@@ -9,6 +9,7 @@
 export { Button, IconButton, type Tone, type ButtonVariant } from "./Button";
 export { Dialog, showConfirm, ConfirmDialogHost } from "./Dialog";
 export { Panel, EmptyState, Kbd, Badge, Dot, Spinner } from "./Panel";
-export { Input, Select } from "./Field";
+export { Input, FieldShell } from "./Field";
+export { Select, type SelectOption } from "./Select";
 export { Popover, Menu, MenuItem, MenuSeparator } from "./Popover";
 export { ToastHost, toast, useToastStore, type Toast, type ToastKind } from "./Toast";

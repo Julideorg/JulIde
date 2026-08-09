@@ -22,6 +22,7 @@ export function resetAllStores(): void {
     activeTabId: null,
     splitTabId: null,
     splitEditorOpen: false,
+    previewTabId: null,
     juliaVersion: "Detecting...",
     juliaEnv: "@v#.#",
     availableEnvs: ["@v#.#"],

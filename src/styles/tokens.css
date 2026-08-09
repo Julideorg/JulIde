@@ -77,6 +77,9 @@
    html/body paint from :root before .theme-* is applied to .ide-root. */
 :root,
 .theme-dark {
+  /* Native controls and scrollbars follow the theme */
+  color-scheme: dark;
+
   /* Surfaces */
   --surface-canvas: #0e1116;
   --surface-chrome: #131820;
@@ -191,6 +194,9 @@
 }
 
 .theme-light {
+  /* Native controls and scrollbars follow the theme */
+  color-scheme: light;
+
   /* Surfaces */
   --surface-canvas: #ffffff;
   --surface-chrome: #eef1f6;

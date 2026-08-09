@@ -1,15 +1,22 @@
-import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import { useId, type InputHTMLAttributes, type ReactNode } from "react";
 
 interface FieldShellProps {
   label?: string;
   hint?: ReactNode;
   error?: string;
+  /**
+   * Override the generated id. `SettingRow` injects an id into its child via
+   * `cloneElement`, and that id has to reach the control for the label to be associated
+   * with it — a mismatch is silent, so it is threaded explicitly rather than generated.
+   */
+  id?: string;
   children: (id: string) => ReactNode;
 }
 
 /** Wraps a control with a label, hint and error slot, wired up by id. */
-function FieldShell({ label, hint, error, children }: FieldShellProps) {
-  const id = useId();
+export function FieldShell({ label, hint, error, id: idProp, children }: FieldShellProps) {
+  const generated = useId();
+  const id = idProp ?? generated;
   return (
     <div className="ui-field">
       {label && (
@@ -35,9 +42,9 @@ interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "size">
   mono?: boolean;
 }
 
-export function Input({ label, hint, error, mono, className = "", ...rest }: InputProps) {
+export function Input({ label, hint, error, mono, className = "", id, ...rest }: InputProps) {
   return (
-    <FieldShell label={label} hint={hint} error={error}>
+    <FieldShell label={label} hint={hint} error={error} id={id}>
       {(id) => (
         <input
           id={id}
@@ -50,21 +57,5 @@ export function Input({ label, hint, error, mono, className = "", ...rest }: Inp
   );
 }
 
-interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
-  label?: string;
-  hint?: ReactNode;
-  error?: string;
-  children: ReactNode;
-}
-
-export function Select({ label, hint, error, children, className = "", ...rest }: SelectProps) {
-  return (
-    <FieldShell label={label} hint={hint} error={error}>
-      {(id) => (
-        <select id={id} className={`ui-select ${className}`.trim()} {...rest}>
-          {children}
-        </select>
-      )}
-    </FieldShell>
-  );
-}
+// `Select` lives in ./Select.tsx — it is a themed listbox rather than a native
+// <select>, because the platform draws that popup and will not theme it.

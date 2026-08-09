@@ -7,6 +7,7 @@ import { useIdeStore } from "../../stores/useIdeStore";
 import { lspClient } from "../../lsp/LspClient";
 import { lspStartOptions } from "../../lsp/lspConfig";
 import { useModalA11y } from "../../hooks/useModalA11y";
+import { Select } from "../ui";
 import { PluginSettings } from "./PluginSettings";
 import { GitAuthSettings } from "../Git/GitAuthSettings";
 
@@ -123,16 +124,17 @@ export function SettingsPanel() {
             </SettingRow>
 
             <SettingRow label="Word Wrap">
-              <select
+              <Select
                 className="settings-select"
                 value={settings.wordWrap}
-                onChange={(e) => updateSettings({ wordWrap: e.target.value })}
-              >
-                <option value="off">Off</option>
-                <option value="on">On</option>
-                <option value="wordWrapColumn">Word Wrap Column</option>
-                <option value="bounded">Bounded</option>
-              </select>
+                onChange={(wordWrap) => updateSettings({ wordWrap })}
+                options={[
+                  { value: "off", label: "Off" },
+                  { value: "on", label: "On" },
+                  { value: "wordWrapColumn", label: "Word Wrap Column" },
+                  { value: "bounded", label: "Bounded" },
+                ]}
+              />
             </SettingRow>
 
             <SettingRow label="Minimap">
@@ -177,14 +179,15 @@ export function SettingsPanel() {
 
           <SettingsSection title="Appearance">
             <SettingRow label="Theme">
-              <select
+              <Select
                 className="settings-select"
                 value={settings.theme}
-                onChange={(e) => updateSettings({ theme: e.target.value })}
-              >
-                <option value="julide-dark">julIDE Ink (dark)</option>
-                <option value="julide-light">julIDE Paper (light)</option>
-              </select>
+                onChange={(theme) => updateSettings({ theme })}
+                options={[
+                  { value: "julide-dark", label: "julIDE Ink (dark)" },
+                  { value: "julide-light", label: "julIDE Paper (light)" },
+                ]}
+              />
             </SettingRow>
 
             <SettingRow label="Activity Bar Labels">
@@ -218,15 +221,16 @@ export function SettingsPanel() {
 
           <SettingsSection title="Julia">
             <SettingRow label="Language Server">
-              <select
+              <Select
                 className="settings-select"
                 value={settings.lspBackend}
-                onChange={(e) => void switchBackend(e.target.value)}
-              >
-                <option value="fatou">Fatou (built-in)</option>
-                <option value="languageserver">LanguageServer.jl</option>
-                <option value="jetls">JETLS.jl (Experimental)</option>
-              </select>
+                onChange={(backend) => void switchBackend(backend)}
+                options={[
+                  { value: "fatou", label: "Fatou (built-in)" },
+                  { value: "languageserver", label: "LanguageServer.jl" },
+                  { value: "jetls", label: "JETLS.jl (Experimental)" },
+                ]}
+              />
               {settings.lspBackend === "fatou" && (
                 <span className="settings-hint">
                   Built in — nothing to install, and it does not need Julia. Fatou analyses source
@@ -335,15 +339,16 @@ export function SettingsPanel() {
 
           <SettingsSection title="Containers">
             <SettingRow label="Runtime">
-              <select
+              <Select
                 className="settings-select"
                 value={settings.containerRuntime}
-                onChange={(e) => updateSettings({ containerRuntime: e.target.value })}
-              >
-                <option value="auto">Auto Detect</option>
-                <option value="docker">Docker</option>
-                <option value="podman">Podman</option>
-              </select>
+                onChange={(containerRuntime) => updateSettings({ containerRuntime })}
+                options={[
+                  { value: "auto", label: "Auto Detect" },
+                  { value: "docker", label: "Docker" },
+                  { value: "podman", label: "Podman" },
+                ]}
+              />
             </SettingRow>
 
             <SettingRow label="Remote Host">

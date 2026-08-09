@@ -35,7 +35,16 @@ function paletteBlock(p: Palette, isDark: boolean): string {
   const L: string[] = [];
   const put = (name: string, value: string) => L.push(`  --${name}: ${value};`);
 
-  L.push("  /* Surfaces */");
+  // Tells the engine which way round the page is, so everything the *platform*
+  // draws follows the theme too: scrollbars, spinners, checkboxes, the caret, and
+  // — on WebView2 and WKWebView — the <select> popup list. Without it those all
+  // paint light no matter what the tokens below say.
+  // Note this is a real CSS property, not a custom property, so it is pushed
+  // directly rather than through `put`.
+  L.push("  /* Native controls and scrollbars follow the theme */");
+  L.push(`  color-scheme: ${isDark ? "dark" : "light"};`);
+
+  L.push("", "  /* Surfaces */");
   for (const [k, v] of Object.entries(p.surface)) put(`surface-${k}`, v);
   put("surface-canvas-rgb", hexToChannels(p.surface.canvas));
 

@@ -43,3 +43,6 @@
 @import "./plugin-view.css";
 @import "./error-boundary.css";
 @import "./update-banner.css";
+/* Appended rather than slotted in: every rule is scoped under .markdown-preview
+   (or a class only it uses), so position in the cascade is not load-bearing. */
+@import "./markdown-preview.css";

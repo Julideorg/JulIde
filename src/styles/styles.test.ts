@@ -70,4 +70,13 @@ describe("stylesheets", () => {
     const order = [...read("index.css").matchAll(/@import "\.\/([\w-]+\.css)"/g)].map((m) => m[1]);
     expect(order[0]).toBe("tokens.css");
   });
+
+  test("each theme declares a color-scheme so native controls follow it", () => {
+    // Without this, everything the *platform* draws rather than the page — scrollbars,
+    // spinners, checkboxes, the caret, and the <select> popup on WebView2/WKWebView —
+    // paints light in both themes, which is what made every dropdown white.
+    const css = read("tokens.css");
+    expect(css).toContain("color-scheme: dark;");
+    expect(css).toContain("color-scheme: light;");
+  });
 });

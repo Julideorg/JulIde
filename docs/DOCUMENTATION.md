@@ -769,9 +769,15 @@ All UI colors use CSS custom properties defined in `:root` (dark) and `.theme-li
 
 ### Adding a New Theme
 
-1. Add an entry to `themes` in `src/themes/themes.ts` with Monaco theme data and CSS class.
-2. Add the CSS class with variable overrides in `src/App.css`.
-3. Add the theme option to the select in `src/components/Settings/SettingsPanel.tsx`.
+1. Add a `Palette` to `src/themes/tokens.ts` — this is the single source of truth, and it
+   feeds the CSS custom properties, the Monaco theme and the xterm palette alike. Include
+   its `color-scheme`, or platform-drawn chrome (scrollbars, dropdown popups on
+   Windows/macOS) will not follow it.
+2. Add an entry to `themes` in `src/themes/themes.ts` mapping it to a CSS class.
+3. Run `bun run generate:tokens` and commit the regenerated `src/styles/tokens.css`.
+   Never hand-edit that file — `bun run check:tokens` fails CI if it is stale.
+4. Add the theme to the `options` of the Theme `Select` in
+   `src/components/Settings/SettingsPanel.tsx`.
 
 ---
 

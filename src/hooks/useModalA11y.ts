@@ -53,6 +53,11 @@ export function useModalA11y<T extends HTMLElement>(open: boolean, options: Opti
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && onEscapeRef.current) {
+        // An open dropdown inside the dialog gets first refusal on Escape. This
+        // listener is on `document` in the capture phase, so it runs before anything
+        // in the dialog and `stopPropagation` from the control cannot beat it —
+        // without this check, Escape in a Select would close the dialog as well.
+        if (document.activeElement?.getAttribute("aria-expanded") === "true") return;
         e.preventDefault();
         onEscapeRef.current();
         return;

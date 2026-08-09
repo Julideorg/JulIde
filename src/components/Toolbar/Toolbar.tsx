@@ -17,6 +17,7 @@ import { useIdeStore } from "../../stores/useIdeStore";
 import { useSettingsStore } from "../../stores/useSettingsStore";
 import { usePluginStore } from "../../stores/usePluginStore";
 import { startDevcontainer } from "../../services/devcontainer";
+import { Select } from "../ui";
 import { ModeBarTrigger } from "../ModeBar/ModeBar";
 import type { FileNode } from "../../types";
 
@@ -367,18 +368,16 @@ export function Toolbar() {
       </div>
 
       <div className="toolbar-right">
-        <label className="env-selector-label">Env:</label>
-        <select
+        {/* A <span>, not a <label>: it has no htmlFor, and a label associated with a
+            button toggles it on click — which would immediately re-close the dropdown. */}
+        <span className="env-selector-label">Env:</span>
+        <Select
           className="env-selector"
+          ariaLabel="Julia environment"
           value={juliaEnv}
-          onChange={(e) => setJuliaEnv(e.target.value)}
-        >
-          {availableEnvs.map((env) => (
-            <option key={env} value={env}>
-              {env}
-            </option>
-          ))}
-        </select>
+          onChange={setJuliaEnv}
+          options={availableEnvs.map((env) => ({ value: env, label: env }))}
+        />
       </div>
     </div>
   );
