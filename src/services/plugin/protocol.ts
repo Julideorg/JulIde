@@ -74,11 +74,56 @@ export interface RpcEvent {
 export type Envelope = RpcRequest | RpcResponse | RpcEvent;
 
 /** The frame's opening message. Answered with a port, or ignored. */
+/**
+ * What the frame observes about its own isolation.
+ *
+ * **A canary, not a boundary.** The frame reports these, so a hostile plugin on a broken
+ * platform could simply lie — but it would gain nothing by lying, because a platform
+ * that leaks `__TAURI_INTERNALS__` has already given it everything the port would.
+ *
+ * What this does buy is the thing that is otherwise unobtainable: if a webview engine
+ * fails to apply the CSP response header or fails to give the frame an opaque origin,
+ * the symptom is *silence* — plugins keep working, unsandboxed, and nothing says so.
+ * Every honest plugin, every developer, and every user on that platform turns that
+ * silence into a visible refusal instead.
+ *
+ * It matters most on engines the sandbox has not been verified against by hand.
+ */
+export interface IsolationReport {
+  /** `typeof window.__TAURI_INTERNALS__` — must be "undefined". */
+  tauriInternals: string;
+  /** `window.origin === "null"` — an opaque origin is what removes ambient access. */
+  opaqueOrigin: boolean;
+  /** Storage throws in an opaque origin. A second, independent signal of the same fact. */
+  storageBlocked: boolean;
+  /** The un-nonced probe script did not run, so the CSP header was applied. */
+  cspApplied: boolean;
+}
+
 export interface ReadyPing {
   julidePluginReady: true;
   /** Echoed back from the frame URL. The host compares it against what it generated. */
   frameId: string;
   protocolVersion: number;
+  isolation?: IsolationReport;
+}
+
+/**
+ * Which isolation properties are missing, if any.
+ *
+ * An absent report is itself a failure: it means a frame older than this check, or one
+ * that chose not to answer.
+ */
+export function isolationFailures(report: IsolationReport | undefined): string[] {
+  if (!report) return ["the frame did not report its isolation"];
+  const failures: string[] = [];
+  if (report.tauriInternals !== "undefined") {
+    failures.push("the Tauri IPC bridge is reachable from inside the frame");
+  }
+  if (!report.opaqueOrigin) failures.push("the frame does not have an opaque origin");
+  if (!report.storageBlocked) failures.push("the frame can reach origin storage");
+  if (!report.cspApplied) failures.push("the per-plugin Content-Security-Policy was not applied");
+  return failures;
 }
 
 function isPlainRecord(v: unknown): v is Record<string, unknown> {

@@ -981,6 +981,32 @@ Two consequences for plugin authors, both measured rather than assumed:
 - **One bundled file.** A `<script src>` load from an opaque origin is a CORS fetch, and wry does not register custom schemes as CORS-enabled on WebKitGTK. The entry is inlined into the document instead.
 - **A classic script, not a module.** An inline `<script type="module">` does not execute in this frame on WebKitGTK — no code runs and no error is raised, so the plugin just looks inert.
 
+### Platform verification
+
+The sandbox has been verified by hand on **WebKitGTK (Linux)** only: the frame loads over
+the custom scheme, the CSP response header is applied, `window.origin` is `"null"`,
+`__TAURI_INTERNALS__` is absent, `parent.document` and `localStorage` both throw, and
+`fetch` is blocked by `connect-src 'none'`.
+
+**WKWebView (macOS) and WebView2 (Windows) have not been verified.** That matters more
+than usual here, because the single most consequential finding of this design — that an
+inline `<script type="module">` does not execute in this frame on WebKitGTK, silently —
+is exactly the class of thing that differs per engine.
+
+So the frame does not rely on the platform behaving: it **measures its own isolation and
+reports it in the handshake**, and the host refuses to hand over a `MessagePort` unless
+all four properties hold (`protocol.ts`'s `IsolationReport`). A webview that ignores the
+CSP header or grants the frame a real origin therefore produces a visible refusal naming
+the broken property, rather than plugins that keep working with no sandbox and nothing
+saying so.
+
+This is a canary, not a boundary — a hostile plugin on a broken engine could lie in the
+report, but it would gain nothing by lying, because an engine leaking the IPC bridge has
+already handed it everything the port would. What the check buys is that the failure stops
+being silent, on platforms nobody has been able to test.
+
+When macOS or Windows hardware is available, the check to run is in `CONTRIBUTING.md`.
+
 ### Source map
 
 | File                                | Role                                                                    |

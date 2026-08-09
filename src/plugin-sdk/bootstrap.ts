@@ -269,8 +269,31 @@ function boot() {
   // origin, so this global is the handoff.
   window.julide = window.julide ?? {};
 
+  // Measured from inside the frame, where the answers are actually knowable. The host
+  // refuses to hand over a port unless all four hold — see IsolationReport for why this
+  // is a canary for platform differences rather than a defence against plugins.
+  let storageBlocked = false;
+  try {
+    localStorage.setItem("__julide_probe", "1");
+    localStorage.removeItem("__julide_probe");
+  } catch {
+    storageBlocked = true;
+  }
+
   window.parent.postMessage(
-    { julidePluginReady: true, frameId: frame.frameId, protocolVersion: PROTOCOL_VERSION },
+    {
+      julidePluginReady: true,
+      frameId: frame.frameId,
+      protocolVersion: PROTOCOL_VERSION,
+      isolation: {
+        tauriInternals: typeof (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__,
+        opaqueOrigin: window.origin === "null",
+        storageBlocked,
+        // The un-nonced script in the document sets this. If the CSP header was applied
+        // it never ran, so the flag is still undefined.
+        cspApplied: (window as unknown as Record<string, unknown>).__JULIDE_CSP_BYPASSED__ !== true,
+      },
+    },
     "*",
   );
 }

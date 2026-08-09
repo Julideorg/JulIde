@@ -202,6 +202,7 @@ pub fn frame_document(
         r#"<!doctype html>
 <html><head><meta charset="utf-8"><title>{title}</title></head>
 <body>
+<script>window.__JULIDE_CSP_BYPASSED__ = true;</script>
 <script nonce="{nonce}">
 window.__JULIDE_FRAME__ = {{
   pluginId: {plugin:?},
@@ -474,8 +475,8 @@ mod tests {
         // Only `</script` ends a script element — a literal `<script>` inside script
         // content is inert text, so counting opening tags would be measuring the wrong
         // thing. What matters is that the element closes exactly where the handler
-        // intended: twice, once for the bootstrap and once for the plugin module.
-        assert_eq!(html.matches("</script>").count(), 2, "got: {html}");
+        // intended: three times, for the CSP probe, the bootstrap, and the plugin entry.
+        assert_eq!(html.matches("</script>").count(), 3, "got: {html}");
         assert!(
             html.contains(r#"<\/script>"#),
             "the hostile close tag was not escaped"
@@ -489,6 +490,20 @@ mod tests {
         let (_, html) = frame_document(&m, "", "background", None, "n", "tauri://localhost");
         assert!(!html.contains("<img"), "got: {html}");
         assert!(html.contains("&lt;img"));
+    }
+
+    #[test]
+    fn the_document_carries_an_un_nonced_csp_probe() {
+        // The only way a frame can tell from the inside whether the CSP header was
+        // applied: under a working policy this script never runs, so the flag stays
+        // undefined. On a webview that ignores the header it runs, the frame reports
+        // that, and the host refuses to hand over a port. That is what keeps a platform
+        // difference from silently becoming "plugins run unsandboxed".
+        let m = manifest(vec![]);
+        let (_, html) = frame_document(&m, "", "background", None, "n", "tauri://localhost");
+        assert!(html.contains("<script>window.__JULIDE_CSP_BYPASSED__ = true;</script>"));
+        // Un-nonced on purpose. A nonce would make it run and defeat the whole probe.
+        assert!(!html.contains(r#"<script nonce="n">window.__JULIDE_CSP_BYPASSED__"#));
     }
 
     #[test]

@@ -14,7 +14,14 @@
  */
 
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { PROTOCOL_VERSION, isEnvelope, isReadyPing, isRpcRequest, type RpcEvent } from "./protocol";
+import {
+  PROTOCOL_VERSION,
+  isEnvelope,
+  isReadyPing,
+  isRpcRequest,
+  isolationFailures,
+  type RpcEvent,
+} from "./protocol";
 import { createHostDispatcher, type DispatcherDeps, type FrameRole } from "./dispatcher";
 import type { PluginPermission } from "../pluginPermissions";
 
@@ -161,6 +168,26 @@ export function createPluginFrame(spec: FrameSpec): FrameHandle {
       const message =
         `Plugin "${spec.pluginId}" speaks plugin protocol v${e.data.protocolVersion}; ` +
         `this julIDE speaks v${PROTOCOL_VERSION}.`;
+      spec.onError?.(message);
+      rejectReady(new Error(message));
+      void destroy();
+      return;
+    }
+
+    // The frame reports what it can see of its own isolation, and gets nothing unless
+    // all of it holds. This is a check against *platform* differences, not against
+    // plugins: a hostile plugin on a broken engine could lie, but it would gain nothing,
+    // because an engine that leaks the IPC bridge has already handed it everything.
+    //
+    // What it buys is that a webview which fails to apply the CSP header, or fails to
+    // give the frame an opaque origin, stops being silent. Without it the symptom is
+    // that plugins keep working — unsandboxed — and nothing anywhere says so.
+    const failures = isolationFailures(e.data.isolation);
+    if (failures.length > 0) {
+      const message =
+        `Refusing to load plugin "${spec.pluginId}": its sandbox is not intact on this ` +
+        `platform (${failures.join("; ")}). This is a julIDE bug — please report it with ` +
+        `your OS and version. Plugins are disabled rather than run without their sandbox.`;
       spec.onError?.(message);
       rejectReady(new Error(message));
       void destroy();

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   PROTOCOL_VERSION,
+  isolationFailures,
   PluginRpcError,
   deserializeError,
   isEnvelope,
@@ -151,5 +152,53 @@ describe("error serialization", () => {
 
   test("the caller can pick the fallback code", () => {
     expect(serializeError(new Error("slow"), "timeout").code).toBe("timeout");
+  });
+});
+
+describe("isolationFailures", () => {
+  const intact = {
+    tauriInternals: "undefined",
+    opaqueOrigin: true,
+    storageBlocked: true,
+    cspApplied: true,
+  };
+
+  test("an intact sandbox reports nothing", () => {
+    expect(isolationFailures(intact)).toEqual([]);
+  });
+
+  test("a reachable IPC bridge is the one that matters most", () => {
+    // If this is ever true on a shipped platform, plugins have full ambient access and
+    // every permission check above is decoration.
+    expect(isolationFailures({ ...intact, tauriInternals: "object" })[0]).toContain(
+      "IPC bridge is reachable",
+    );
+  });
+
+  test("each missing property is named", () => {
+    expect(isolationFailures({ ...intact, opaqueOrigin: false })[0]).toContain("opaque origin");
+    expect(isolationFailures({ ...intact, storageBlocked: false })[0]).toContain("storage");
+    expect(isolationFailures({ ...intact, cspApplied: false })[0]).toContain(
+      "Content-Security-Policy",
+    );
+  });
+
+  test("several failures are all reported, not just the first", () => {
+    // A platform that gets one of these wrong usually gets more than one wrong, and a
+    // bug report is worth more when it lists all of them.
+    expect(
+      isolationFailures({
+        tauriInternals: "object",
+        opaqueOrigin: false,
+        storageBlocked: false,
+        cspApplied: false,
+      }),
+    ).toHaveLength(4);
+  });
+
+  test("no report at all is a failure, not a pass", () => {
+    // Otherwise a frame that simply omits the field would be treated as isolated —
+    // failing open on exactly the check that exists to fail closed.
+    expect(isolationFailures(undefined)).toHaveLength(1);
   });
 });

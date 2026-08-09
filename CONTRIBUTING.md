@@ -432,3 +432,57 @@ gh workflow run bump-cask.yml --repo Julideorg/homebrew-tap
 ## Questions?
 
 If something is unclear, open an issue or start a discussion. We're happy to help you get started.
+
+## Verifying the plugin sandbox on a new platform
+
+The plugin sandbox is verified by hand on WebKitGTK (Linux). WKWebView (macOS) and
+WebView2 (Windows) are **unverified** — see `docs/DOCUMENTATION.md` §17.
+
+If you have access to either, this is worth twenty minutes.
+
+1. Create `~/.julide/plugins/probe/plugin.json`:
+
+   ```json
+   {
+     "apiVersion": 2,
+     "name": "probe",
+     "version": "1.0.0",
+     "displayName": "Probe",
+     "main": "index.js",
+     "permissions": ["workspace:read"]
+   }
+   ```
+
+2. Create `~/.julide/plugins/probe/index.js`:
+
+   ```js
+   window.julide.activate = async function activate(ctx) {
+     const r = {};
+     const t = async (k, fn) => {
+       try {
+         r[k] = { ok: true, v: String(await fn()).slice(0, 40) };
+       } catch (e) {
+         r[k] = { ok: false, e: String(e.message || e) };
+       }
+     };
+     await t("internals", () => typeof window.__TAURI_INTERNALS__);
+     await t("origin", () => window.origin);
+     await t("granted_read", () => ctx.workspace.getPath());
+     await t("ungranted_write", () => ctx.workspace.writeFile("/tmp/x", "x"));
+     await t("builtin_cmd", () => ctx.commands.execute("julia.run"));
+     await t("remote_fetch", () => fetch("https://example.com").then(() => "REACHED"));
+     ctx.log.info("PROBE " + JSON.stringify(r));
+   };
+   ```
+
+3. Run `bun run tauri dev`, approve the prompt, and read the Output panel.
+
+**Expected:** `internals: "undefined"`, `origin: "null"`, `granted_read` succeeds, and
+`ungranted_write`, `builtin_cmd` and `remote_fetch` all fail.
+
+**If the plugin refuses to load** with "its sandbox is not intact on this platform", the
+isolation self-check caught a real difference — that is the check working, and the message
+names which property broke. Please open an issue with it and your OS version.
+
+**If it loads but any expectation above is wrong**, that is more serious: the sandbox is
+weaker on that platform than the self-check can detect. Report it before shipping.

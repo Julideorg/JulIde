@@ -189,7 +189,24 @@
       Promise.resolve().then(() => entry(ctx)).catch((e2) => ctx.log.error(e2 instanceof Error ? e2.message : String(e2)));
     });
     window.julide = window.julide ?? {};
-    window.parent.postMessage({ julidePluginReady: true, frameId: frame.frameId, protocolVersion: PROTOCOL_VERSION }, "*");
+    let storageBlocked = false;
+    try {
+      localStorage.setItem("__julide_probe", "1");
+      localStorage.removeItem("__julide_probe");
+    } catch {
+      storageBlocked = true;
+    }
+    window.parent.postMessage({
+      julidePluginReady: true,
+      frameId: frame.frameId,
+      protocolVersion: PROTOCOL_VERSION,
+      isolation: {
+        tauriInternals: typeof window.__TAURI_INTERNALS__,
+        opaqueOrigin: window.origin === "null",
+        storageBlocked,
+        cspApplied: window.__JULIDE_CSP_BYPASSED__ !== true
+      }
+    }, "*");
   }
   boot();
 })();
