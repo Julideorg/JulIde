@@ -1,0 +1,40 @@
+/*
+ * Sandboxed plugin views.
+ *
+ * A plugin's panel content is an opaque-origin iframe, so nothing here can style what
+ * is inside it — these rules only govern the hole it occupies. The frame itself gets
+ * its theme by message, because it cannot read the host's custom properties.
+ */
+
+.plugin-view-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.plugin-view-container > iframe,
+iframe.plugin-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  /* The frame paints its own background; a transparent one would show the panel
+     behind it during load and look like a flash of the wrong theme. */
+  background: var(--bg-primary);
+}
+
+/*
+ * Background frames.
+ *
+ * Off-screen rather than `display: none`, because WebKitGTK throttles timers in frames
+ * it treats as invisible and a plugin's `setInterval` would then run at an
+ * unpredictable rate. One pixel, far to the left, still counts as rendered.
+ */
+#plugin-frames {
+  position: absolute;
+  left: -10000px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}

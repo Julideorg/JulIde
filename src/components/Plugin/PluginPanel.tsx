@@ -1,56 +1,29 @@
-import { useEffect, useRef } from "react";
-import type { ComponentType } from "react";
 import { ErrorBoundary } from "../ErrorBoundary/ErrorBoundary";
+import { PluginViewFrame } from "./PluginViewFrame";
+import type { PanelContent } from "../../types/plugin";
 
 interface PluginPanelProps {
-  /** React component (built-in or plugin opt-in) */
-  component?: ComponentType;
-  /** DOM render function (plugin default) */
-  render?: (container: HTMLElement) => (() => void) | void;
-  /** Panel name, used in the error fallback when this panel throws */
+  content: PanelContent;
+  /** Panel name, used in the error fallback when this panel throws. */
   label?: string;
 }
 
 /**
- * Generic wrapper that renders either a React component or a DOM-based plugin panel.
- * Built-in panels use `component`, plugins use `render`.
+ * Renders whatever a panel contributes.
  *
- * Every panel is individually wrapped in an ErrorBoundary: these include
- * third-party plugin components, and one of them throwing must not take the
- * whole workspace down with it.
+ * There used to be a third path here — a `render(container)` callback handed a live
+ * `HTMLElement` from the real page — which is how a plugin reached the host DOM. It is
+ * gone, and `PanelContent` has no variant for it, so this component cannot express it
+ * even by accident.
  */
-export function PluginPanel({ component, render, label }: PluginPanelProps) {
+export function PluginPanel({ content, label }: PluginPanelProps) {
   return (
     <ErrorBoundary label={label ?? "This panel"} inline>
-      <PluginPanelContent component={component} render={render} />
+      {content.kind === "component" ? (
+        <content.component />
+      ) : (
+        <PluginViewFrame view={content.view} label={label} />
+      )}
     </ErrorBoundary>
   );
-}
-
-function PluginPanelContent({ component: Component, render }: PluginPanelProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const cleanupRef = useRef<(() => void) | null>(null);
-
-  useEffect(() => {
-    if (!render || !containerRef.current) return;
-
-    const result = render(containerRef.current);
-    if (typeof result === "function") {
-      cleanupRef.current = result;
-    }
-
-    return () => {
-      cleanupRef.current?.();
-      cleanupRef.current = null;
-      if (containerRef.current) {
-        containerRef.current.innerHTML = "";
-      }
-    };
-  }, [render]);
-
-  if (Component) {
-    return <Component />;
-  }
-
-  return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
 }

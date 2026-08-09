@@ -19,8 +19,8 @@ use tauri::{AppHandle, Emitter, Manager, Runtime};
 /// Emitted to the webview when a menu item is chosen.
 const MENU_EVENT: &str = "menu-command";
 
-const DOCS_URL: &str = "https://github.com/sinisterMage/julide#readme";
-const ISSUES_URL: &str = "https://github.com/sinisterMage/julide/issues";
+const DOCS_URL: &str = "https://github.com/Julideorg/JulIde#readme";
+const ISSUES_URL: &str = "https://github.com/Julideorg/JulIde/issues";
 
 /// Menu item id prefix for entries that map to a frontend command.
 /// The suffix is the command id, e.g. `cmd:julia.run`.
@@ -45,7 +45,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         name: Some("julIDE".into()),
         version: Some(env!("CARGO_PKG_VERSION").into()),
         comments: Some("An IDE for the Julia programming language".into()),
-        website: Some("https://github.com/sinisterMage/julide".into()),
+        website: Some("https://github.com/Julideorg/JulIde".into()),
         ..Default::default()
     };
 

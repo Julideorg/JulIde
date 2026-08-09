@@ -14,7 +14,7 @@ julIDE is pre-1.0. Only the latest release receives security fixes.
 **Please do not open a public issue for a security problem.**
 
 Report it privately through GitHub's
-[security advisory form](https://github.com/sinisterMage/julide/security/advisories/new),
+[security advisory form](https://github.com/Julideorg/JulIde/security/advisories/new),
 or by email to the address on the maintainer's GitHub profile.
 
 Please include:
@@ -39,8 +39,24 @@ Understanding the trust model helps when judging whether something is a bug:
   repository with a hostile `origin` cannot cause a token to be sent in cleartext.
 - **Plugins** in `~/.julide/plugins/` are unsigned third-party code running inside the
   app. They must declare the permissions they need, and the user approves them
-  explicitly; approvals are bound to a fingerprint of the plugin manifest. Anything a
-  plugin can reach _without_ an approved permission is a bug worth reporting.
+  explicitly; approvals are bound to a fingerprint of the plugin manifest.
+
+  **Today the permission model is defence-in-depth, not a boundary.** A plugin is loaded
+  as a module into the same webview realm as julIDE itself, so a deliberately hostile one
+  can reach `window.__TAURI_INTERNALS__` and call any command directly, without declaring
+  anything. The permission catalog, the consent dialog and the grant fingerprint are real
+  and worth having — they describe and constrain what a well-behaved plugin does — but
+  they do not contain a hostile one.
+
+  We say this here rather than let the consent dialog imply otherwise. A dialog users
+  believe is a boundary is worse than one they know is a declaration. **Installing a
+  plugin is a trust decision about its author**, and no amount of permission UI changes
+  that until plugins run in a sandboxed frame of their own — which is the fix in progress.
+
+  Reports are still very much wanted for: a plugin reaching something without an approved
+  permission through the documented `ctx` API, a grant surviving a manifest change, or a
+  plugin escaping `~/.julide/plugins/` on disk.
+
 - **Dev containers** may declare an `initializeCommand`, which the devcontainer spec
   runs on the host. julIDE prompts for workspace trust and shows the exact commands
   before running any of them. A path that skips that prompt is a bug worth reporting.

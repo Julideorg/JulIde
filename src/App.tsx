@@ -15,9 +15,7 @@ import { PluginPanel } from "./components/Plugin/PluginPanel";
 import { PluginConsentDialog } from "./components/Plugin/PluginConsentDialog";
 import { WorkspaceTrustDialog } from "./components/Container/WorkspaceTrustDialog";
 import { UpdateBanner } from "./components/Update/UpdateBanner";
-import { ConfirmDialogHost, EmptyState, ToastHost } from "./components/ui";
-import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
-import { iconSize } from "./themes/tokens";
+import { ConfirmDialogHost, ToastHost } from "./components/ui";
 import { useSettingsStore } from "./stores/useSettingsStore";
 import { useIdeStore } from "./stores/useIdeStore";
 import { usePluginStore } from "./stores/usePluginStore";
@@ -513,8 +511,7 @@ export default function App() {
           <PluginPanel
             key={activeSidebar.id}
             label={activeSidebar.label}
-            component={activeSidebar.component}
-            render={activeSidebar.render}
+            content={activeSidebar.content}
           />
         )}
       </div>
@@ -554,11 +551,13 @@ export default function App() {
                 {panel.id === "debug" && debug.isDebugging && (
                   <span className="tab-badge debug-badge">●</span>
                 )}
-                {panel.badge &&
+                {panel.badge != null &&
                   panel.id !== "problems" &&
                   panel.id !== "debug" &&
                   (() => {
-                    const val = panel.badge!();
+                    // Built-ins compute a badge from live state; a plugin pushes a
+                    // value over its port, so this accepts either.
+                    const val = typeof panel.badge === "function" ? panel.badge() : panel.badge;
                     return val != null ? <span className="tab-badge">{val}</span> : null;
                   })()}
               </button>
@@ -578,15 +577,7 @@ export default function App() {
                     height: "100%",
                   }}
                 >
-                  {panel.id === "problems" ? (
-                    <ProblemsPanel />
-                  ) : (
-                    <PluginPanel
-                      label={panel.label}
-                      component={panel.component}
-                      render={panel.render}
-                    />
-                  )}
+                  <PluginPanel label={panel.label} content={panel.content} />
                 </div>
               ))}
           </div>
@@ -609,45 +600,6 @@ export default function App() {
       <UpdateBanner />
       <ConfirmDialogHost />
       <ToastHost />
-    </div>
-  );
-}
-
-function ProblemsPanel() {
-  const problems = useIdeStore((s) => s.problems);
-  const lspStatus = useIdeStore((s) => s.lspStatus);
-
-  if (problems.length === 0) {
-    return (
-      <EmptyState
-        icon={<CheckCircle2 size={28} />}
-        title={lspStatus === "ready" ? "No problems found" : "Waiting for the language server"}
-        hint={
-          lspStatus === "ready"
-            ? "Errors and warnings from LanguageServer.jl appear here as you type."
-            : "Diagnostics appear once the language server has finished starting."
-        }
-      />
-    );
-  }
-
-  return (
-    <div className="problems-list">
-      {problems.map((p) => (
-        <div key={p.id} className={`problem-item ${p.severity}`}>
-          <span className="problem-severity">
-            {p.severity === "error" ? (
-              <XCircle size={iconSize.xs} aria-label="Error" />
-            ) : (
-              <AlertTriangle size={iconSize.xs} aria-label="Warning" />
-            )}
-          </span>
-          <span className="problem-message">{p.message}</span>
-          <span className="problem-location tabular">
-            {p.file.split(/[/\\]/).pop()}:{p.line}:{p.col}
-          </span>
-        </div>
-      ))}
     </div>
   );
 }

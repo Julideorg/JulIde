@@ -31,6 +31,29 @@ describe("computeManifestHash", () => {
     expect(computeManifestHash({ ...BASE, version: "1.0.1" })).not.toBe(computeManifestHash(BASE));
     expect(computeManifestHash({ ...BASE, main: "evil.js" })).not.toBe(computeManifestHash(BASE));
   });
+
+  test("changes when the plugin adds a network origin", () => {
+    // The permission list is untouched here. A plugin with only workspace:read that
+    // quietly gains an egress host has become an exfiltration tool, and that must
+    // re-prompt rather than inherit yesterday's approval.
+    const before = computeManifestHash(BASE);
+    const after = computeManifestHash({ ...BASE, network: ["https://exfil.example"] });
+    expect(after).not.toBe(before);
+  });
+
+  test("ignores network ordering", () => {
+    const a = computeManifestHash({ ...BASE, network: ["https://a.example", "https://b.example"] });
+    const b = computeManifestHash({ ...BASE, network: ["https://b.example", "https://a.example"] });
+    expect(a).toBe(b);
+  });
+
+  test("changes when the API generation changes", () => {
+    expect(computeManifestHash({ ...BASE, apiVersion: 2 })).not.toBe(computeManifestHash(BASE));
+  });
+
+  test("an absent network list is the same as an empty one", () => {
+    expect(computeManifestHash({ ...BASE, network: [] })).toBe(computeManifestHash(BASE));
+  });
 });
 
 describe("grants", () => {
@@ -75,8 +98,25 @@ describe("grants", () => {
 
     expect(saved).toHaveLength(1);
     expect(saved[0]).toEqual({
-      grants: { p: { permissions: ["workspace:read"], manifestHash: hash } },
+      grants: { p: { permissions: ["workspace:read"], manifestHash: hash, network: [] } },
     });
+  });
+
+  test("approved network origins are persisted alongside the permissions", async () => {
+    // Settings → Plugins shows what a plugin can reach, not only what it can do, and
+    // that has to survive a restart like the permission list does.
+    const saved: unknown[] = [];
+    invokeHandlers.set("plugin_grants_save", (args) => {
+      saved.push(args);
+    });
+    const hash = computeManifestHash({ ...BASE, network: ["https://api.github.com"] });
+    await usePluginPermissionStore
+      .getState()
+      .grant("p", ["workspace:read"], hash, ["https://api.github.com"]);
+
+    expect(usePluginPermissionStore.getState().grants.p?.network).toEqual([
+      "https://api.github.com",
+    ]);
   });
 
   test("load() populates grants from disk", async () => {
@@ -112,6 +152,8 @@ describe("consent queue", () => {
       version: "1.0.0",
       requested: ["workspace:read"],
       unknown: [],
+      network: [],
+      rejectedNetwork: [],
       manifestHash: "abc",
     });
 
@@ -129,6 +171,8 @@ describe("consent queue", () => {
       version: "1.0.0",
       requested: ["containers"],
       unknown: [],
+      network: [],
+      rejectedNetwork: [],
       manifestHash: "abc",
     });
 
@@ -138,7 +182,14 @@ describe("consent queue", () => {
 
   test("prompts queue and resolve in order", async () => {
     const store = () => usePluginPermissionStore.getState();
-    const base = { version: "1.0.0", requested: [] as never[], unknown: [], manifestHash: "h" };
+    const base = {
+      version: "1.0.0",
+      requested: [] as never[],
+      unknown: [],
+      network: [],
+      rejectedNetwork: [],
+      manifestHash: "h",
+    };
 
     const first = store().requestConsent({ ...base, pluginId: "a", displayName: "A" });
     const second = store().requestConsent({ ...base, pluginId: "b", displayName: "B" });

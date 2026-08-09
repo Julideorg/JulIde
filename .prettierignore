@@ -8,3 +8,11 @@ src/components/Editor/latexUnicode.ts
 # Generated from src/themes/tokens.ts by `bun run generate:tokens`.
 # Prettier would reformat it and make `bun run check:tokens` fail.
 src/styles/tokens.css
+# Bundled from src/plugin-sdk/bootstrap.ts by `bun run build:plugin-bootstrap` and
+# inlined into every sandboxed plugin frame by Rust. Reformatting it would make
+# `bun run check:plugin-bootstrap` fail.
+src-tauri/assets/plugin-bootstrap.js
+# Generated from src/services/pluginPermissions.ts and src-tauri/src/lib.rs by
+# `bun run generate:permission-catalog`, and consumed by the plugin registry. Prettier
+# would reformat it and make `bun run check:permission-catalog` fail.
+permission-catalog.json

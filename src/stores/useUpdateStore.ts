@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { openExternal } from "../services/openExternal";
 
-const RELEASES_URL = "https://github.com/sinisterMage/julide/releases/latest";
+const RELEASES_URL = "https://github.com/Julideorg/JulIde/releases/latest";
 
 export interface InstallCapability {
   canSelfInstall: boolean;

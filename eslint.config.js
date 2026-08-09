@@ -14,6 +14,9 @@ export default tseslint.config(
       "src-tauri/gen",
       // Generated from JuliaLang's symbol tables by scripts/generate-latex-unicode.ts.
       "src/components/Editor/latexUnicode.ts",
+      // Bundled from src/plugin-sdk/bootstrap.ts by scripts/build-plugin-bootstrap.ts.
+      // The source is linted; the bundle is a build artifact.
+      "src-tauri/assets/plugin-bootstrap.js",
     ],
   },
 

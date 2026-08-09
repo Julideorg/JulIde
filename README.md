@@ -279,7 +279,7 @@ This is expected for an unsigned application and is documented in
 ### Clone and install
 
 ```bash
-git clone https://github.com/sinisterMage/JulIde.git
+git clone https://github.com/Julideorg/JulIde.git
 cd JulIde
 bun install
 ```

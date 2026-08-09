@@ -1,0 +1,233 @@
+/*
+ * The plugin browser.
+ *
+ * Tokens only — src/styles/styles.test.ts fails any stylesheet that hardcodes a colour
+ * or references a custom property nothing defines.
+ */
+
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.settings-tabs button {
+  padding: 6px 12px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--fg-mid);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.settings-tabs button.active {
+  border-bottom-color: var(--mode-shell);
+  color: var(--fg-hi);
+  font-weight: 600;
+}
+
+.marketplace-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.marketplace-search {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  color: var(--fg-mid);
+}
+
+.marketplace-search input {
+  flex: 1;
+  border: none;
+  background: none;
+  color: var(--fg-hi);
+  font-size: 12px;
+  outline: none;
+}
+
+.marketplace-refresh {
+  padding: 5px 7px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--fg-mid);
+  cursor: pointer;
+}
+
+.spinning {
+  animation: marketplace-spin 1s linear infinite;
+}
+
+@keyframes marketplace-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.marketplace-notice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.marketplace-notice.warn {
+  background: var(--mode-shell-tint-weak);
+  color: var(--fg-hi);
+}
+
+.marketplace-list {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+}
+
+.marketplace-item {
+  border-bottom: 1px solid var(--hairline);
+}
+
+.marketplace-item:last-child {
+  border-bottom: none;
+}
+
+.marketplace-item-head {
+  display: flex;
+  width: 100%;
+  gap: 10px;
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.marketplace-item-head:hover {
+  background: var(--bg-hover);
+}
+
+/* A letter in a tile. Deliberately not a remote image — widening img-src for registry
+   icons would widen it for every plugin sharing the webview. */
+.marketplace-icon {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--fg-mid);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.marketplace-item-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.marketplace-item-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.marketplace-item-version {
+  color: var(--fg-mid);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.marketplace-update-badge {
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--mode-shell);
+  color: var(--fg-inverse);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.marketplace-item-desc,
+.marketplace-capability {
+  color: var(--fg-mid);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.marketplace-capability.high-access {
+  color: var(--fg-hi);
+}
+
+.marketplace-item-detail {
+  padding: 0 12px 12px;
+}
+
+.marketplace-meta {
+  margin: 0 0 10px;
+  color: var(--fg-mid);
+  font-size: 11px;
+}
+
+.marketplace-note {
+  margin: 0 0 10px;
+  color: var(--fg-mid);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.marketplace-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.marketplace-actions button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--fg-hi);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.marketplace-actions button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* Permissions a new version adds, called out against the ones already approved. */
+.plugin-consent-permission.added {
+  background: var(--mode-shell-tint-weak);
+}
+
+.plugin-consent-new-badge {
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--mode-shell);
+  color: var(--fg-inverse);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}

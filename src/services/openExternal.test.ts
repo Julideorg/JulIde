@@ -18,8 +18,8 @@ describe("openExternal", () => {
   });
 
   test("opens https URLs", async () => {
-    await openExternal("https://github.com/sinisterMage/julide/pull/1");
-    expect(opened).toEqual(["https://github.com/sinisterMage/julide/pull/1"]);
+    await openExternal("https://github.com/Julideorg/JulIde/pull/1");
+    expect(opened).toEqual(["https://github.com/Julideorg/JulIde/pull/1"]);
   });
 
   test("opens http URLs", async () => {

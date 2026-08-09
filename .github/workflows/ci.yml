@@ -39,6 +39,14 @@ jobs:
       - name: Format check
         run: bun run format:check
 
+      # Nothing ran these before. A stale generated file is silent by construction:
+      # permission-catalog.json is what the plugin registry believes about julIDE's
+      # permission model, and plugin-bootstrap.js is what every sandboxed plugin runs.
+      - name: Check generated files are current
+        run: |
+          bun run check:tokens
+          bun run check:permission-catalog
+          bun run check:plugin-bootstrap
       - name: Test
         run: bun test
 

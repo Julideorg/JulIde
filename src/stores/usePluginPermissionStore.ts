@@ -6,6 +6,11 @@ import type { PluginPermission } from "../services/pluginPermissions";
 export interface PluginGrant {
   permissions: PluginPermission[];
   /**
+   * Origins the plugin was approved to reach. Stored alongside the permissions so
+   * Settings → Plugins can show what a plugin can talk to, not only what it can do.
+   */
+  network?: string[];
+  /**
    * Fingerprint of the manifest that was approved. If the plugin later changes what
    * it asks for — or is swapped out entirely — the hash stops matching and the user
    * is asked again rather than inheriting the old approval.
@@ -19,6 +24,10 @@ export interface PendingConsent {
   version: string;
   requested: PluginPermission[];
   unknown: string[];
+  /** Hosts the plugin declared, already validated. Shown as "can send data to". */
+  network: string[];
+  /** Declared network entries julIDE refused, so the dialog can say they were dropped. */
+  rejectedNetwork: string[];
   manifestHash: string;
   resolve: (approved: boolean) => void;
 }
@@ -32,7 +41,19 @@ interface PluginPermissionStore {
   load: () => Promise<void>;
   /** Permissions currently granted to a plugin, honouring the manifest fingerprint. */
   granted: (pluginId: string, manifestHash: string) => PluginPermission[];
-  grant: (pluginId: string, permissions: PluginPermission[], manifestHash: string) => Promise<void>;
+  /**
+   * Whether this exact manifest was approved, regardless of what it was approved for.
+   *
+   * A plugin can be approved for zero permissions — one that only wants network access,
+   * for instance — and `granted()` cannot distinguish that from "never approved".
+   */
+  hasGrant: (pluginId: string, manifestHash: string) => boolean;
+  grant: (
+    pluginId: string,
+    permissions: PluginPermission[],
+    manifestHash: string,
+    network?: string[],
+  ) => Promise<void>;
   revoke: (pluginId: string) => Promise<void>;
   /** Queue a consent prompt and resolve once the user answers. */
   requestConsent: (request: Omit<PendingConsent, "resolve">) => Promise<boolean>;
@@ -40,35 +61,13 @@ interface PluginPermissionStore {
 }
 
 /**
- * Stable fingerprint of what a plugin is asking for.
+ * Re-exported so existing imports keep working.
  *
- * Deliberately covers the identity *and* the request: name, version, entry point, and
- * the sorted permission list. Bumping the version or asking for one more permission
- * both invalidate the previous approval.
+ * The implementation lives in a dependency-free module because the plugin registry
+ * vendors it byte-for-byte — see src/services/plugin/manifestHash.ts for why that
+ * matters.
  */
-export function computeManifestHash(parts: {
-  name: string;
-  version: string;
-  main: string;
-  permissions: readonly string[];
-}): string {
-  const canonical = JSON.stringify({
-    name: parts.name,
-    version: parts.version,
-    main: parts.main,
-    permissions: [...parts.permissions].sort(),
-  });
-  // Not cryptographic — this detects change, it does not defend against a local
-  // attacker who could edit the grants file anyway.
-  let h1 = 0x811c9dc5;
-  let h2 = 0x01000193;
-  for (let i = 0; i < canonical.length; i++) {
-    const c = canonical.charCodeAt(i);
-    h1 = Math.imul(h1 ^ c, 0x01000193);
-    h2 = Math.imul(h2 + c, 0x85ebca6b) ^ (h2 >>> 13);
-  }
-  return ((h1 >>> 0).toString(16) + (h2 >>> 0).toString(16)).padStart(16, "0");
-}
+export { computeManifestHash } from "../services/plugin/manifestHash";
 
 export const usePluginPermissionStore = create<PluginPermissionStore>()(
   immer((set, get) => ({
@@ -99,9 +98,11 @@ export const usePluginPermissionStore = create<PluginPermissionStore>()(
       return grant.permissions;
     },
 
-    grant: async (pluginId, permissions, manifestHash) => {
+    hasGrant: (pluginId, manifestHash) => get().grants[pluginId]?.manifestHash === manifestHash,
+
+    grant: async (pluginId, permissions, manifestHash, network) => {
       set((s) => {
-        s.grants[pluginId] = { permissions, manifestHash };
+        s.grants[pluginId] = { permissions, manifestHash, network: network ?? [] };
       });
       await invoke("plugin_grants_save", { grants: get().grants }).catch((e) => {
         console.error("Failed to persist plugin grants:", e);

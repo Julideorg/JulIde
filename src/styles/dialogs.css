@@ -422,6 +422,43 @@
   text-transform: uppercase;
 }
 
+/*
+ * Network egress, stated on every prompt — including when there is none.
+ * "No network access" is a positive signal worth four words, and stating it always is
+ * what makes the host list mean something on the prompts that do carry one.
+ */
+.plugin-consent-network {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+}
+
+.plugin-consent-network.warn {
+  background: var(--mode-shell-tint-weak);
+}
+
+.plugin-consent-network-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.plugin-consent-network.ok .plugin-consent-network-title {
+  color: var(--fg-mid);
+  font-weight: 500;
+}
+
+.plugin-consent-network-hosts {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0 0 0 21px;
+  color: var(--fg-mid);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
 .plugin-consent-note {
   margin: 0 0 12px;
   color: var(--fg-mid);

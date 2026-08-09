@@ -2,9 +2,11 @@ import { describe, expect, test } from "bun:test";
 import {
   ALL_PERMISSIONS,
   COMMAND_PERMISSIONS,
+  EVENT_PERMISSIONS,
   PERMISSION_CATALOG,
   PluginPermissionError,
   assertCommandAllowed,
+  assertEventAllowed,
   parsePermissions,
   unknownPermissions,
 } from "./pluginPermissions";
@@ -70,8 +72,8 @@ describe("assertCommandAllowed", () => {
   test("plugin-management commands are never reachable, even with everything granted", () => {
     for (const cmd of [
       "plugin_scan",
-      "plugin_read_entry",
       "plugin_get_dir",
+      "plugin_grants_load",
       "plugin_grants_save",
     ]) {
       expect(() => assertCommandAllowed("p", cmd, ALL_PERMISSIONS), cmd).toThrow(/may never call/);
@@ -123,6 +125,100 @@ describe("assertCommandAllowed", () => {
       expect((e as Error).message).toContain("my-plugin");
       expect((e as Error).message).toContain("julia_run");
       expect((e as Error).message).toContain("julia:run");
+    }
+  });
+});
+
+describe("assertEventAllowed", () => {
+  test("every event maps to a catalogued permission", () => {
+    for (const [event, permission] of Object.entries(EVENT_PERMISSIONS)) {
+      expect(PERMISSION_CATALOG[permission], `${event} -> ${permission}`).toBeDefined();
+    }
+  });
+
+  test("allows an event covered by a granted permission", () => {
+    expect(() => assertEventAllowed("p", "fs-changed", ["workspace:read"])).not.toThrow();
+  });
+
+  test("rejects an event whose permission was not granted", () => {
+    expect(() => assertEventAllowed("p", "julia-output", ["workspace:read"])).toThrow(
+      PluginPermissionError,
+    );
+  });
+
+  test("fails closed on events that are not in the map", () => {
+    // A newly emitted Tauri event must not become readable by every installed plugin
+    // the day it lands.
+    expect(() => assertEventAllowed("p", "some-future-event", ALL_PERMISSIONS)).toThrow(
+      /may never listen to/,
+    );
+  });
+
+  test("menu-command is never listenable, even with everything granted", () => {
+    // It is how julIDE dispatches its own commands; a plugin watching it sees every
+    // menu action the user takes.
+    expect(() => assertEventAllowed("p", "menu-command", ALL_PERMISSIONS)).toThrow(
+      /may never listen to/,
+    );
+  });
+
+  test("the streams that carry user data are each gated behind their own permission", () => {
+    const all = ALL_PERMISSIONS;
+    // Stdout of everything the user runs.
+    expect(() =>
+      assertEventAllowed(
+        "p",
+        "julia-output",
+        all.filter((p) => p !== "julia:run"),
+      ),
+    ).toThrow();
+    // A live feed of their shell.
+    expect(() =>
+      assertEventAllowed(
+        "p",
+        "pty-output",
+        all.filter((p) => p !== "terminal"),
+      ),
+    ).toThrow();
+    // Carries file contents.
+    expect(() =>
+      assertEventAllowed(
+        "p",
+        "lsp-notification",
+        all.filter((p) => p !== "lsp"),
+      ),
+    ).toThrow();
+    // Every path they touch.
+    expect(() =>
+      assertEventAllowed(
+        "p",
+        "fs-changed",
+        all.filter((p) => p !== "workspace:read"),
+      ),
+    ).toThrow();
+  });
+
+  test("the error says listen rather than call", () => {
+    try {
+      assertEventAllowed("my-plugin", "pty-output", []);
+      throw new Error("should have thrown");
+    } catch (e) {
+      expect((e as Error).message).toContain("listen to");
+      expect((e as Error).message).toContain("terminal");
+    }
+  });
+});
+
+describe("own-property lookup", () => {
+  test("inherited Object.prototype keys are not treated as mapped", () => {
+    // Both maps are object literals, so `MAP["constructor"]` resolves to a function
+    // without an own-property check — truthy, and exactly the shape that slips past a
+    // `if (!required)` guard.
+    for (const key of ["constructor", "toString", "valueOf", "hasOwnProperty"]) {
+      expect(() => assertCommandAllowed("p", key, ALL_PERMISSIONS), key).toThrow(/may never call/);
+      expect(() => assertEventAllowed("p", key, ALL_PERMISSIONS), key).toThrow(
+        /may never listen to/,
+      );
     }
   });
 });

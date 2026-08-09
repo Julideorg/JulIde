@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Thanks for reporting. Please do **not** use this form for security issues —
-        see [SECURITY.md](https://github.com/sinisterMage/julide/blob/master/SECURITY.md).
+        see [SECURITY.md](https://github.com/Julideorg/JulIde/blob/master/SECURITY.md).
 
   - type: textarea
     id: what-happened

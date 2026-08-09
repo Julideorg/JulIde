@@ -39,5 +39,7 @@
 @import "./variables.css";
 @import "./plot-pane.css";
 @import "./outline.css";
+@import "./marketplace.css";
+@import "./plugin-view.css";
 @import "./error-boundary.css";
 @import "./update-banner.css";

@@ -11,6 +11,7 @@ import { registerBuiltinContributions } from "./services/builtinContributions";
 import { installGlobalErrorHandlers } from "./services/globalErrorHandler";
 import { installMenuCommandListener } from "./services/menuCommands";
 import { pluginHost } from "./services/pluginHost";
+import { pluginRevocations } from "./services/plugin/revocations";
 
 // Fix clipboard access (e.g. Monaco's context-menu Paste) before anything
 // that might read navigator.clipboard loads.
@@ -41,4 +42,8 @@ registerBuiltinContributions().then(() => {
 
   // Discover and activate plugins after the UI is rendered
   pluginHost.discoverAndLoadAll().catch(console.warn);
+
+  // Refreshes the advisory feed every six hours. Installed after discovery so the
+  // first check has already happened by the time the interval starts.
+  pluginRevocations.start();
 });

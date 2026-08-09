@@ -1,6 +1,7 @@
 import { ShieldAlert, ShieldCheck } from "lucide-react";
 import { usePluginPermissionStore } from "../../stores/usePluginPermissionStore";
 import { PERMISSION_CATALOG } from "../../services/pluginPermissions";
+import { PluginPermissionTable } from "./PluginPermissionTable";
 
 /**
  * Asks the user to approve what a plugin is requesting, before it is loaded.
@@ -18,7 +19,11 @@ export function PluginConsentDialog() {
 
   if (!pending) return null;
 
+  // Egress counts toward the warning tone on its own. A plugin holding only
+  // `workspace:read` — a "normal" risk — plus one host to send it to is an
+  // exfiltration tool, and neither half reads as high risk by itself.
   const highRisk = pending.requested.filter((p) => PERMISSION_CATALOG[p].risk === "high");
+  const alarming = highRisk.length > 0 || pending.network.length > 0;
 
   return (
     <div className="plugin-consent-overlay">
@@ -29,7 +34,7 @@ export function PluginConsentDialog() {
         aria-labelledby="plugin-consent-title"
       >
         <header className="plugin-consent-header">
-          {highRisk.length > 0 ? (
+          {alarming ? (
             <ShieldAlert size={20} className="plugin-consent-icon warn" />
           ) : (
             <ShieldCheck size={20} className="plugin-consent-icon ok" />
@@ -42,22 +47,15 @@ export function PluginConsentDialog() {
           </div>
         </header>
 
-        <ul className="plugin-consent-permissions">
-          {pending.requested.map((permission) => {
-            const info = PERMISSION_CATALOG[permission];
-            return (
-              <li key={permission} className={`plugin-consent-permission ${info.risk}`}>
-                <span className="plugin-consent-permission-title">
-                  {info.title}
-                  {info.risk === "high" && (
-                    <span className="plugin-consent-risk-badge">High risk</span>
-                  )}
-                </span>
-                <span className="plugin-consent-permission-desc">{info.description}</span>
-              </li>
-            );
-          })}
-        </ul>
+        <PluginPermissionTable permissions={pending.requested} network={pending.network} />
+
+        {pending.rejectedNetwork.length > 0 && (
+          <p className="plugin-consent-note">
+            It also lists {pending.rejectedNetwork.length} network{" "}
+            {pending.rejectedNetwork.length === 1 ? "entry" : "entries"} julIDE does not accept (
+            {pending.rejectedNetwork.join(", ")}). These will be ignored.
+          </p>
+        )}
 
         {pending.unknown.length > 0 && (
           <p className="plugin-consent-note">

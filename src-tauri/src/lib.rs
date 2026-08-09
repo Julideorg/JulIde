@@ -10,7 +10,9 @@ mod git_gitlab;
 mod git_provider;
 mod julia;
 mod lsp;
+mod marketplace;
 mod menu;
+mod plugin_protocol;
 mod plugins;
 mod pluto;
 mod pty;
@@ -64,6 +66,19 @@ pub fn run() {
     disable_webkit_dmabuf_renderer();
 
     tauri::Builder::default()
+        // Sandboxed plugin frames. Registered before the webview exists, because a
+        // custom scheme cannot be added afterwards. See src/plugin_protocol.rs.
+        .register_uri_scheme_protocol("julide-plugin", |ctx, request| {
+            let app_origin = if tauri::is_dev() {
+                "http://localhost:1420"
+            } else if cfg!(any(windows, target_os = "android")) {
+                "http://tauri.localhost"
+            } else {
+                "tauri://localhost"
+            };
+            let _ = ctx;
+            crate::plugin_protocol::handle_request(&request, app_origin)
+        })
         .plugin(tauri_plugin_opener::init())
         // The shell and fs plugins are deliberately not registered: the frontend
         // never uses them (all such work goes through the commands below), and
@@ -220,7 +235,6 @@ pub fn run() {
             // Plugins
             plugins::plugin_get_dir,
             plugins::plugin_scan,
-            plugins::plugin_read_entry,
             plugins::plugin_grants_load,
             plugins::plugin_grants_save,
             // Container
@@ -247,6 +261,14 @@ pub fn run() {
             container::devcontainer_down,
             container::container_pty_create,
             container::container_julia_run,
+            // Marketplace — deliberately absent from COMMAND_PERMISSIONS in
+            // src/services/pluginPermissions.ts. A plugin that can install plugins is
+            // privilege escalation with no legitimate use.
+            marketplace::marketplace_fetch_index,
+            marketplace::marketplace_fetch_revocations,
+            marketplace::marketplace_install,
+            marketplace::marketplace_uninstall,
+            marketplace::marketplace_check_updates,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

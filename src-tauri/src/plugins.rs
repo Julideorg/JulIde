@@ -13,12 +13,28 @@ pub struct PluginManifest {
     #[serde(default)]
     pub author: Option<String>,
     pub main: String,
+    /// Which generation of the plugin API this targets. Absent means 1 — the
+    /// pre-sandbox API, where a plugin ran in julIDE's own realm.
+    #[serde(default = "default_api_version")]
+    pub api_version: u32,
     #[serde(default)]
     pub activation_events: Vec<String>,
     /// Capabilities the plugin asks for. Anything not listed here is denied at the
     /// `ctx.ipc.invoke` boundary — see src/services/pluginPermissions.ts.
     #[serde(default)]
     pub permissions: Vec<String>,
+    /// Origins the plugin may reach. Becomes the `connect-src` of its sandbox frame,
+    /// so an undeclared host is unreachable rather than merely undocumented.
+    #[serde(default)]
+    pub network: Vec<String>,
+    /// Declarative contributions. Views must be known before the plugin's code runs —
+    /// that is what lets a view frame be created lazily on first show.
+    #[serde(default)]
+    pub contributes: Option<serde_json::Value>,
+}
+
+fn default_api_version() -> u32 {
+    1
 }
 
 /// Permissions the user has approved for a plugin, keyed by plugin name.
@@ -26,15 +42,22 @@ pub struct PluginManifest {
 #[serde(rename_all = "camelCase")]
 pub struct PluginGrant {
     pub permissions: Vec<String>,
+    /// Origins the user approved this plugin to reach. Optional so grants written
+    /// before the field existed still load rather than resetting every approval.
+    #[serde(default)]
+    pub network: Vec<String>,
     pub manifest_hash: String,
 }
 
 /// Reject anything that is not a single, plain directory name.
 ///
-/// `plugin_read_entry` and friends join this into a path under `~/.julide/plugins/`,
-/// so without this a caller could pass `../../../etc` and walk out of the plugin
-/// directory entirely.
-fn validate_plugin_name(name: &str) -> Result<(), String> {
+/// The name is joined into a path under `~/.julide/plugins/` by the plugin protocol
+/// handler, so without this a caller could pass `../../../etc` and walk out of the
+/// plugin directory entirely.
+///
+/// `pub(crate)` because archive extraction applies the same rule to every member of a
+/// downloaded bundle. One implementation, so the two cannot drift apart.
+pub(crate) fn validate_plugin_name(name: &str) -> Result<(), String> {
     if name.is_empty() {
         return Err("Plugin name must not be empty".into());
     }
@@ -79,9 +102,14 @@ pub fn plugin_scan() -> Result<Vec<PluginManifest>, String> {
         std::fs::create_dir_all(&dir).ok();
         return Ok(Vec::new());
     }
+    scan_dir(&dir)
+}
 
+/// The body of `plugin_scan`, taking the directory as an argument so it can be tested
+/// against a fixture tree rather than against the user's real `~/.julide/plugins`.
+fn scan_dir(dir: &Path) -> Result<Vec<PluginManifest>, String> {
     let mut manifests = Vec::new();
-    let entries = std::fs::read_dir(&dir).map_err(|e| e.to_string())?;
+    let entries = std::fs::read_dir(dir).map_err(|e| e.to_string())?;
     for entry in entries {
         let entry = entry.map_err(|e| e.to_string())?;
         let path = entry.path();
@@ -94,54 +122,46 @@ pub fn plugin_scan() -> Result<Vec<PluginManifest>, String> {
             continue;
         }
 
+        // The directory name is the plugin's identity everywhere else: it is what
+        // the protocol handler resolves and what the frontend keys grants by. A manifest
+        // is free to declare a different `name`, and then a plugin in `evil/` claiming
+        // `"name": "trusted-plugin"` would be handed the grants the user approved for
+        // the real one. Bind the two together here, at the only place both are visible.
+        let dir_name = match path.file_name().and_then(|n| n.to_str()) {
+            Some(n) => n,
+            None => {
+                eprintln!(
+                    "Skipping plugin directory with a non-UTF-8 name: {}",
+                    path.display()
+                );
+                continue;
+            }
+        };
+
         match std::fs::read_to_string(&manifest_path) {
             Ok(content) => match serde_json::from_str::<PluginManifest>(&content) {
-                Ok(manifest) => manifests.push(manifest),
+                Ok(manifest) => {
+                    if manifest.name != dir_name {
+                        eprintln!(
+                            "Skipping {}: manifest declares name '{}' but lives in directory '{}'",
+                            manifest_path.display(),
+                            manifest.name,
+                            dir_name
+                        );
+                        continue;
+                    }
+                    if let Err(e) = validate_plugin_name(&manifest.name) {
+                        eprintln!("Skipping {}: {}", manifest_path.display(), e);
+                        continue;
+                    }
+                    manifests.push(manifest);
+                }
                 Err(e) => eprintln!("Failed to parse {}: {}", manifest_path.display(), e),
             },
             Err(e) => eprintln!("Failed to read {}: {}", manifest_path.display(), e),
         }
     }
     Ok(manifests)
-}
-
-#[tauri::command]
-pub fn plugin_read_entry(plugin_name: String) -> Result<String, String> {
-    validate_plugin_name(&plugin_name)?;
-    let dir = plugins_dir();
-    let plugin_root = dir.join(&plugin_name);
-    let manifest_path = plugin_root.join("plugin.json");
-    let content = std::fs::read_to_string(&manifest_path).map_err(|e| e.to_string())?;
-    let manifest: PluginManifest = serde_json::from_str(&content).map_err(|e| e.to_string())?;
-
-    let entry_path = plugin_root.join(&manifest.main);
-
-    // `main` comes from the manifest, so it is attacker-controlled in the same way the
-    // plugin name is. Confine the resolved entry point to the plugin's own directory.
-    let canonical_root = plugin_root.canonicalize().map_err(|e| {
-        format!(
-            "Plugin directory {} is unreadable: {}",
-            plugin_root.display(),
-            e
-        )
-    })?;
-    let canonical_entry = entry_path
-        .canonicalize()
-        .map_err(|e| format!("Plugin entry {} is unreadable: {}", entry_path.display(), e))?;
-    if !canonical_entry.starts_with(&canonical_root) {
-        return Err(format!(
-            "Plugin '{}' declares an entry point outside its own directory",
-            plugin_name
-        ));
-    }
-
-    std::fs::read_to_string(&canonical_entry).map_err(|e| {
-        format!(
-            "Failed to read plugin entry {}: {}",
-            canonical_entry.display(),
-            e
-        )
-    })
 }
 
 fn grants_path() -> PathBuf {
@@ -164,12 +184,23 @@ pub fn plugin_grants_load() -> HashMap<String, PluginGrant> {
 
 #[tauri::command]
 pub fn plugin_grants_save(grants: HashMap<String, PluginGrant>) -> Result<(), String> {
-    let path = grants_path();
+    write_grants(&grants_path(), &grants)
+}
+
+/// The body of `plugin_grants_save`, taking the path so it can be tested.
+///
+/// Temp file plus rename, the same way `settings_save` does it. This file holds every
+/// permission decision the user has ever made, and it is rewritten in full on every
+/// grant and revoke — an interrupted write would drop the lot, and the user would be
+/// re-prompted for everything at next launch with no indication why.
+fn write_grants(path: &Path, grants: &HashMap<String, PluginGrant>) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    let content = serde_json::to_string_pretty(&grants).map_err(|e| e.to_string())?;
-    std::fs::write(&path, content).map_err(|e| e.to_string())
+    let content = serde_json::to_string_pretty(grants).map_err(|e| e.to_string())?;
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, content).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, path).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
@@ -185,8 +216,11 @@ mod tests {
             description: Some("A test plugin".to_string()),
             author: Some("Author".to_string()),
             main: "dist/index.js".to_string(),
+            api_version: 2,
             activation_events: vec!["*".to_string()],
             permissions: vec!["workspace:read".to_string()],
+            network: vec![],
+            contributes: None,
         };
 
         let json = serde_json::to_string(&manifest).unwrap();
@@ -245,10 +279,118 @@ mod tests {
         assert!(validate_plugin_name("bad\nname").is_err());
     }
 
+    // ── scan_dir: the manifest name must match the directory ───────────────
+
+    /// Write `plugins/<dir>/plugin.json` declaring `name`.
+    fn write_plugin(root: &Path, dir: &str, name: &str) {
+        let plugin_dir = root.join(dir);
+        std::fs::create_dir_all(&plugin_dir).unwrap();
+        std::fs::write(
+            plugin_dir.join("plugin.json"),
+            format!(r#"{{"name":"{name}","version":"1.0.0","displayName":"X","main":"index.js"}}"#),
+        )
+        .unwrap();
+    }
+
     #[test]
-    fn plugin_read_entry_rejects_traversal_name() {
-        let err = plugin_read_entry("../../../etc".to_string()).unwrap_err();
-        assert!(err.contains("Invalid plugin name"), "got: {err}");
+    fn scan_accepts_a_plugin_whose_name_matches_its_directory() {
+        let tmp = tempfile::tempdir().unwrap();
+        write_plugin(tmp.path(), "good-plugin", "good-plugin");
+
+        let found = scan_dir(tmp.path()).unwrap();
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].name, "good-plugin");
+    }
+
+    #[test]
+    fn scan_rejects_a_manifest_that_claims_another_plugin_s_name() {
+        // Grants are keyed by `manifest.name`, so a plugin dropped into `evil/` while
+        // declaring `"name": "trusted-plugin"` would otherwise be handed whatever the
+        // user approved for the real trusted-plugin — with no prompt, because the
+        // manifest hash would match too.
+        let tmp = tempfile::tempdir().unwrap();
+        write_plugin(tmp.path(), "evil", "trusted-plugin");
+
+        let found = scan_dir(tmp.path()).unwrap();
+        assert!(
+            found.is_empty(),
+            "impersonating manifest was returned: {found:?}"
+        );
+    }
+
+    #[test]
+    fn scan_rejects_a_name_that_is_not_a_plain_directory_name() {
+        // A directory name matching the manifest is necessary but not sufficient: on
+        // Unix a name may contain almost anything, including a newline, and that name
+        // then flows into grant keys and log lines. Reject it at the scan rather than
+        // letting plugin_read_entry be the only thing standing in the way.
+        let tmp = tempfile::tempdir().unwrap();
+        write_plugin(tmp.path(), "evil\nplugin", "evil\nplugin");
+
+        let found = scan_dir(tmp.path()).unwrap();
+        assert!(found.is_empty(), "got: {found:?}");
+    }
+
+    #[test]
+    fn a_dotted_directory_name_is_still_a_plain_name() {
+        // Guarding the case above must not cost legitimate names: `..weird` is one
+        // ordinary path component, not traversal.
+        let tmp = tempfile::tempdir().unwrap();
+        write_plugin(tmp.path(), "..weird", "..weird");
+
+        let found = scan_dir(tmp.path()).unwrap();
+        assert_eq!(found.len(), 1);
+    }
+
+    #[test]
+    fn scan_skips_directories_without_a_manifest_and_keeps_going() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join("not-a-plugin")).unwrap();
+        write_plugin(tmp.path(), "evil", "trusted-plugin");
+        write_plugin(tmp.path(), "real", "real");
+
+        // One bad entry must not cost the user their working plugins.
+        let found = scan_dir(tmp.path()).unwrap();
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].name, "real");
+    }
+
+    // ── grants are written atomically ──────────────────────────────────────
+
+    #[test]
+    fn grants_save_leaves_no_temp_file_behind() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("plugin-grants.json");
+
+        let mut grants = HashMap::new();
+        grants.insert(
+            "my-plugin".to_string(),
+            PluginGrant {
+                permissions: vec!["workspace:read".to_string()],
+                network: vec![],
+                manifest_hash: "abc123".to_string(),
+            },
+        );
+
+        write_grants(&path, &grants).unwrap();
+
+        let back: HashMap<String, PluginGrant> =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(back["my-plugin"].manifest_hash, "abc123");
+        assert!(
+            !path.with_extension("json.tmp").exists(),
+            "the temp file must not survive the rename"
+        );
+    }
+
+    #[test]
+    fn grants_save_creates_the_config_directory() {
+        // First run on a clean machine: the julide config dir does not exist yet.
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("nested").join("julide").join("grants.json");
+
+        write_grants(&path, &HashMap::new()).unwrap();
+        assert!(path.exists());
     }
 
     // ── grants ─────────────────────────────────────────────────────────────
@@ -260,6 +402,7 @@ mod tests {
             "my-plugin".to_string(),
             PluginGrant {
                 permissions: vec!["workspace:read".to_string(), "julia:run".to_string()],
+                network: vec![],
                 manifest_hash: "deadbeef".to_string(),
             },
         );
@@ -284,6 +427,50 @@ mod tests {
         }"#;
         let manifest: PluginManifest = serde_json::from_str(json).unwrap();
         assert!(manifest.permissions.is_empty());
+    }
+
+    #[test]
+    fn manifest_without_api_version_reads_as_the_pre_sandbox_api() {
+        // Every plugin written before the sandbox omits the field. Defaulting to the
+        // current generation would load it into a world where its panel API silently
+        // does nothing; the frontend refuses v1 with a migration message instead.
+        let json = r#"{
+            "name": "old",
+            "version": "1.0.0",
+            "displayName": "Old",
+            "main": "index.js"
+        }"#;
+        let manifest: PluginManifest = serde_json::from_str(json).unwrap();
+        assert_eq!(manifest.api_version, 1);
+        assert!(manifest.network.is_empty());
+    }
+
+    #[test]
+    fn manifest_network_round_trips_as_camel_case() {
+        let json = r#"{
+            "name": "n",
+            "version": "1.0.0",
+            "displayName": "N",
+            "main": "index.js",
+            "apiVersion": 2,
+            "network": ["https://api.github.com"]
+        }"#;
+        let manifest: PluginManifest = serde_json::from_str(json).unwrap();
+        assert_eq!(manifest.api_version, 2);
+        assert_eq!(manifest.network, vec!["https://api.github.com"]);
+
+        let back = serde_json::to_string(&manifest).unwrap();
+        assert!(back.contains("apiVersion"), "got: {back}");
+    }
+
+    #[test]
+    fn a_grant_written_before_the_network_field_existed_still_loads() {
+        // Otherwise adding the field would silently reset every approval the user has
+        // ever made, and they would be re-prompted for everything with no explanation.
+        let json = r#"{"my-plugin":{"permissions":["workspace:read"],"manifestHash":"abc"}}"#;
+        let grants: HashMap<String, PluginGrant> = serde_json::from_str(json).unwrap();
+        assert_eq!(grants["my-plugin"].permissions, vec!["workspace:read"]);
+        assert!(grants["my-plugin"].network.is_empty());
     }
 
     #[test]

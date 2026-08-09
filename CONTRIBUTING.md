@@ -51,7 +51,7 @@ sudo apt-get install -y \
 ### Setup
 
 ```bash
-git clone https://github.com/sinisterMage/JulIde.git
+git clone https://github.com/Julideorg/JulIde.git
 cd JulIde
 bun install
 bun run tauri dev

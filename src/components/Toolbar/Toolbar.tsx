@@ -16,7 +16,6 @@ import {
 import { useIdeStore } from "../../stores/useIdeStore";
 import { useSettingsStore } from "../../stores/useSettingsStore";
 import { usePluginStore } from "../../stores/usePluginStore";
-import { PluginPanel } from "../Plugin/PluginPanel";
 import { startDevcontainer } from "../../services/devcontainer";
 import { ModeBarTrigger } from "../ModeBar/ModeBar";
 import type { FileNode } from "../../types";
@@ -340,11 +339,10 @@ export function Toolbar() {
               const isVisible = btn.visible ? btn.visible() : true;
               const isDisabled = btn.disabled ? btn.disabled() : false;
               if (!isVisible) return null;
+              // Same as the status bar: plugin buttons are data, and `component` is
+              // only for julIDE's own built-ins.
               if (btn.component) {
-                return <PluginPanel key={btn.id} component={btn.component} />;
-              }
-              if (btn.render) {
-                return <PluginPanel key={btn.id} render={btn.render} />;
+                return <btn.component key={btn.id} />;
               }
               return (
                 <button

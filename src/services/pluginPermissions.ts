@@ -281,6 +281,50 @@ export const COMMAND_PERMISSIONS: Record<string, PluginPermission> = {
   devcontainer_down: "containers",
 };
 
+/**
+ * Tauri event → permission required to subscribe to it.
+ *
+ * Listening is not a lesser act than calling. `julia-output` carries the stdout of
+ * everything the user runs, `pty-output` is a live feed of their shell, `lsp-notification`
+ * carries file contents, and `fs-changed` is a running log of every path they touch.
+ * Subscribing to those without a grant reads the workspace just as surely as
+ * `fs_read_file` does, so the same fail-closed rule applies: an event absent from this
+ * map cannot be subscribed to at all.
+ *
+ * `menu-command` is deliberately omitted. It is host chrome — the native menu dispatches
+ * julIDE's own commands through it — and a plugin has no business observing which menu
+ * items the user clicks.
+ */
+export const EVENT_PERMISSIONS: Record<string, PluginPermission> = {
+  "fs-changed": "workspace:read",
+  "julia-output": "julia:run",
+  "pty-output": "terminal",
+  "pty-exit": "terminal",
+  "debug-output": "debugger",
+  "debug-stopped": "debugger",
+  "debug-variables": "debugger",
+  "lsp-notification": "lsp",
+  "lsp-status": "lsp",
+  "pluto-status": "pluto",
+  "container-output": "containers",
+  "container-status": "containers",
+};
+
+/**
+ * Own-property lookup.
+ *
+ * The maps above are object literals, so a bare `MAP[key]` also resolves inherited
+ * `Object.prototype` members — `MAP["constructor"]` is a function, which is truthy. That
+ * happens to still fail closed further down, but only by accident, and an accident is a
+ * bad thing to rest a boundary on.
+ */
+function requiredFor(
+  map: Record<string, PluginPermission>,
+  key: string,
+): PluginPermission | undefined {
+  return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined;
+}
+
 /** Keep only strings that name a real permission. */
 export function parsePermissions(raw: readonly string[] | undefined): PluginPermission[] {
   if (!raw) return [];
@@ -300,12 +344,15 @@ export class PluginPermissionError extends Error {
     readonly pluginId: string,
     readonly command: string,
     readonly required: PluginPermission | null,
+    /** Shapes the wording only — `listen to` reads wrong for a command and vice versa. */
+    kind: "command" | "event" = "command",
   ) {
+    const verb = kind === "event" ? "listen to" : "call";
     super(
       required
-        ? `Plugin "${pluginId}" tried to call "${command}" without the "${required}" permission. ` +
+        ? `Plugin "${pluginId}" tried to ${verb} "${command}" without the "${required}" permission. ` +
             `Add it to the plugin's plugin.json and re-approve the plugin in Settings → Plugins.`
-        : `Plugin "${pluginId}" tried to call "${command}", which plugins may never call.`,
+        : `Plugin "${pluginId}" tried to ${verb} "${command}", which plugins may never ${verb}.`,
     );
     this.name = "PluginPermissionError";
   }
@@ -321,9 +368,28 @@ export function assertCommandAllowed(
   command: string,
   granted: readonly PluginPermission[],
 ): void {
-  const required = COMMAND_PERMISSIONS[command];
+  const required = requiredFor(COMMAND_PERMISSIONS, command);
   if (!required) throw new PluginPermissionError(pluginId, command, null);
   if (!granted.includes(required)) {
     throw new PluginPermissionError(pluginId, command, required);
+  }
+}
+
+/**
+ * Throw unless `granted` covers subscribing to the given Tauri event.
+ *
+ * Fails closed on unmapped events, for the same reason `assertCommandAllowed` does: a
+ * newly emitted event must not become readable by every installed plugin the day it
+ * lands.
+ */
+export function assertEventAllowed(
+  pluginId: string,
+  event: string,
+  granted: readonly PluginPermission[],
+): void {
+  const required = requiredFor(EVENT_PERMISSIONS, event);
+  if (!required) throw new PluginPermissionError(pluginId, event, null, "event");
+  if (!granted.includes(required)) {
+    throw new PluginPermissionError(pluginId, event, required, "event");
   }
 }

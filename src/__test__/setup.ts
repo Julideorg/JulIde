@@ -8,6 +8,11 @@ import { mockInvoke, mockListen } from "./tauriMock";
 // Mock @tauri-apps/api/core
 mock.module("@tauri-apps/api/core", () => ({
   invoke: mockInvoke,
+  // Used by the plugin sandbox to build `julide-plugin://` frame URLs. The real one
+  // percent-encodes the path and picks the platform's scheme form; the shape is all
+  // the tests need.
+  convertFileSrc: (path: string, protocol = "asset") =>
+    `${protocol}://localhost/${encodeURIComponent(path)}`,
 }));
 
 // Mock @tauri-apps/api/event

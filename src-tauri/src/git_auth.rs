@@ -51,16 +51,17 @@ pub fn git_auth_list_accounts() -> Result<Vec<AuthAccount>, String> {
     Ok(accounts)
 }
 
-/// Internal helper: get the stored token for a remote URL by detecting the provider
+/// Internal helper: get the stored token for a remote URL by detecting the provider.
+///
+/// Provider detection is delegated to `git_provider::detect_provider`, which matches on
+/// the parsed host. It used to substring-match the whole URL here, which meant a repo
+/// whose `origin` was `https://evil.com/github.com/x` was classified as GitHub and had
+/// the user's GitHub PAT sent to `evil.com`'s API base — a credential handed over by
+/// cloning a repository. Two copies of that decision is one too many, so there is now
+/// only the one.
 pub fn get_stored_token_for_remote(url: &str) -> Option<String> {
-    let provider = if url.contains("github.com") {
-        "github"
-    } else if url.contains("gitlab.com") {
-        "gitlab"
-    } else {
-        "gitea"
-    };
-    keyring::Entry::new(SERVICE_NAME, provider)
+    let provider = crate::git_provider::detect_provider(url)?;
+    keyring::Entry::new(SERVICE_NAME, &provider)
         .ok()
         .and_then(|e| e.get_password().ok())
 }

@@ -31,8 +31,8 @@
         "font-src": "'self' data:",
         "media-src": "'self' blob:",
         "worker-src": "'self' blob:",
-        "child-src": "'self' blob:",
-        "frame-src": "'self' blob: http://localhost:* http://127.0.0.1:*",
+        "child-src": "'self' blob: julide-plugin: http://julide-plugin.localhost",
+        "frame-src": "'self' blob: julide-plugin: http://julide-plugin.localhost http://localhost:* http://127.0.0.1:*",
         "connect-src": "'self' ipc: http://ipc.localhost http://localhost:* http://127.0.0.1:*",
         "object-src": "'none'",
         "base-uri": "'self'",
@@ -46,8 +46,8 @@
         "font-src": "'self' data: http://localhost:1420",
         "media-src": "'self' blob:",
         "worker-src": "'self' blob: http://localhost:1420",
-        "child-src": "'self' blob:",
-        "frame-src": "'self' blob: http://localhost:* http://127.0.0.1:*",
+        "child-src": "'self' blob: julide-plugin: http://julide-plugin.localhost",
+        "frame-src": "'self' blob: julide-plugin: http://julide-plugin.localhost http://localhost:* http://127.0.0.1:*",
         "connect-src": "'self' ipc: http://ipc.localhost ws://localhost:1421 ws://127.0.0.1:1421 http://localhost:* http://127.0.0.1:*",
         "object-src": "'none'",
         "base-uri": "'self'"
@@ -56,7 +56,7 @@
   },
   "plugins": {
     "updater": {
-      "endpoints": ["https://github.com/sinisterMage/julide/releases/latest/download/latest.json"],
+      "endpoints": ["https://github.com/Julideorg/JulIde/releases/latest/download/latest.json"],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDYwRjEzRjU4MURFQTREODUKUldTRlRlb2RXRC94WUFXbTc2NHlkMU93UTJtQjlyaW9RN21OS0tlM1dWVzlqZWNqeUFwY042cnMK",
       "windows": {
         "installMode": "passive"
@@ -69,7 +69,7 @@
     "createUpdaterArtifacts": true,
     "category": "DeveloperTool",
     "publisher": "Ofek Bickel",
-    "homepage": "https://github.com/sinisterMage/julide",
+    "homepage": "https://github.com/Julideorg/JulIde",
     "licenseFile": "../LICENSE",
     "shortDescription": "A modern IDE for the Julia programming language",
     "longDescription": "julIDE is a desktop IDE for Julia built with Tauri and React. It provides a Monaco-based editor with Julia syntax highlighting and snippets, language intelligence via LanguageServer.jl, an integrated REPL with full PTY emulation, a Debugger.jl-backed debugger, plot and rich-output panes, a variable explorer, Pkg.jl package management, git integration via libgit2 with GitHub/GitLab/Gitea support, dev container support, and Pluto.jl notebooks.",

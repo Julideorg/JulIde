@@ -73,11 +73,47 @@ pub trait GitProvider: Send + Sync {
     async fn get_ci_status(&self, token: &str, ref_name: &str) -> Result<Vec<CiCheck>, String>;
 }
 
-/// Detect the git provider from a remote URL
+/// The host a remote URL actually points at, lowercased.
+///
+/// Handles both forms git uses: a real URL (`https://host/owner/repo`) and scp-style
+/// SSH (`git@host:owner/repo`), which `url::Url::parse` rejects.
+///
+/// Everything downstream keys off this rather than off substrings of the whole URL.
+/// `remote_url.contains("github.com")` is true of `https://evil.com/github.com/x`, and
+/// the caller would then hand that host the user's GitHub token.
+pub fn remote_host(remote_url: &str) -> Option<String> {
+    let trimmed = remote_url.trim();
+    if trimmed.contains("://") {
+        return url::Url::parse(trimmed)
+            .ok()
+            .and_then(|u| u.host_str().map(|h| h.to_ascii_lowercase()));
+    }
+    // scp-style: [user@]host:path — the first colon ends the host, and it must come
+    // before any slash, otherwise this is a bare path rather than a remote.
+    let after_user = trimmed.rsplit('@').next()?;
+    let (host, path) = after_user.split_once(':')?;
+    if host.is_empty() || host.contains('/') || path.is_empty() {
+        return None;
+    }
+    Some(host.to_ascii_lowercase())
+}
+
+/// True when `host` is exactly `domain`, or a subdomain of it.
+///
+/// The suffix arm is written as `.domain` deliberately: a bare `ends_with("github.com")`
+/// also matches `notgithub.com`.
+fn host_matches(host: &str, domain: &str) -> bool {
+    host == domain || host.ends_with(&format!(".{}", domain))
+}
+
+/// Detect the git provider from a remote URL.
 pub fn detect_provider(remote_url: &str) -> Option<String> {
-    if remote_url.contains("github.com") {
+    let host = remote_host(remote_url)?;
+    if host_matches(&host, "github.com") {
         Some("github".to_string())
-    } else if remote_url.contains("gitlab.com") || remote_url.contains("gitlab.") {
+    } else if host_matches(&host, "gitlab.com") || host.starts_with("gitlab.") {
+        // `gitlab.` as a host prefix covers the common self-hosted naming. It is a
+        // heuristic, but it is now scoped to the host rather than to the whole URL.
         Some("gitlab".to_string())
     } else {
         // Could be Gitea or unknown — we'll try Gitea later via API check
@@ -147,34 +183,33 @@ fn is_loopback_host(host: &str) -> bool {
 /// whatever host `origin` names — including one an attacker chose by shipping a repo
 /// with a hostile `origin` configured.
 pub fn extract_api_base(remote_url: &str) -> String {
-    if remote_url.contains("github.com") {
+    // Matched on the parsed host, not on a substring of the URL. The hosted endpoints
+    // below are where the PAT goes, so `https://evil.com/github.com/x` must not reach
+    // them — and, just as importantly, must not be treated as self-hosted GitHub.
+    let host = match remote_host(remote_url) {
+        Some(h) => h,
+        None => return "https://localhost".to_string(),
+    };
+    if host_matches(&host, "github.com") {
         return "https://api.github.com".to_string();
     }
-    if remote_url.contains("gitlab.com") {
+    if host_matches(&host, "gitlab.com") {
         return "https://gitlab.com".to_string();
     }
-    // For self-hosted, extract the host
-    if remote_url.contains("://") {
-        if let Ok(parsed) = url::Url::parse(remote_url) {
-            if let Some(host) = parsed.host_str() {
-                let scheme = if is_loopback_host(host) {
-                    parsed.scheme()
-                } else {
-                    "https"
-                };
-                let port = parsed.port().map(|p| format!(":{}", p)).unwrap_or_default();
-                return format!("{}://{}{}", scheme, host, port);
-            }
-        }
-    } else if remote_url.contains('@') && remote_url.contains(':') {
-        // SSH format: git@host:owner/repo — assume HTTPS API
-        if let Some(host_part) = remote_url.split('@').nth(1) {
-            if let Some(host) = host_part.split(':').next() {
-                return format!("https://{}", host);
-            }
-        }
+
+    // Self-hosted: keep the host as given, and force https unless it can only ever mean
+    // this machine.
+    if let Ok(parsed) = url::Url::parse(remote_url.trim()) {
+        let scheme = if is_loopback_host(&host) {
+            parsed.scheme()
+        } else {
+            "https"
+        };
+        let port = parsed.port().map(|p| format!(":{}", p)).unwrap_or_default();
+        return format!("{}://{}{}", scheme, host, port);
     }
-    "https://localhost".to_string()
+    // scp-style SSH remote — no scheme to preserve, so assume the HTTPS API.
+    format!("https://{}", host)
 }
 
 // ─── Helper to get remote URL from workspace ────────────────────────────────
@@ -452,6 +487,88 @@ mod tests {
         assert_eq!(
             detect_provider("https://gitea.example.com/user/repo"),
             Some("gitea".to_string())
+        );
+    }
+
+    // ── remote_host ────────────────────────────────────────────────────────
+
+    #[test]
+    fn remote_host_parses_both_url_forms() {
+        assert_eq!(
+            remote_host("https://github.com/o/r.git").as_deref(),
+            Some("github.com")
+        );
+        assert_eq!(
+            remote_host("git@github.com:o/r.git").as_deref(),
+            Some("github.com")
+        );
+        assert_eq!(
+            remote_host("ssh://git@host.example:22/o/r").as_deref(),
+            Some("host.example")
+        );
+        assert_eq!(
+            remote_host("https://Host.Example/o/r").as_deref(),
+            Some("host.example")
+        );
+    }
+
+    #[test]
+    fn remote_host_rejects_things_that_are_not_remotes() {
+        assert_eq!(remote_host("invalid-url"), None);
+        assert_eq!(remote_host(""), None);
+        assert_eq!(remote_host("/a/local/path"), None);
+        // A bare path with a colon after a slash is not scp-style.
+        assert_eq!(remote_host("./weird:name"), None);
+    }
+
+    // ── host confusion: the whole reason these parse rather than substring ──
+
+    #[test]
+    fn a_path_segment_named_after_a_provider_does_not_select_that_provider() {
+        // `contains("github.com")` was true of this, so cloning a repo with a hostile
+        // `origin` was enough to have the user's GitHub PAT sent to attacker.example.
+        for url in [
+            "https://attacker.example/github.com/repo",
+            "https://attacker.example/x?q=github.com",
+            "https://attacker.example/#github.com",
+            "git@attacker.example:github.com/repo.git",
+        ] {
+            assert_eq!(detect_provider(url), Some("gitea".to_string()), "{url}");
+            assert_eq!(extract_api_base(url), "https://attacker.example", "{url}");
+        }
+    }
+
+    #[test]
+    fn a_lookalike_domain_is_not_the_real_one() {
+        // `ends_with("github.com")` would accept this one.
+        assert_eq!(
+            detect_provider("https://notgithub.com/o/r"),
+            Some("gitea".to_string())
+        );
+        assert_eq!(
+            extract_api_base("https://notgithub.com/o/r"),
+            "https://notgithub.com"
+        );
+    }
+
+    #[test]
+    fn userinfo_cannot_smuggle_a_provider_host() {
+        // The host here is attacker.example; github.com is only the username.
+        let url = "https://github.com@attacker.example/o/r";
+        assert_eq!(remote_host(url).as_deref(), Some("attacker.example"));
+        assert_eq!(detect_provider(url), Some("gitea".to_string()));
+        assert_eq!(extract_api_base(url), "https://attacker.example");
+    }
+
+    #[test]
+    fn real_provider_subdomains_still_resolve() {
+        assert_eq!(
+            detect_provider("https://www.github.com/o/r"),
+            Some("github".to_string())
+        );
+        assert_eq!(
+            extract_api_base("https://www.github.com/o/r"),
+            "https://api.github.com"
         );
     }
 

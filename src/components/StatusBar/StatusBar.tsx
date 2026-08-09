@@ -3,7 +3,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { useIdeStore } from "../../stores/useIdeStore";
 import { usePluginStore } from "../../stores/usePluginStore";
 import { useJuliaStore } from "../../stores/useJuliaStore";
-import { PluginPanel } from "../Plugin/PluginPanel";
 import { Bug, Container, GitBranch, Play, Zap } from "lucide-react";
 import { Dot, Menu, MenuItem, Popover } from "../ui";
 import { iconSize } from "../../themes/tokens";
@@ -267,11 +266,11 @@ function StatusBarPluginItem({
 }: {
   item: import("../../types/plugin").StatusBarItemContribution;
 }) {
+  // Plugin items are data, never a frame: a whole sandboxed document for the word
+  // "Ready" could not match the bar's typography and has no capability worth isolating.
+  // `component` remains for built-ins, which are this realm's own code.
   if (item.component) {
-    return <PluginPanel component={item.component} />;
-  }
-  if (item.render) {
-    return <PluginPanel render={item.render} />;
+    return <item.component />;
   }
   const text = typeof item.text === "function" ? item.text() : item.text;
   return (

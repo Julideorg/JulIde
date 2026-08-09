@@ -4,8 +4,8 @@ version = "0.3.1"
 description = "A modern, fully-featured IDE for the Julia programming language"
 authors = ["Ofek Bickel"]
 license = "MIT"
-repository = "https://github.com/sinisterMage/julide"
-homepage = "https://github.com/sinisterMage/julide"
+repository = "https://github.com/Julideorg/JulIde"
+homepage = "https://github.com/Julideorg/JulIde"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -44,6 +44,29 @@ git2 = { version = "0.21", default-features = false }
 reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
 url = "2"
+# Decodes the custom-scheme frame path. Tauri percent-encodes the whole path when
+# building these URLs, so the plugin protocol handler has to decode before routing.
+# Already in the lock via `url`, so no new supply chain.
+percent-encoding = "2"
+# Verifies the sha256 recorded in the signed registry index against the bytes actually
+# downloaded. RustCrypto, pure Rust, already in the tree transitively.
+sha2 = "0.10"
+# .tar.gz extraction for plugin bundles. tar rather than zip because tar streams and
+# exposes each member's header *before* a byte is written — which is what makes a
+# per-member symlink/traversal guard possible at all. zip's central directory sits at
+# the end of the file, forcing a full buffer or a seekable reader.
+tar = "0.4"
+# gzip for the above. Default features keep the pure-Rust miniz_oxide backend, so this
+# needs no C toolchain.
+flate2 = "1"
+# Verify-only minisign: checks index.json.minisig and revocations.json.minisig against a
+# pinned registry key. Verify-only by design — the crate cannot sign, so nothing here can
+# be turned into a signing oracle. Same crate tauri-plugin-updater already relies on.
+minisign-verify = "0.2"
+# Ordered version comparison for "is there an update" and for julIDE-version gating.
+# Hand-rolled comparison is the classic source of "0.10.0 < 0.9.0" and of offering a
+# downgrade as an update.
+semver = "1"
 async-trait = "0.1"
 openssl-sys = { version = "0.9", features = ["vendored"], optional = true }
 # The built-in language server. Linked as a library rather than shipped as a

@@ -90,7 +90,7 @@ Pkg.add("Pluto")           # Reactive notebooks
 ### Building from Source
 
 ```bash
-git clone https://github.com/sinisterMage/JulIde.git
+git clone https://github.com/Julideorg/JulIde.git
 cd JulIde
 bun install                 # Install frontend dependencies
 bun run tauri dev             # Development mode with hot reload
@@ -251,26 +251,27 @@ Two Zustand stores with Immer middleware:
 
 Each Rust module in `src-tauri/src/` handles one domain:
 
-| Module            | Responsibility                                                                                                   |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `lib.rs`          | Tauri builder, plugin registration, command handler registration                                                 |
-| `julia.rs`        | Find Julia, run scripts, precompile, clean, Pkg.add/rm                                                           |
-| `lsp.rs`          | Spawn LanguageServer.jl, JSON-RPC protocol over stdio                                                            |
-| `pty.rs`          | Manage PTY sessions for the interactive terminal                                                                 |
-| `debugger.rs`     | Spawn Debugger.jl, send step/continue commands, parse output                                                     |
-| `fs.rs`           | File tree, read/write/create/delete/rename, native dialogs                                                       |
-| `git.rs`          | All git operations via libgit2 (status, stage, commit, diff, branches, remotes, stash, push, pull, fetch, merge) |
-| `git_auth.rs`     | Store and retrieve PAT tokens via OS keychain (`keyring` crate)                                                  |
-| `git_provider.rs` | `GitProvider` trait, provider detection, and dispatch commands for PRs, issues, CI                               |
-| `git_github.rs`   | GitHub REST API implementation of `GitProvider`                                                                  |
-| `git_gitlab.rs`   | GitLab REST API implementation of `GitProvider`                                                                  |
-| `git_gitea.rs`    | Gitea REST API implementation of `GitProvider`                                                                   |
-| `container.rs`    | Docker/Podman runtime detection, container lifecycle, devcontainer.json support                                  |
-| `plugins.rs`      | Scan `~/.julide/plugins/` for plugin manifests, read plugin entry points                                         |
-| `search.rs`       | Walk workspace tree, regex match file contents                                                                   |
-| `watcher.rs`      | Watch workspace for external file changes                                                                        |
-| `settings.rs`     | Load/save JSON settings to the platform config directory                                                         |
-| `pluto.rs`        | Spawn Pluto.jl server, extract URL, open in Tauri webview                                                        |
+| Module               | Responsibility                                                                                                   |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `lib.rs`             | Tauri builder, plugin registration, command handler registration                                                 |
+| `julia.rs`           | Find Julia, run scripts, precompile, clean, Pkg.add/rm                                                           |
+| `lsp.rs`             | Spawn LanguageServer.jl, JSON-RPC protocol over stdio                                                            |
+| `pty.rs`             | Manage PTY sessions for the interactive terminal                                                                 |
+| `debugger.rs`        | Spawn Debugger.jl, send step/continue commands, parse output                                                     |
+| `fs.rs`              | File tree, read/write/create/delete/rename, native dialogs                                                       |
+| `git.rs`             | All git operations via libgit2 (status, stage, commit, diff, branches, remotes, stash, push, pull, fetch, merge) |
+| `git_auth.rs`        | Store and retrieve PAT tokens via OS keychain (`keyring` crate)                                                  |
+| `git_provider.rs`    | `GitProvider` trait, provider detection, and dispatch commands for PRs, issues, CI                               |
+| `git_github.rs`      | GitHub REST API implementation of `GitProvider`                                                                  |
+| `git_gitlab.rs`      | GitLab REST API implementation of `GitProvider`                                                                  |
+| `git_gitea.rs`       | Gitea REST API implementation of `GitProvider`                                                                   |
+| `container.rs`       | Docker/Podman runtime detection, container lifecycle, devcontainer.json support                                  |
+| `plugins.rs`         | Scan `~/.julide/plugins/` for plugin manifests, persist permission grants                                        |
+| `plugin_protocol.rs` | The `julide-plugin://` scheme: routes, per-plugin CSP, sandboxed frame documents                                 |
+| `search.rs`          | Walk workspace tree, regex match file contents                                                                   |
+| `watcher.rs`         | Watch workspace for external file changes                                                                        |
+| `settings.rs`        | Load/save JSON settings to the platform config directory                                                         |
+| `pluto.rs`           | Spawn Pluto.jl server, extract URL, open in Tauri webview                                                        |
 
 ### Shared State
 
@@ -434,7 +435,8 @@ const unlisten = await listen<PayloadType>("event-name", (event) => {
 | `git_provider_ci_status`        | `git_provider.rs` | Get CI/CD pipeline status                            |
 | `plugin_get_dir`                | `plugins.rs`      | Get the plugins directory path                       |
 | `plugin_scan`                   | `plugins.rs`      | Scan for installed plugins and return manifests      |
-| `plugin_read_entry`             | `plugins.rs`      | Read a plugin's entry point source code              |
+| `plugin_grants_load`            | `plugins.rs`      | Load persisted plugin permission grants              |
+| `plugin_grants_save`            | `plugins.rs`      | Persist plugin permission grants                     |
 | `container_detect_runtime`      | `container.rs`    | Auto-detect Docker or Podman                         |
 | `container_set_runtime`         | `container.rs`    | Manually set container runtime                       |
 | `container_list`                | `container.rs`    | List running containers                              |
@@ -879,50 +881,62 @@ Beyond dev containers, the IDE provides general container management:
 
 ### Overview
 
-julIDE has an extensibility system that allows plugins to register commands, sidebar panels, bottom panels, status bar items, and toolbar buttons. Plugins are JavaScript modules loaded at runtime.
+julIDE has an extensibility system that allows plugins to register commands, panels, status bar items, and toolbar buttons.
+
+Each plugin runs in its **own sandboxed frame** — an `<iframe sandbox="allow-scripts">` with an opaque origin, served over an internal `julide-plugin://` URI scheme with a Content-Security-Policy built from that plugin's manifest. A plugin has no access to julIDE's DOM, no `window.__TAURI_INTERNALS__`, no storage, and no network beyond the origins it declared. Everything it can do arrives over a `MessagePort`.
+
+This is what makes the permission model a boundary. Before it, plugins were `import()`ed into the main window realm, where the IPC bridge is an ambient global — so a plugin could reach every Tauri command without declaring anything, and the consent dialog described intent rather than capability.
+
+Plugin authors should read [`PLUGIN_API_V2.md`](PLUGIN_API_V2.md). This section is the architecture.
 
 ### Plugin Directory
 
-Plugins are installed in `~/.julide/plugins/`. Each plugin lives in its own subdirectory with a `plugin.json` manifest file.
+Plugins are installed in `~/.julide/plugins/`. Each lives in its own subdirectory with a `plugin.json` manifest.
 
 ```
 ~/.julide/plugins/
 ├── my-plugin/
 │   ├── plugin.json       # Manifest
-│   └── main.js           # Entry point
+│   └── dist/index.js     # One bundled classic script
 └── another-plugin/
     ├── plugin.json
-    └── index.js
+    └── dist/index.js
 ```
+
+The directory name **is** the plugin's identity: `plugin_scan` refuses a manifest whose `name` disagrees with it, because permission grants are keyed by that string and a mismatch would let a plugin inherit another's approval.
 
 ### Plugin Manifest (`plugin.json`)
 
 ```json
 {
+  "apiVersion": 2,
   "name": "my-plugin",
   "version": "1.0.0",
   "displayName": "My Plugin",
   "description": "A sample plugin",
   "author": "Author Name",
-  "main": "main.js",
-  "activationEvents": ["*"]
+  "main": "dist/index.js",
+  "activationEvents": ["*"],
+  "permissions": ["workspace:read"],
+  "network": ["https://api.example.com"],
+  "contributes": {
+    "views": [{ "id": "log", "kind": "panel", "title": "My Log", "icon": "List" }]
+  }
 }
 ```
 
-### Plugin API (`PluginContext`)
+`apiVersion` must be `2`. A manifest without it is treated as v1 — the pre-sandbox API — and refused with a migration message rather than loaded into a world where its panel API silently does nothing.
 
-When a plugin is activated, it receives a `PluginContext` object with the following namespaces:
+Views are **declarative** because the activity-bar entry and the panel tab must exist before the plugin's code has run. That is what allows a view's frame to be created lazily on first open, instead of every installed plugin spinning one up at launch.
 
-| Namespace   | Methods                                                                                                                       |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `commands`  | `register(id, label, handler)`, `execute(id)`                                                                                 |
-| `ui`        | `registerSidebarPanel()`, `registerBottomPanel()`, `registerStatusBarItem()`, `registerToolbarButton()`, `showNotification()` |
-| `workspace` | `getPath()`, `readFile()`, `writeFile()`, `onDidChangeFiles()`                                                                |
-| `editor`    | `getActiveFilePath()`, `getSelectedText()`                                                                                    |
-| `ipc`       | `invoke(command, args)`, `listen(event, callback)`                                                                            |
-| `log`       | `info()`, `warn()`, `error()`                                                                                                 |
+### Frame roles
 
-All registrations return a `Disposable` that is automatically cleaned up when the plugin is deactivated.
+| Role         | Export            | Lifetime                                     |
+| ------------ | ----------------- | -------------------------------------------- |
+| `background` | `activate(ctx)`   | one per plugin, created at activation        |
+| `view`       | `renderView(ctx)` | one per declared view, created on first show |
+
+The same bundle runs in both. Only a background frame may register commands, status bar items and toolbar buttons — otherwise a plugin with three views would register its contributions four times over.
 
 ### Architecture
 
@@ -931,26 +945,80 @@ Plugin Discovery (pluginHost.ts)
     │
     ├── invoke("plugin_scan")  ──→  plugins.rs (scan ~/.julide/plugins/)
     │
-    ├── invoke("plugin_read_entry")  ──→  Read main.js source
+    ├── parseManifest()  ──→  apiVersion gate, declarative views, network policy
     │
-    ├── Create sandbox context (pluginContext.ts)
-    │
-    └── Call plugin.activate(context)  ──→  Plugin registers contributions
+    ├── resolveGrant()  ──→  consent prompt, unless this exact manifest was approved
+    │        │                (declined ⇒ no frame is created; the code is never fetched)
+    │        ▼
+    ├── createPluginFrame()  ──→  <iframe sandbox="allow-scripts">
+    │        │                     src = julide-plugin://localhost/<plugin>/background
+    │        ▼
+    │   plugin_protocol.rs serves the document
+    │        │  · per-plugin CSP as a *response header*
+    │        │  · nonce'd inline bootstrap + the plugin's entry, </script escaped
+    │        ▼
+    │   frame posts { julidePluginReady, frameId }
+    │        │
+    │   host checks event.source === iframe.contentWindow, the 128-bit frameId,
+    │   and the protocol version — then transfers a MessagePort and stops
+    │   honouring window-level messages from that frame
+    │        ▼
+    └── every ctx call ──→ dispatcher.ts ──→ assertCommandAllowed / assertEventAllowed
                                                 │
                                                 └── usePluginStore (Zustand)
 ```
 
+Possession of the port _is_ the capability. Revoking closes it, so a running plugin loses access immediately rather than at next launch.
+
+### Why the CSP is a response header
+
+A `srcdoc` or `blob:` document inherits the **embedder's** policy container, and `'self'` evaluated inside an opaque origin matches nothing at all — not inline script, not blob, not even the document's own source. A `<meta>` CSP can only narrow what was inherited, never widen it. So a srcdoc frame either runs no script whatsoever, or runs script only because the top-level `script-src` was loosened — which would hand the main realm the exact capability the sandbox exists to remove.
+
+A custom URI scheme can set a real `Content-Security-Policy` response header. julIDE's own CSP already arrives that way over `tauri://`, and Tauri's isolation pattern uses the same mechanism.
+
+Two consequences for plugin authors, both measured rather than assumed:
+
+- **One bundled file.** A `<script src>` load from an opaque origin is a CORS fetch, and wry does not register custom schemes as CORS-enabled on WebKitGTK. The entry is inlined into the document instead.
+- **A classic script, not a module.** An inline `<script type="module">` does not execute in this frame on WebKitGTK — no code runs and no error is raised, so the plugin just looks inert.
+
+### Source map
+
+| File                                | Role                                                                    |
+| ----------------------------------- | ----------------------------------------------------------------------- |
+| `src/services/plugin/protocol.ts`   | Wire format, shape validation against a hostile frame, error round-trip |
+| `src/services/plugin/dispatcher.ts` | Every capability a plugin has. Pure — deps injected, so it is testable  |
+| `src/services/plugin/bridge.ts`     | Frame lifecycle, handshake, port transfer, teardown                     |
+| `src/services/plugin/manifest.ts`   | `apiVersion` gate, declarative views, closed icon set                   |
+| `src/services/plugin/network.ts`    | The `network` field → `connect-src`                                     |
+| `src/services/plugin/consent.ts`    | Grant resolution and prompting. Pure                                    |
+| `src/services/plugin/hostDeps.ts`   | The only place the sandbox touches Zustand, Monaco or `invoke`          |
+| `src/plugin-sdk/bootstrap.ts`       | Runs inside the frame; builds `ctx` over the port                       |
+| `src-tauri/src/plugin_protocol.rs`  | The `julide-plugin://` scheme: routing, CSP, document generation        |
+
+`src/plugin-sdk/bootstrap.ts` is bundled to `src-tauri/assets/plugin-bootstrap.js` by `bun run build:plugin-bootstrap` and `include_str!`'d by Rust. `bun run check:plugin-bootstrap` fails if the checked-in bundle is stale — a stale one would mean plugins running against an old SDK with nothing to indicate it.
+
+### Permissions
+
+Declared in `plugin.json`, approved once, checked on every call against `src/services/pluginPermissions.ts`.
+
+Both maps **fail closed**: a Tauri command absent from `COMMAND_PERMISSIONS` cannot be called by any plugin holding any permission, and an event absent from `EVENT_PERMISSIONS` cannot be subscribed to. Every `plugin_*` command is deliberately absent, so plugins cannot manage plugins. Listening is gated for the same reason calling is — `julia-output` carries the stdout of everything the user runs, and `pty-output` is a live feed of their shell.
+
+Approval is bound to a fingerprint covering name, version, entry point, `apiVersion`, permissions **and network origins**. Adding one host without touching the permission list still re-prompts: a plugin that can read the workspace and has somewhere to send it is a different proposition from one that cannot.
+
 ### Built-in Contributions
 
-`builtinContributions.ts` uses the same plugin registration API to register the IDE's built-in panels (FileExplorer, SearchPanel, GitPanel, ContainerPanel, PluginPanel) and bottom panels. This ensures a uniform architecture where built-in features and plugins use the same contribution system.
+`builtinContributions.ts` registers julIDE's own panels through the same store. Built-ins carry `content: { kind: "component", ... }` — React components in this realm — while plugin views carry `content: { kind: "plugin-view", ... }` and render as frames. There is deliberately no third variant handing anyone a live `HTMLElement`; that was the v1 `render(el)` callback, and the type is what stops it returning.
 
 ### Backend Commands
 
-| Command             | Description                                                |
-| ------------------- | ---------------------------------------------------------- |
-| `plugin_get_dir`    | Returns the plugins directory path (creates it if missing) |
-| `plugin_scan`       | Scans for plugins and returns their manifests              |
-| `plugin_read_entry` | Reads the JavaScript entry point of a plugin               |
+| Command              | Description                                                      |
+| -------------------- | ---------------------------------------------------------------- |
+| `plugin_get_dir`     | Returns the plugins directory path (creates it if missing)       |
+| `plugin_scan`        | Scans for plugins and returns their manifests                    |
+| `plugin_grants_load` | Loads persisted permission grants                                |
+| `plugin_grants_save` | Persists grants (temp file + rename, so a torn write loses none) |
+
+Plugin documents and assets are served by the `julide-plugin://` scheme rather than by a command, so no Tauri command hands out plugin source any more.
 
 ---
 

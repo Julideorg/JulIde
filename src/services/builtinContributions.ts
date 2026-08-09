@@ -40,6 +40,11 @@ async function getComponent(name: string): Promise<React.ComponentType> {
       _componentCache[name] = m.ContainerPanel;
       return m.ContainerPanel;
     }
+    case "ProblemsPanel": {
+      const m = await import("../components/Problems/ProblemsPanel");
+      _componentCache[name] = m.ProblemsPanel;
+      return m.ProblemsPanel;
+    }
     case "OutputPanel": {
       const m = await import("../components/OutputPanel/OutputPanel");
       _componentCache[name] = m.OutputPanel;
@@ -114,42 +119,42 @@ export async function registerBuiltinContributions() {
     label: "Explorer",
     icon: "Files",
     order: 10,
-    component: FileExplorer,
+    content: { kind: "component", component: FileExplorer },
   });
   store.registerSidebarPanel({
     id: "search",
     label: "Search",
     icon: "Search",
     order: 20,
-    component: SearchPanel,
+    content: { kind: "component", component: SearchPanel },
   });
   store.registerSidebarPanel({
     id: "git",
     label: "Source Control",
     icon: "GitBranch",
     order: 30,
-    component: GitPanel,
+    content: { kind: "component", component: GitPanel },
   });
   store.registerSidebarPanel({
     id: "container",
     label: "Dev Containers",
     icon: "Container",
     order: 40,
-    component: ContainerPanel,
+    content: { kind: "component", component: ContainerPanel },
   });
   store.registerSidebarPanel({
     id: "outline",
     label: "Outline",
     icon: "List",
     order: 15,
-    component: OutlinePanel,
+    content: { kind: "component", component: OutlinePanel },
   });
   store.registerSidebarPanel({
     id: "variables",
     label: "Variables",
     icon: "Eye",
     order: 25,
-    component: VariableExplorer,
+    content: { kind: "component", component: VariableExplorer },
   });
 
   // ─── Bottom Panels ──────────────────────────────────────────────────────────
@@ -162,6 +167,7 @@ export async function registerBuiltinContributions() {
     ContainerLogsPanel,
     PlotPane,
     TestRunnerPanel,
+    ProblemsPanel,
   ] = await Promise.all([
     getComponent("OutputPanel"),
     getComponent("TerminalPanel"),
@@ -170,24 +176,26 @@ export async function registerBuiltinContributions() {
     getComponent("ContainerLogsPanel"),
     getComponent("PlotPane"),
     getComponent("TestRunnerPanel"),
+    getComponent("ProblemsPanel"),
   ]);
 
   store.registerBottomPanel({
     id: "output",
     label: "Output",
     order: 10,
-    component: OutputPanel,
+    content: { kind: "component", component: OutputPanel },
   });
   store.registerBottomPanel({
     id: "terminal",
     label: "Terminal",
     order: 20,
-    component: TerminalPanel,
+    content: { kind: "component", component: TerminalPanel },
   });
   store.registerBottomPanel({
     id: "problems",
     label: "Problems",
     order: 30,
+    content: { kind: "component", component: ProblemsPanel },
     badge: () => {
       const count = useIdeStore.getState().problems.length;
       return count > 0 ? count : null;
@@ -197,32 +205,32 @@ export async function registerBuiltinContributions() {
     id: "debug",
     label: "Debug",
     order: 40,
-    component: DebugPanel,
+    content: { kind: "component", component: DebugPanel },
     badge: () => (useIdeStore.getState().debug.isDebugging ? "●" : null),
   });
   store.registerBottomPanel({
     id: "packages",
     label: "Packages",
     order: 50,
-    component: PackageManager,
+    content: { kind: "component", component: PackageManager },
   });
   store.registerBottomPanel({
     id: "plots",
     label: "Plots",
     order: 15,
-    component: PlotPane,
+    content: { kind: "component", component: PlotPane },
   });
   store.registerBottomPanel({
     id: "tests",
     label: "Tests",
     order: 35,
-    component: TestRunnerPanel,
+    content: { kind: "component", component: TestRunnerPanel },
   });
   store.registerBottomPanel({
     id: "container-logs",
     label: "Container",
     order: 60,
-    component: ContainerLogsPanel,
+    content: { kind: "component", component: ContainerLogsPanel },
   });
 
   // ─── Commands ───────────────────────────────────────────────────────────────

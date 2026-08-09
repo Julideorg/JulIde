@@ -124,7 +124,6 @@ export type {
   StatusBarItemContribution,
   ToolbarButtonContribution,
   PluginManifest,
-  PluginContext,
   Disposable,
 } from "./plugin";
 

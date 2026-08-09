@@ -9,6 +9,9 @@ import type {
   ToolbarButtonContribution,
 } from "../types/plugin";
 
+/** These tests are about registration and ordering, not about what a panel renders. */
+const STUB_CONTENT = { kind: "component" as const, component: () => null };
+
 beforeEach(() => {
   resetAllStores();
 });
@@ -49,6 +52,7 @@ describe("commands", () => {
 describe("sidebar panels", () => {
   const makePanel = (id: string, order: number): SidebarPanelContribution => ({
     id,
+    content: STUB_CONTENT,
     label: id,
     icon: "icon",
     order,
@@ -86,6 +90,7 @@ describe("sidebar panels", () => {
 describe("bottom panels", () => {
   const makePanel = (id: string, order: number): BottomPanelContribution => ({
     id,
+    content: STUB_CONTENT,
     label: id,
     order,
   });
