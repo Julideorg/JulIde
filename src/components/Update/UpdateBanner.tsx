@@ -7,9 +7,10 @@ import { useUpdateStore } from "../../stores/useUpdateStore";
  * Notifies the user when a new julIDE release is available.
  *
  * The action offered depends on how julIDE was installed. AppImage, macOS, and
- * Windows builds can replace themselves; `.deb`/`.rpm` installs are owned by the
- * system package manager, so those users are pointed at the download page rather
- * than given a button that cannot work.
+ * installed Windows builds can replace themselves; `.deb`/`.rpm` installs are owned
+ * by the system package manager, and the Windows portable `.exe` would be updated by
+ * running an installer beside it, so those users are pointed at the download page
+ * rather than given a button that cannot work.
  */
 export function UpdateBanner() {
   const phase = useUpdateStore((s) => s.phase);

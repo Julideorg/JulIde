@@ -149,6 +149,7 @@ jobs:
       # to the same draft release. Hand-assembling that file is easy to get subtly
       # wrong, and a wrong manifest means every installed client fails to update.
       - name: Build Tauri app
+        id: tauri
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -169,6 +170,70 @@ jobs:
           # not an input any more, so leaving it would silently stop generating
           # latest.json and break in-app updates for everyone already installed.
           uploadUpdaterJson: true
+
+      # ── Portable Windows executable ────────────────────────────
+      #
+      # Both Windows bundles install: the `.msi` and the NSIS `.exe` write to
+      # Program Files and the registry. Nothing on the release page runs on a
+      # machine where you cannot install software, or off a USB stick.
+      #
+      # No extra build is needed for one. The binary cargo already produced is
+      # self-contained: the frontend is compiled into it by tauri-build, and the
+      # bundle declares no `resources` and no `externalBin`, so nothing is
+      # resolved relative to an install directory at runtime. The portable
+      # artifact is that binary, renamed to sit alongside the other Windows
+      # assets — `julide_<version>_x64-portable.exe` next to Tauri's own
+      # `julide_<version>_x64-setup.exe`.
+      #
+      # Two caveats, both written up under "The Windows portable build" in the
+      # README so they reach the people who download it:
+      #   - It needs the WebView2 runtime on the machine. Windows 11 and current
+      #     Windows 10 ship it; the installers can bootstrap it, this cannot.
+      #   - Settings still live in %APPDATA%, so this is "runs without being
+      #     installed", not "leaves no trace".
+      - name: Stage portable Windows executable
+        id: portable
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          NAME="julide_${VERSION}_x64-portable.exe"
+          mkdir -p portable
+          cp "src-tauri/target/${{ matrix.target }}/release/julide.exe" "portable/$NAME"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "path=portable/$NAME" >> "$GITHUB_OUTPUT"
+
+      # tauri-action uploads the bundles it generates; the portable binary is not
+      # one of them, so it has to be attached separately. Targeting the release by
+      # id rather than by tag matters: the release is a draft, and a draft has no
+      # git tag behind it on a workflow_dispatch build.
+      #
+      # Deliberately NOT added to latest.json. The Windows updater applies an
+      # update by running an installer, which would install julIDE beside the
+      # portable copy rather than replace it.
+      - name: Attach portable executable to the release
+        if: runner.os == 'Windows' && steps.tag.outputs.value != '' && steps.tauri.outputs.releaseId != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RELEASE_ID: ${{ steps.tauri.outputs.releaseId }}
+          ASSET_NAME: ${{ steps.portable.outputs.name }}
+          ASSET_PATH: ${{ steps.portable.outputs.path }}
+        run: |
+          set -euo pipefail
+          # Re-running a tag build would otherwise fail with 422 already_exists.
+          gh api "/repos/$REPO/releases/$RELEASE_ID/assets" \
+            --jq ".[] | select(.name == \"$ASSET_NAME\") | .id" |
+            while read -r id; do
+              echo "Replacing existing asset $ASSET_NAME (id $id)"
+              gh api --method DELETE "/repos/$REPO/releases/$RELEASE_ID/assets/$id"
+            done
+          gh api --method POST \
+            -H "Content-Type: application/octet-stream" \
+            "https://uploads.github.com/repos/$REPO/releases/$RELEASE_ID/assets?name=$ASSET_NAME" \
+            --input "$ASSET_PATH" --jq .browser_download_url
 
       # ── Also keep the installers as workflow artifacts ─────────
       # Useful for non-tag builds, and for grabbing a build without publishing.
@@ -191,6 +256,7 @@ jobs:
           path: |
             src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi
             src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
+            portable/*.exe
           if-no-files-found: error
 
       - name: Upload build artifacts (macOS)

@@ -244,16 +244,36 @@ flag for you, so there is no extra step after installing.
 Download the latest build from the
 [releases page](https://github.com/Julideorg/JulIde/releases).
 
-| Platform  | Download         | Notes                                                                             |
-| --------- | ---------------- | --------------------------------------------------------------------------------- |
-| **Linux** | `.AppImage`      | Recommended — supports in-app updates. `chmod +x` then run.                       |
-| Linux     | `.deb` / `.rpm`  | Installs system-wide and registers `.jl` files. Updates via your package manager. |
-| Windows   | `.msi` or `.exe` | Also the recommended download if you use WSL2 — see below.                        |
-| macOS     | `.dmg`           | Apple Silicon and Intel builds are published separately.                          |
+| Platform  | Download             | Notes                                                                                              |
+| --------- | -------------------- | -------------------------------------------------------------------------------------------------- |
+| **Linux** | `.AppImage`          | Recommended — supports in-app updates. `chmod +x` then run.                                        |
+| Linux     | `.deb` / `.rpm`      | Installs system-wide and registers `.jl` files. Updates via your package manager.                  |
+| Windows   | `-setup.exe`, `.msi` | Recommended. Also the right download if you use WSL2 — see below.                                  |
+| Windows   | `-portable.exe`      | Single file, no installation — run it from anywhere, including a USB stick. See the caveats below. |
+| macOS     | `.dmg`               | Apple Silicon and Intel builds are published separately.                                           |
 
 You also need **Julia 1.6+** ([download](https://julialang.org/downloads/)). julIDE
 does not bundle it. If Julia is not found on first launch, julIDE will offer to help
 you install or locate it.
+
+### The Windows portable build
+
+`julide_<version>_x64-portable.exe` is the same application as the installer, as a
+single file that runs where you put it. Nothing is written to Program Files and nothing
+is registered, so it needs no administrator rights — useful on a locked-down machine, or
+to try julIDE without committing to it. Three things to know before you pick it over the
+installer:
+
+- **It needs the WebView2 runtime already on the machine.** Windows 11 and current
+  Windows 10 ship it. The installers can fetch it if it is missing; a single file
+  cannot. If the window never appears, that is the reason —
+  [install the Evergreen runtime](https://developer.microsoft.com/microsoft-edge/webview2/)
+  and run it again.
+- **It runs without installing; it does not run without a trace.** Settings, plugins and
+  their permission grants still live under `%APPDATA%` and `%USERPROFILE%`, the same as
+  for an installed copy. Deleting the `.exe` leaves those behind, and moving it to
+  another machine does not carry them along.
+- **It does not update itself.** See [Updates](#updates).
 
 ### If you use WSL2
 
@@ -490,12 +510,13 @@ julIDE checks for new releases on startup and shows a banner when one is availab
 **What it can install depends on how you installed it.** `tauri-plugin-updater` can only
 replace the running binary when that binary is a single self-contained file:
 
-| Install                 | In-app update                                                                                                             |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| **AppImage** (Linux)    | Yes — one click, then restart. **Recommended download on Linux.**                                                         |
-| `.deb` / `.rpm`         | No — these are owned by your package manager. julIDE still tells you a new version exists and links to the download page. |
-| Windows `.msi` / `.exe` | Yes                                                                                                                       |
-| macOS `.app` / `.dmg`   | Yes                                                                                                                       |
+| Install                 | In-app update                                                                                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| **AppImage** (Linux)    | Yes — one click, then restart. **Recommended download on Linux.**                                                                           |
+| `.deb` / `.rpm`         | No — these are owned by your package manager. julIDE still tells you a new version exists and links to the download page.                   |
+| Windows `.msi` / setup  | Yes                                                                                                                                         |
+| Windows portable `.exe` | No — an update on Windows is applied by running an installer, which would install julIDE beside your portable copy instead of replacing it. |
+| macOS `.app` / `.dmg`   | Yes                                                                                                                                         |
 
 Run **Check for Updates** from the command palette (`Cmd/Ctrl+Shift+P`) to check manually.
 
