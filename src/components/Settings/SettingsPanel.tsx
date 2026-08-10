@@ -8,6 +8,7 @@ import { lspClient } from "../../lsp/LspClient";
 import { lspStartOptions } from "../../lsp/lspConfig";
 import { useModalA11y } from "../../hooks/useModalA11y";
 import { Select } from "../ui";
+import { containerSupported } from "../../services/containerSupport";
 import { PluginSettings } from "./PluginSettings";
 import { GitAuthSettings } from "../Git/GitAuthSettings";
 
@@ -377,97 +378,100 @@ export function SettingsPanel() {
             </SettingRow>
           </SettingsSection>
 
-          <SettingsSection title="Containers">
-            <SettingRow label="Runtime">
-              <Select
-                className="settings-select"
-                value={settings.containerRuntime}
-                onChange={(containerRuntime) => updateSettings({ containerRuntime })}
-                options={[
-                  { value: "auto", label: "Auto Detect" },
-                  { value: "docker", label: "Docker" },
-                  { value: "podman", label: "Podman" },
-                ]}
-              />
-            </SettingRow>
-
-            <SettingRow label="Remote Host">
-              <input
-                type="text"
-                className="settings-input"
-                placeholder="ssh://user@host (optional)"
-                value={settings.containerRemoteHost}
-                onChange={(e) => updateSettings({ containerRemoteHost: e.target.value })}
-                title="SSH connection address (not a password). Auth uses SSH keys via ssh-agent."
-              />
-              <span className="settings-hint">Uses SSH key auth — never stores passwords</span>
-            </SettingRow>
-
-            <SettingRow label="Auto-detect devcontainer.json">
-              <label className="settings-toggle">
-                <input
-                  type="checkbox"
-                  checked={settings.containerAutoDetect}
-                  onChange={(e) => updateSettings({ containerAutoDetect: e.target.checked })}
+          {/* Hidden in the Flatpak build, where no container runtime is reachable. */}
+          {containerSupported() && (
+            <SettingsSection title="Containers">
+              <SettingRow label="Runtime">
+                <Select
+                  className="settings-select"
+                  value={settings.containerRuntime}
+                  onChange={(containerRuntime) => updateSettings({ containerRuntime })}
+                  options={[
+                    { value: "auto", label: "Auto Detect" },
+                    { value: "docker", label: "Docker" },
+                    { value: "podman", label: "Podman" },
+                  ]}
                 />
-                <span className="settings-toggle-label">
-                  {settings.containerAutoDetect ? "Enabled" : "Disabled"}
-                </span>
-              </label>
-            </SettingRow>
+              </SettingRow>
 
-            <SettingRow label="Display Forwarding (X11)">
-              <label className="settings-toggle">
+              <SettingRow label="Remote Host">
                 <input
-                  type="checkbox"
-                  checked={settings.displayForwarding}
-                  onChange={(e) => updateSettings({ displayForwarding: e.target.checked })}
+                  type="text"
+                  className="settings-input"
+                  placeholder="ssh://user@host (optional)"
+                  value={settings.containerRemoteHost}
+                  onChange={(e) => updateSettings({ containerRemoteHost: e.target.value })}
+                  title="SSH connection address (not a password). Auth uses SSH keys via ssh-agent."
                 />
-                <span className="settings-toggle-label">
-                  {settings.displayForwarding ? "Enabled" : "Disabled"}
-                </span>
-              </label>
-            </SettingRow>
+                <span className="settings-hint">Uses SSH key auth — never stores passwords</span>
+              </SettingRow>
 
-            <SettingRow label="GPU Passthrough">
-              <label className="settings-toggle">
-                <input
-                  type="checkbox"
-                  checked={settings.gpuPassthrough}
-                  onChange={(e) => updateSettings({ gpuPassthrough: e.target.checked })}
-                />
-                <span className="settings-toggle-label">
-                  {settings.gpuPassthrough ? "Enabled (GLMakie)" : "Disabled"}
-                </span>
-              </label>
-            </SettingRow>
+              <SettingRow label="Auto-detect devcontainer.json">
+                <label className="settings-toggle">
+                  <input
+                    type="checkbox"
+                    checked={settings.containerAutoDetect}
+                    onChange={(e) => updateSettings({ containerAutoDetect: e.target.checked })}
+                  />
+                  <span className="settings-toggle-label">
+                    {settings.containerAutoDetect ? "Enabled" : "Disabled"}
+                  </span>
+                </label>
+              </SettingRow>
 
-            <SettingRow label="SELinux :Z Label">
-              <label className="settings-toggle">
-                <input
-                  type="checkbox"
-                  checked={settings.selinuxLabel}
-                  onChange={(e) => updateSettings({ selinuxLabel: e.target.checked })}
-                />
-                <span className="settings-toggle-label">
-                  {settings.selinuxLabel ? "Auto (Fedora/RHEL)" : "Disabled"}
-                </span>
-              </label>
-            </SettingRow>
+              <SettingRow label="Display Forwarding (X11)">
+                <label className="settings-toggle">
+                  <input
+                    type="checkbox"
+                    checked={settings.displayForwarding}
+                    onChange={(e) => updateSettings({ displayForwarding: e.target.checked })}
+                  />
+                  <span className="settings-toggle-label">
+                    {settings.displayForwarding ? "Enabled" : "Disabled"}
+                  </span>
+                </label>
+              </SettingRow>
 
-            <SettingRow label="Persist Julia Packages">
-              <label className="settings-toggle">
-                <input
-                  type="checkbox"
-                  checked={settings.persistJuliaPackages}
-                  onChange={(e) => updateSettings({ persistJuliaPackages: e.target.checked })}
-                />
-                <span className="settings-toggle-label">
-                  {settings.persistJuliaPackages ? "Enabled (~/.julia volume)" : "Disabled"}
-                </span>
-              </label>
-            </SettingRow>
-          </SettingsSection>
+              <SettingRow label="GPU Passthrough">
+                <label className="settings-toggle">
+                  <input
+                    type="checkbox"
+                    checked={settings.gpuPassthrough}
+                    onChange={(e) => updateSettings({ gpuPassthrough: e.target.checked })}
+                  />
+                  <span className="settings-toggle-label">
+                    {settings.gpuPassthrough ? "Enabled (GLMakie)" : "Disabled"}
+                  </span>
+                </label>
+              </SettingRow>
+
+              <SettingRow label="SELinux :Z Label">
+                <label className="settings-toggle">
+                  <input
+                    type="checkbox"
+                    checked={settings.selinuxLabel}
+                    onChange={(e) => updateSettings({ selinuxLabel: e.target.checked })}
+                  />
+                  <span className="settings-toggle-label">
+                    {settings.selinuxLabel ? "Auto (Fedora/RHEL)" : "Disabled"}
+                  </span>
+                </label>
+              </SettingRow>
+
+              <SettingRow label="Persist Julia Packages">
+                <label className="settings-toggle">
+                  <input
+                    type="checkbox"
+                    checked={settings.persistJuliaPackages}
+                    onChange={(e) => updateSettings({ persistJuliaPackages: e.target.checked })}
+                  />
+                  <span className="settings-toggle-label">
+                    {settings.persistJuliaPackages ? "Enabled (~/.julia volume)" : "Disabled"}
+                  </span>
+                </label>
+              </SettingRow>
+            </SettingsSection>
+          )}
 
           <GitAuthSettings />
 

@@ -243,6 +243,7 @@ pub fn run() {
             plugins::plugin_grants_load,
             plugins::plugin_grants_save,
             // Container
+            container::container_support_available,
             container::container_detect_runtime,
             container::container_set_runtime,
             container::container_list,

@@ -5,6 +5,7 @@ import { useIdeStore } from "../stores/useIdeStore";
 import { useSettingsStore } from "../stores/useSettingsStore";
 import { useJuliaStore } from "../stores/useJuliaStore";
 import { startDevcontainer } from "./devcontainer";
+import { setContainerSupport } from "./containerSupport";
 import { showInputDialog } from "../components/InputDialog/InputDialog";
 import { showBestieTemplateDialog } from "../components/BestieTemplateDialog/BestieTemplateDialog";
 import { useModeBarStore } from "../components/ModeBar/ModeBar";
@@ -121,6 +122,19 @@ async function getComponent(name: string): Promise<React.ComponentType> {
 export async function registerBuiltinContributions() {
   const store = usePluginStore.getState();
 
+  // The Flatpak build has no reachable container runtime, so the whole
+  // dev-container surface is left unregistered rather than shown and broken.
+  // Gating here covers the sidebar rail, the bottom panel and the command
+  // palette in one place.
+  //
+  // Only an explicit `false` hides it. A missing command, a rejected call or an
+  // undefined result all mean "we don't know", and the safe answer there is the
+  // existing behaviour — hiding a working feature is far worse than showing one
+  // that then reports it cannot find Docker.
+  const containers =
+    (await invoke<boolean>("container_support_available").catch(() => true)) !== false;
+  setContainerSupport(containers);
+
   // ─── Sidebar Panels ─────────────────────────────────────────────────────────
 
   const [FileExplorer, SearchPanel, GitPanel, ContainerPanel, OutlinePanel, VariableExplorer] =
@@ -154,13 +168,15 @@ export async function registerBuiltinContributions() {
     order: 30,
     content: { kind: "component", component: GitPanel },
   });
-  store.registerSidebarPanel({
-    id: "container",
-    label: "Dev Containers",
-    icon: "Container",
-    order: 40,
-    content: { kind: "component", component: ContainerPanel },
-  });
+  if (containers) {
+    store.registerSidebarPanel({
+      id: "container",
+      label: "Dev Containers",
+      icon: "Container",
+      order: 40,
+      content: { kind: "component", component: ContainerPanel },
+    });
+  }
   store.registerSidebarPanel({
     id: "outline",
     label: "Outline",
@@ -245,19 +261,21 @@ export async function registerBuiltinContributions() {
     order: 35,
     content: { kind: "component", component: TestRunnerPanel },
   });
-  store.registerBottomPanel({
-    id: "container-logs",
-    label: "Container",
-    order: 60,
-    content: { kind: "component", component: ContainerLogsPanel },
-  });
+  if (containers) {
+    store.registerBottomPanel({
+      id: "container-logs",
+      label: "Container",
+      order: 60,
+      content: { kind: "component", component: ContainerLogsPanel },
+    });
+  }
 
   // ─── Commands ───────────────────────────────────────────────────────────────
 
-  registerBuiltinCommands();
+  registerBuiltinCommands(containers);
 }
 
-function registerBuiltinCommands() {
+function registerBuiltinCommands(containers: boolean) {
   const store = usePluginStore.getState();
   const ide = () => useIdeStore.getState();
   const settings = () => useSettingsStore.getState();
@@ -606,63 +624,67 @@ function registerBuiltinCommands() {
     execute: () => ide().clearOutput(),
   });
 
-  store.registerCommand({
-    id: "container.reopen",
-    label: "Dev Containers: Reopen in Container",
-    execute: async () => {
-      const s = ide();
-      if (!s.workspacePath) return;
-      const st = settings().settings;
-      s.setActiveBottomPanel("container-logs");
-      await startDevcontainer(s.workspacePath, {
-        displayForwarding: st.displayForwarding,
-        gpuPassthrough: st.gpuPassthrough,
-        selinuxLabel: st.selinuxLabel,
-        persistJuliaPackages: st.persistJuliaPackages,
-      }).catch((e) => console.error(e));
-    },
-  });
-
-  store.registerCommand({
-    id: "container.rebuild",
-    label: "Dev Containers: Rebuild Container",
-    execute: async () => {
-      const s = ide();
-      if (!s.workspacePath) return;
-      const st = settings().settings;
-      s.setActiveBottomPanel("container-logs");
-      await startDevcontainer(
-        s.workspacePath,
-        {
+  // Unregistered in the Flatpak build, so they do not surface in the command
+  // palette pointing at a panel that is not there.
+  if (containers) {
+    store.registerCommand({
+      id: "container.reopen",
+      label: "Dev Containers: Reopen in Container",
+      execute: async () => {
+        const s = ide();
+        if (!s.workspacePath) return;
+        const st = settings().settings;
+        s.setActiveBottomPanel("container-logs");
+        await startDevcontainer(s.workspacePath, {
           displayForwarding: st.displayForwarding,
           gpuPassthrough: st.gpuPassthrough,
           selinuxLabel: st.selinuxLabel,
           persistJuliaPackages: st.persistJuliaPackages,
-        },
-        "rebuild",
-      ).catch((e) => console.error(e));
-    },
-  });
+        }).catch((e) => console.error(e));
+      },
+    });
 
-  store.registerCommand({
-    id: "container.stop",
-    label: "Dev Containers: Stop Container",
-    execute: async () => {
-      await invoke("devcontainer_stop").catch((e) => console.error(e));
-    },
-  });
+    store.registerCommand({
+      id: "container.rebuild",
+      label: "Dev Containers: Rebuild Container",
+      execute: async () => {
+        const s = ide();
+        if (!s.workspacePath) return;
+        const st = settings().settings;
+        s.setActiveBottomPanel("container-logs");
+        await startDevcontainer(
+          s.workspacePath,
+          {
+            displayForwarding: st.displayForwarding,
+            gpuPassthrough: st.gpuPassthrough,
+            selinuxLabel: st.selinuxLabel,
+            persistJuliaPackages: st.persistJuliaPackages,
+          },
+          "rebuild",
+        ).catch((e) => console.error(e));
+      },
+    });
 
-  store.registerCommand({
-    id: "container.logs",
-    label: "Dev Containers: Show Container Logs",
-    execute: () => ide().setActiveBottomPanel("container-logs"),
-  });
+    store.registerCommand({
+      id: "container.stop",
+      label: "Dev Containers: Stop Container",
+      execute: async () => {
+        await invoke("devcontainer_stop").catch((e) => console.error(e));
+      },
+    });
 
-  store.registerCommand({
-    id: "container.panel",
-    label: "Dev Containers: Show Container Panel",
-    execute: () => ide().setActiveSidebarView("container"),
-  });
+    store.registerCommand({
+      id: "container.logs",
+      label: "Dev Containers: Show Container Logs",
+      execute: () => ide().setActiveBottomPanel("container-logs"),
+    });
+
+    store.registerCommand({
+      id: "container.panel",
+      label: "Dev Containers: Show Container Panel",
+      execute: () => ide().setActiveSidebarView("container"),
+    });
+  }
 
   // ─── Git Commands ─────────────────────────────────────────────────────────
 

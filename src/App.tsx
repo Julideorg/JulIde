@@ -27,6 +27,7 @@ import type { JuliaOutputEvent } from "./types";
 import { parseMimeLine } from "./utils/juliaOutput";
 import { invalidateImage, setImageWorkspaceRoot } from "./markdown/images";
 import { notebookSessionId, stopSession } from "./services/notebookSession";
+import { containerSupported } from "./services/containerSupport";
 import { handleFsChange } from "./notebook/pairing";
 import type { LspPublishDiagnosticsParams } from "./lsp/LspClient";
 import type {
@@ -346,6 +347,10 @@ export default function App() {
   // Auto-detect devcontainer.json when workspace opens
   useEffect(() => {
     if (!workspacePath) return;
+    // Skipped in the Flatpak build: devcontainerDetected is what drives the
+    // Toolbar's "Reopen in Container" button and the StatusBar chip, so leaving
+    // it unset is what keeps those hidden too.
+    if (!containerSupported()) return;
     const autoDetect = useSettingsStore.getState().settings.containerAutoDetect;
     if (!autoDetect) return;
     invoke<boolean>("devcontainer_detect", { workspacePath })

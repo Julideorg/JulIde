@@ -239,22 +239,58 @@ brew install --cask julide
 The [tap](https://github.com/Julideorg/homebrew-tap) clears the Gatekeeper quarantine
 flag for you, so there is no extra step after installing.
 
+### Linux — Flatpak
+
+```bash
+flatpak install https://julide-rgstry.org/julide.flatpakref
+```
+
+That single URL carries the repository, its signing key, and a pointer to Flathub for the
+GNOME runtime, so it works even on a machine with no remotes configured. To add the
+remote explicitly instead:
+
+```bash
+flatpak remote-add --if-not-exists julide https://julide-rgstry.org/julide.flatpakrepo
+flatpak install julide io.github.Julideorg.JulIde
+```
+
+Updates arrive through `flatpak update`, GNOME Software, or KDE Discover. The remote is
+self-hosted rather than on Flathub, and is built by
+[julide-flatpak](https://github.com/Julideorg/julide-flatpak).
+
+Three differences from the other Linux builds:
+
+- **Julia is bundled**, so there is nothing else to install. Packages still go to your
+  normal `~/.julia` depot, shared with any other Julia on the machine.
+- **Dev containers are unavailable.** Docker and Podman run on the host, and reaching
+  them from inside the sandbox would need a permission equivalent to leaving the sandbox.
+  Use the `.deb`, `.rpm` or AppImage if you need them.
+- **x86_64 only** for now.
+
+Settings do not carry over from a native install, because Flatpak gives the app its own
+config directory. To bring them across:
+
+```bash
+mkdir -p ~/.var/app/io.github.Julideorg.JulIde/config
+cp -r ~/.config/julide ~/.config/com.ofek.julide ~/.var/app/io.github.Julideorg.JulIde/config/
+```
+
 ### Any platform — direct download
 
 Download the latest build from the
 [releases page](https://github.com/Julideorg/JulIde/releases).
 
-| Platform  | Download             | Notes                                                                                              |
-| --------- | -------------------- | -------------------------------------------------------------------------------------------------- |
-| **Linux** | `.AppImage`          | Recommended — supports in-app updates. `chmod +x` then run.                                        |
-| Linux     | `.deb` / `.rpm`      | Installs system-wide and registers `.jl` files. Updates via your package manager.                  |
-| Windows   | `-setup.exe`, `.msi` | Recommended. Also the right download if you use WSL2 — see below.                                  |
-| Windows   | `-portable.exe`      | Single file, no installation — run it from anywhere, including a USB stick. See the caveats below. |
-| macOS     | `.dmg`               | Apple Silicon and Intel builds are published separately.                                           |
+| Platform  | Download             | Notes                                                                                                |
+| --------- | -------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Linux** | `.AppImage`          | Recommended download — supports in-app updates. `chmod +x` then run. (Or install the Flatpak above.) |
+| Linux     | `.deb` / `.rpm`      | Installs system-wide and registers `.jl` files. Updates via your package manager.                    |
+| Windows   | `-setup.exe`, `.msi` | Recommended. Also the right download if you use WSL2 — see below.                                    |
+| Windows   | `-portable.exe`      | Single file, no installation — run it from anywhere, including a USB stick. See the caveats below.   |
+| macOS     | `.dmg`               | Apple Silicon and Intel builds are published separately.                                             |
 
-You also need **Julia 1.6+** ([download](https://julialang.org/downloads/)). julIDE
-does not bundle it. If Julia is not found on first launch, julIDE will offer to help
-you install or locate it.
+You also need **Julia 1.6+** ([download](https://julialang.org/downloads/)). Apart from
+the Linux Flatpak, which bundles it, julIDE does not. If Julia is not found on first
+launch, julIDE will offer to help you install or locate it.
 
 ### The Windows portable build
 
@@ -514,6 +550,7 @@ replace the running binary when that binary is a single self-contained file:
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | **AppImage** (Linux)    | Yes — one click, then restart. **Recommended download on Linux.**                                                                           |
 | `.deb` / `.rpm`         | No — these are owned by your package manager. julIDE still tells you a new version exists and links to the download page.                   |
+| Flatpak (Linux)         | No — update with `flatpak update`, GNOME Software or KDE Discover.                                                                          |
 | Windows `.msi` / setup  | Yes                                                                                                                                         |
 | Windows portable `.exe` | No — an update on Windows is applied by running an installer, which would install julIDE beside your portable copy instead of replacing it. |
 | macOS `.app` / `.dmg`   | Yes                                                                                                                                         |

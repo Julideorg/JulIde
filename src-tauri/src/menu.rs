@@ -136,7 +136,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     menu = menu.item(&edit);
 
     // ── View ─────────────────────────────────────────────────────────────
-    let view = SubmenuBuilder::new(app, "View")
+    let mut view = SubmenuBuilder::new(app, "View")
         .item(&cmd_item!(
             "Command Palette…",
             "view.command-palette",
@@ -162,9 +162,13 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .separator()
         .item(&cmd_item!("Outline", "outline.show"))
         .item(&cmd_item!("Variables", "variables.show"))
-        .item(&cmd_item!("Source Control", "git.panel"))
-        .item(&cmd_item!("Dev Containers", "container.panel"))
-        .build()?;
+        .item(&cmd_item!("Source Control", "git.panel"));
+    // The Flatpak build unregisters the container.panel command, so the menu
+    // item would be a no-op there.
+    if crate::container::container_support_available() {
+        view = view.item(&cmd_item!("Dev Containers", "container.panel"));
+    }
+    let view = view.build()?;
     menu = menu.item(&view);
 
     // ── Run ──────────────────────────────────────────────────────────────

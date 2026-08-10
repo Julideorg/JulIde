@@ -285,6 +285,30 @@ fn validate_runtime(binary: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// True when julIDE is running inside a Flatpak sandbox.
+///
+/// Dev containers cannot work there. Docker and Podman live on the host, and the
+/// only way to reach them from inside the sandbox is
+/// `--talk-name=org.freedesktop.Flatpak`, which is arbitrary host command
+/// execution — a permission that would make the sandbox meaningless. So the
+/// feature is hidden in that build rather than left to fail.
+///
+/// `/.flatpak-info` is the reliable marker: it exists only inside the sandbox,
+/// whereas `FLATPAK_ID` is inherited by processes spawned outside it. The env
+/// var is still checked as a fallback for unusual runtimes.
+pub fn is_flatpak() -> bool {
+    cfg!(target_os = "linux")
+        && (std::path::Path::new("/.flatpak-info").exists()
+            || std::env::var_os("FLATPAK_ID").is_some())
+}
+
+/// Whether the dev-container UI should be shown at all. The frontend hides the
+/// sidebar panel, bottom panel, menu item and commands when this is false.
+#[tauri::command]
+pub fn container_support_available() -> bool {
+    !is_flatpak()
+}
+
 /// Find a usable container runtime, or explain which half of the search failed.
 ///
 /// The two failures need different words in front of the user. "Not installed"
@@ -317,6 +341,19 @@ async fn detect_runtime_impl(
                 remote_host: remote,
             });
         }
+    }
+
+    // A third failure, for the same reason the other two are spelled out separately.
+    // The UI is normally hidden entirely in this build, so this is the backstop for
+    // anything that calls detection directly — a plugin, or a stale window. It sits
+    // after the CONTAINER_RUNTIME override so a deliberately-shimmed sandbox can still
+    // opt back in.
+    if is_flatpak() {
+        return Err(
+            "Dev containers aren't available in the Flatpak build of julIDE. \
+                    Install the .deb, .rpm, or AppImage to use them."
+                .to_string(),
+        );
     }
 
     let try_order: Vec<(&str, ContainerRuntimeKind)> = match preferred {

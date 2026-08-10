@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useIdeStore } from "../../stores/useIdeStore";
 import { useSettingsStore } from "../../stores/useSettingsStore";
+import { containerSupported } from "../../services/containerSupport";
 import { useJuliaStore } from "../../stores/useJuliaStore";
 import { usePluginStore } from "../../stores/usePluginStore";
 import { useModeBarStore } from "../ModeBar/ModeBar";
@@ -174,7 +175,9 @@ export function WelcomeScreen() {
 
           <section className="welcome-capabilities">
             <h2 className="welcome-section-title">What's in here</h2>
-            {CAPABILITIES.map(({ icon: Icon, title, body, command }) => {
+            {CAPABILITIES.filter(
+              (c) => c.command !== "container.panel" || containerSupported(),
+            ).map(({ icon: Icon, title, body, command }) => {
               const Tag = command ? "button" : "div";
               return (
                 <Tag
