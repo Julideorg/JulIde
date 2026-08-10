@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { basename, pathToUri } from "./uri";
 
 // ── LSP types (minimal subset we actually use) ────────────────────────────────
 
@@ -339,7 +340,7 @@ class LspClient {
     this._backend = options?.backend ?? "";
     this._openDocuments.clear();
     this._pendingOpens.clear();
-    this.rootUri = `file://${workspacePath}`;
+    this.rootUri = pathToUri(workspacePath);
 
     await invoke("lsp_start", { workspacePath });
     await this.listenForNotifications();
@@ -460,7 +461,7 @@ class LspClient {
   // ── LSP initialization handshake ─────────────────────────────────────────────
 
   private async initialize(workspacePath: string, initializationOptions: unknown): Promise<void> {
-    const workspaceName = workspacePath.split("/").pop() ?? "workspace";
+    const workspaceName = basename(workspacePath) || "workspace";
     const result = await invoke<{ capabilities?: LspServerCapabilities } | null>(
       "lsp_send_request",
       {

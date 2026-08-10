@@ -22,6 +22,7 @@ import { usePluginStore } from "./stores/usePluginStore";
 import { lspClient } from "./lsp/LspClient";
 import { fatouConfigPayload, lspStartOptions } from "./lsp/lspConfig";
 import { setMonacoMarkers } from "./lsp/juliaProviders";
+import { uriToPath } from "./lsp/uri";
 import type { JuliaOutputEvent } from "./types";
 import { parseMimeLine } from "./utils/juliaOutput";
 import { invalidateImage, setImageWorkspaceRoot } from "./markdown/images";
@@ -364,7 +365,9 @@ export default function App() {
     const unsubscribe = lspClient.onNotification((method, params) => {
       if (method !== "textDocument/publishDiagnostics") return;
       const { uri, diagnostics } = params as LspPublishDiagnosticsParams;
-      const filePath = uri.replace(/^file:\/\//, "");
+      // An OS path, because that is what the Problems panel matches against the
+      // open tabs and against the paths workspace linting reports.
+      const filePath = uriToPath(uri);
 
       const otherProblems = getProblems().filter((p) => p.file !== filePath);
       const newProblems: Problem[] = diagnostics.map((d, i) => ({

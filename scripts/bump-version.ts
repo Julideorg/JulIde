@@ -8,7 +8,6 @@
  * Tauri rejects them in tauri.conf.json.
  */
 import { readVersions, writeVersions, normalizeTag, isValidVersion } from "./versions";
-import { OUT as CATALOG_OUT, render as renderCatalog } from "./generate-permission-catalog";
 
 const input = process.argv[2];
 if (!input) {
@@ -43,6 +42,13 @@ if (after.some((s) => s.version !== version)) {
 // permission-catalog.json embeds julideVersion, so a bump makes it stale and reddens
 // CI on the release PR itself. Regenerating here keeps that from being a step someone
 // has to remember on the one day they are busiest.
+//
+// Imported *here* rather than at the top of the file, and that is the whole point:
+// the generator reads the version through `import pkg from "../package.json"`, which
+// is resolved once when its module is first loaded. A static import at the top loads
+// it before writeVersions has run, so it would render the version we are bumping away
+// from — write the old number back, print "regenerated", and leave CI to discover it.
+const { OUT: CATALOG_OUT, render: renderCatalog } = await import("./generate-permission-catalog");
 await Bun.write(CATALOG_OUT, await renderCatalog());
 console.log(`ok      ${CATALOG_OUT.padEnd(28)} regenerated`);
 

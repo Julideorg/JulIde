@@ -140,6 +140,13 @@ so per-project config wins over the IDE's defaults.
 - **Container terminal** — open a PTY session inside the running container
 - **Run Julia inside the container** — execute scripts in the dev container environment
 
+On **Windows**, use Docker Desktop with the WSL2 backend, or Podman Desktop. Open the
+project from a Windows drive rather than through a `\\wsl$\...` path — a UNC path cannot
+be bind-mounted into a container, and julIDE stops with that explanation rather than
+handing the runtime a source it cannot resolve. If the Container panel says the runtime is
+installed but not responding, Docker Desktop is not running; it does not start with the
+session by default.
+
 ### Plugin System
 
 - **Plugin discovery** — automatically scans `~/.julide/plugins/` for installed plugins
@@ -241,12 +248,33 @@ Download the latest build from the
 | --------- | ---------------- | --------------------------------------------------------------------------------- |
 | **Linux** | `.AppImage`      | Recommended — supports in-app updates. `chmod +x` then run.                       |
 | Linux     | `.deb` / `.rpm`  | Installs system-wide and registers `.jl` files. Updates via your package manager. |
-| Windows   | `.msi` or `.exe` |                                                                                   |
+| Windows   | `.msi` or `.exe` | Also the recommended download if you use WSL2 — see below.                        |
 | macOS     | `.dmg`           | Apple Silicon and Intel builds are published separately.                          |
 
 You also need **Julia 1.6+** ([download](https://julialang.org/downloads/)). julIDE
 does not bundle it. If Julia is not found on first launch, julIDE will offer to help
 you install or locate it.
+
+### If you use WSL2
+
+Install the **Windows** build, not the Linux AppImage inside your WSL distro, and reach
+your Linux toolchain through [Dev Containers](#dev-container-support) instead.
+
+The native build renders on the GPU through the system WebView, gets real Windows window
+management and file dialogs, and can update itself in place. An AppImage running inside
+WSL reaches your screen through WSLg's display bridge and, if the project lives on the
+Windows side, reads every file over the `\\wsl$` 9P bridge — which is where the "why is
+the editor slow" reports come from. Nothing about it is broken; it is just paying for a
+translation layer twice.
+
+A dev container gives you the Linux side properly: the container is a real Linux
+environment with its own Julia, packages and system libraries, and julIDE runs its
+terminal, REPL and file execution inside it.
+
+One constraint worth knowing before you start: open the project from a Windows drive
+(`C:\Users\you\project`), not through a `\\wsl$\...` path. A UNC path is not something
+Docker or Podman can bind-mount, and julIDE now says so up front rather than letting the
+container fail several steps later.
 
 ### Unsigned builds
 

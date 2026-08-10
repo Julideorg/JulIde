@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useIdeStore } from "../stores/useIdeStore";
 import type { EditorTab } from "../types";
 import { isNotebookPath, materializePair, registerFromSource } from "../notebook/pairing";
+import { basename } from "../lsp/uri";
 
 /**
  * Read a file from disk and open it as an editor tab.
@@ -12,7 +13,7 @@ import { isNotebookPath, materializePair, registerFromSource } from "../notebook
  */
 export async function openFileAtPath(
   path: string,
-  name = path.split("/").pop() ?? path,
+  name = basename(path) || path,
   overrides: Partial<EditorTab> = {},
 ): Promise<void> {
   // A `.ipynb` opens as its paired jupytext script rather than as raw JSON — the

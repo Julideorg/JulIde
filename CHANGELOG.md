@@ -5,7 +5,19 @@ All notable changes to julIDE are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 julIDE aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.0] - 2026-08-10
+
+Jupyter notebooks, without a second copy of your code: a `.jl` file with `# %%` markers
+_is_ a notebook, sharing one persistent Julia kernel across its cells, and the file text
+stays the only source of truth — so the language server, git diff and undo keep working as
+they do in any other file. The markdown preview can show images too, behind two switches
+that stay off until you turn them on.
+
+This release also fixes two things that did not work on Windows at all. The language
+server refused to start there every time, because julIDE built the URIs it sends by
+pasting a path onto `file://` — which also broke any path containing a space or an accent,
+on every platform. And dev containers never found Docker, because the runtime search asked
+a login shell to run `which`.
 
 ### Added
 
@@ -91,7 +103,64 @@ julIDE aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   The parser round-trips byte for byte, which is what will let a later change edit one
   cell without reformatting the rest of the file.
 
+### Changed
+
+- **Dev containers work on Windows.** Several things stood between the feature and that
+  platform, and they had to be fixed together to be worth anything.
+
+  Docker was never found. The runtime search asked a login shell to run `which`, then
+  looked in `/usr/bin`, `/usr/local/bin` and `/opt/homebrew/bin` — a search that cannot
+  succeed on Windows, so the panel reported no runtime installed on machines running
+  Docker Desktop. It now uses `where.exe` and falls back to the CLI's location under
+  `%ProgramFiles%`, which is where it sits before a logout puts it on `PATH`.
+
+  Every call flashed a console window. Julia, the language server and Pluto all suppress
+  that; this module did not, so listing containers or opening the panel blinked a black
+  box each time.
+
+  `initializeCommand` ran through `sh -c`, which does not exist on Windows. It now uses
+  the host's shell — and, on Windows, passes the command line verbatim rather than
+  through Rust's argument quoting, which `cmd.exe` does not follow.
+
+  A workspace on a UNC path (`\\wsl$\...`, a network share) was handed to the runtime as
+  a bind-mount source it cannot resolve, and the resulting failure named neither the path
+  nor the reason. That is now refused up front, with the reason.
+
+- **"Run" inside a dev container executes the file that is open.** It was sending the
+  container the path the file has on _your_ machine — `docker exec … julia
+/home/you/proj/a.jl` for a project mounted at `/workspace`. This is a Windows bug and
+  more, since it was wrong on Linux and macOS too any time `workspaceFolder` was not the
+  host path, which is the default. Host paths are now translated onto the mount point.
+  The container terminal opens in the project for the same reason, rather than wherever
+  the image's `WORKDIR` pointed.
+
+- **The Container panel distinguishes "not installed" from "not running".** Docker
+  Desktop does not start with the session on Windows, and being told to install software
+  you already have is not a useful next step. It now says which one it is.
+
 ### Fixed
+
+- **The language server no longer refuses to start on Windows, or under any path with a
+  space or an accent in it.** On Windows it failed every time, with
+  `[Fatou] Fatou language server stopped: unexpected character at index 9`
+  ([#38](https://github.com/Julideorg/JulIde/issues/38)) — and index 9 is the giveaway.
+  julIDE built the URIs it sends the server by pasting the path onto a prefix,
+  `` `file://${path}` ``. For `C:\Users\you\project` that produces
+  `file://C:\Users\you\project`, where a URI parser reads `C:` as a hostname, waits for a
+  port number, and finds a backslash — the tenth character. Fatou parses every URI
+  strictly, so the handshake failed and the server exited before it had answered anything.
+
+  The same paste broke a path containing a space, `#`, `%` or a non-ASCII character on
+  every platform, for the same reason: none of those are characters a URI may carry
+  as-is. `/home/joão/My Project` failed exactly like the Windows path did, just at a
+  different index.
+
+  Paths are now converted properly — drive letters, UNC shares, separators and
+  percent-encoding — by one function with tests, rather than by string concatenation in
+  the seventeen places that had grown a copy of it. The editor's own document identity was moved onto the same conversion,
+  which is what makes inline diagnostics attach to the right file on Windows; before, the
+  editor and the server disagreed about what a document was called, so squiggles had
+  nowhere to land even when the server did survive.
 
 - **A `##` heading inside a docstring no longer splits a code cell.** Cell detection was
   a plain "does this line start with `##`" scan, so a docstring containing a Markdown
@@ -505,7 +574,8 @@ distribution plumbing a public release needs.
 Earlier beta releases were not accompanied by a changelog. See the
 [releases page](https://github.com/sinisterMage/julide/releases) for their notes.
 
-[Unreleased]: https://github.com/Julideorg/JulIde/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/Julideorg/JulIde/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Julideorg/JulIde/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/Julideorg/JulIde/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Julideorg/JulIde/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/sinisterMage/julide/compare/v0.3.0...v0.3.1

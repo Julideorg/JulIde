@@ -33,6 +33,7 @@ export function ContainerPanel() {
   const [error, setError] = useState("");
   const [containersExpanded, setContainersExpanded] = useState(false);
   const [runtimeDetected, setRuntimeDetected] = useState(false);
+  const [runtimeUnavailable, setRuntimeUnavailable] = useState("");
 
   // Detect runtime on mount
   useEffect(() => {
@@ -44,10 +45,16 @@ export function ContainerPanel() {
         const config = rt as { kind: string };
         useIdeStore.getState().setContainerRuntime(config.kind);
         setRuntimeDetected(true);
+        setRuntimeUnavailable("");
         setError("");
       })
-      .catch(() => {
+      .catch((e: unknown) => {
         setRuntimeDetected(false);
+        // Rust distinguishes "nothing installed" from "installed but not
+        // answering", and the second is the common one — Docker Desktop does not
+        // start with the session on Windows. Telling that user to install Docker
+        // sends them to reinstall software they already have.
+        setRuntimeUnavailable(e instanceof Error ? e.message : String(e));
         setError("");
       });
   }, [settings.containerRuntime, settings.containerRemoteHost]);
@@ -189,7 +196,8 @@ export function ContainerPanel() {
 
       {!runtimeDetected && (
         <div className="container-empty">
-          No container runtime detected. Install Docker or Podman to use dev containers.
+          {runtimeUnavailable ||
+            "No container runtime detected. Install Docker or Podman to use dev containers."}
         </div>
       )}
 

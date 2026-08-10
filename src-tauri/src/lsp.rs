@@ -849,4 +849,81 @@ mod tests {
             .expect("Fatou panicked")
             .expect("Fatou errored");
     }
+
+    /// Run one initialize with the given `rootUri` and report what Fatou did.
+    fn initialize_with_root_uri(root_uri: &str) -> Result<(), String> {
+        let (client, server) = Connection::memory();
+        let handle = std::thread::spawn(move || fatou::lsp::serve(&server));
+        let Connection { sender, receiver } = client;
+
+        let params = json!({
+            "jsonrpc": "2.0", "id": 1, "method": "initialize",
+            "params": {
+                "capabilities": {},
+                "processId": null,
+                "rootUri": root_uri,
+                "workspaceFolders": [{ "uri": root_uri, "name": "proj" }],
+            },
+        });
+        let _ = sender.send(value_to_message(&params).unwrap());
+
+        let replied_ok = matches!(
+            receiver.recv_timeout(std::time::Duration::from_secs(30)),
+            Ok(Message::Response(ref r)) if r.response_result.is_ok()
+        );
+        if replied_ok {
+            let _ = sender.send(
+                value_to_message(&json!({
+                    "jsonrpc": "2.0", "method": "initialized", "params": {},
+                }))
+                .unwrap(),
+            );
+        }
+
+        drop(sender);
+        for _ in receiver {}
+        match handle.join().expect("Fatou panicked") {
+            Ok(()) => Ok(()),
+            Err(e) => Err(e.to_string()),
+        }
+    }
+
+    /// Reproduces issue #38 at the exact layer it broke.
+    ///
+    /// julIDE used to build this URI by pasting the workspace path onto
+    /// `file://`. Every URI field in `lsp-types` is parsed strictly, so a
+    /// Windows path arrived as a hostname `C` followed by something that is not
+    /// a port, and Fatou gave up before answering the handshake. The assertion
+    /// is on the index because that is what the bug report contained, and it is
+    /// what ties this test to it.
+    #[test]
+    fn fatou_rejects_the_concatenated_uri_that_broke_issue_38() {
+        let err = initialize_with_root_uri("file://C:\\Users\\joaquim\\proj")
+            .expect_err("a URI this malformed must not be accepted");
+        assert!(
+            err.contains("unexpected character at index 9"),
+            "expected the error from issue #38, got: {err}"
+        );
+
+        // Not a Windows-only failure: a space is not a character a URI may
+        // carry literally either, so this broke on Linux and macOS too.
+        assert!(initialize_with_root_uri("file:///home/me/My Proj").is_err());
+    }
+
+    /// The same paths, converted rather than concatenated (see src/lsp/uri.ts).
+    #[test]
+    fn fatou_accepts_the_uris_the_client_now_builds() {
+        for uri in [
+            "file:///c%3A/Users/joaquim/proj",
+            "file:///home/me/My%20Proj",
+            "file:///home/jo%C3%A3o/proj",
+            "file:///tmp/a%2Cb%3Bc%3Dd%21e/f%28g%29",
+            "file://srv/share/proj",
+        ] {
+            assert!(
+                initialize_with_root_uri(uri).is_ok(),
+                "Fatou refused {uri}, which is what the client now sends"
+            );
+        }
+    }
 }

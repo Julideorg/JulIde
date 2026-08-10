@@ -148,6 +148,12 @@ struct DevContainerState {
     active_container_id: Option<String>,
     active_container_name: Option<String>,
     container_state: ContainerState,
+    /// Where the workspace lives on this machine, and where it is mounted
+    /// inside the container. Both halves are needed to translate a path the
+    /// frontend holds (a host path — that is the only kind it has) into one the
+    /// container can resolve.
+    host_workspace_path: Option<String>,
+    workspace_folder: Option<String>,
 }
 
 impl Default for DevContainerState {
@@ -157,6 +163,8 @@ impl Default for DevContainerState {
             active_container_id: None,
             active_container_name: None,
             container_state: ContainerState::None,
+            host_workspace_path: None,
+            workspace_folder: None,
         }
     }
 }
@@ -169,9 +177,27 @@ static CACHED_RUNTIME: Lazy<Arc<Mutex<Option<ContainerRuntimeConfig>>>> =
 
 // ─── Runtime Detection ──────────────────────────────────────────────────────
 
-fn which_via_shell(binary: &str) -> Option<String> {
+/// A `std::process::Command` that opens no console window.
+///
+/// Everything in this module shells out to `docker`/`podman`, and on Windows a
+/// GUI process spawning a console application flashes a black window each time.
+/// `julia.rs`, `lsp.rs` and `pluto.rs` already suppress it; this module did not,
+/// so listing containers or opening the panel blinked once per call.
+fn std_command(program: &str) -> std::process::Command {
+    #[allow(unused_mut)]
+    let mut cmd = std::process::Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    cmd
+}
+
+#[cfg(not(windows))]
+fn which_binary(binary: &str) -> Option<String> {
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
-    let output = std::process::Command::new(&shell)
+    let output = std_command(&shell)
         .args(["-l", "-c", &format!("which {}", binary)])
         .output()
         .ok()?;
@@ -184,27 +210,73 @@ fn which_via_shell(binary: &str) -> Option<String> {
     None
 }
 
-fn find_binary(name: &str) -> Option<String> {
-    // 1. Shell lookup
-    if let Some(path) = which_via_shell(name) {
-        return Some(path);
+/// Windows has no `which` and no login shell to ask, so use `where.exe`.
+///
+/// It prints one match per line; the first is what `PATH` resolution would pick.
+#[cfg(windows)]
+fn which_binary(binary: &str) -> Option<String> {
+    let output = std_command("where.exe").arg(binary).output().ok()?;
+    if !output.status.success() {
+        return None;
     }
-    // 2. Common paths
-    let common = [
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty())
+        .map(str::to_string)
+}
+
+/// Install locations to try when the binary is not on `PATH`.
+///
+/// Docker Desktop and Podman Desktop both put their CLI under `Program Files`
+/// and both have been known to leave `PATH` alone until the machine is logged
+/// out and back in, which is exactly the state a user is in right after
+/// installing one. Built from `%ProgramFiles%` rather than a literal `C:` —
+/// Windows is not always installed on C.
+#[cfg(windows)]
+fn fallback_binary_paths(name: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for var in ["ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"] {
+        let Ok(root) = std::env::var(var) else {
+            continue;
+        };
+        let relative = match name {
+            "docker" => vec!["Docker\\Docker\\resources\\bin\\docker.exe".to_string()],
+            "podman" => vec![
+                "RedHat\\Podman\\podman.exe".to_string(),
+                "Podman\\bin\\podman.exe".to_string(),
+            ],
+            _ => vec![format!("{}\\{}.exe", name, name)],
+        };
+        for rel in relative {
+            out.push(format!("{}\\{}", root, rel));
+        }
+    }
+    out
+}
+
+#[cfg(not(windows))]
+fn fallback_binary_paths(name: &str) -> Vec<String> {
+    vec![
         format!("/usr/bin/{}", name),
         format!("/usr/local/bin/{}", name),
         format!("/opt/homebrew/bin/{}", name),
-    ];
-    for p in &common {
-        if Path::new(p).exists() {
-            return Some(p.clone());
-        }
+    ]
+}
+
+fn find_binary(name: &str) -> Option<String> {
+    // 1. PATH lookup
+    if let Some(path) = which_binary(name) {
+        return Some(path);
     }
-    None
+    // 2. Common install locations
+    fallback_binary_paths(name)
+        .into_iter()
+        .find(|p| Path::new(p).exists())
 }
 
 fn validate_runtime(binary: &str) -> bool {
-    std::process::Command::new(binary)
+    std_command(binary)
         .arg("info")
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
@@ -213,7 +285,18 @@ fn validate_runtime(binary: &str) -> bool {
         .unwrap_or(false)
 }
 
-async fn detect_runtime_impl(preferred: &str, remote_host: &str) -> Option<ContainerRuntimeConfig> {
+/// Find a usable container runtime, or explain which half of the search failed.
+///
+/// The two failures need different words in front of the user. "Not installed"
+/// asks them to install something; "installed but not answering" asks them to
+/// start it. Collapsing both into "install Docker or Podman" — which is what
+/// this did — sends anyone whose Docker Desktop simply is not running yet off
+/// to reinstall software they already have. That is the ordinary state on
+/// Windows, where Docker Desktop does not start with the session by default.
+async fn detect_runtime_impl(
+    preferred: &str,
+    remote_host: &str,
+) -> Result<ContainerRuntimeConfig, String> {
     let remote = if remote_host.is_empty() {
         None
     } else {
@@ -228,7 +311,7 @@ async fn detect_runtime_impl(preferred: &str, remote_host: &str) -> Option<Conta
             ContainerRuntimeKind::Docker
         };
         if validate_runtime(&path) {
-            return Some(ContainerRuntimeConfig {
+            return Ok(ContainerRuntimeConfig {
                 kind,
                 binary_path: path,
                 remote_host: remote,
@@ -251,25 +334,42 @@ async fn detect_runtime_impl(preferred: &str, remote_host: &str) -> Option<Conta
         ],
     };
 
+    let mut installed_but_silent: Option<&str> = None;
     for (name, kind) in try_order {
         if let Some(path) = find_binary(name) {
             if validate_runtime(&path) {
-                return Some(ContainerRuntimeConfig {
+                return Ok(ContainerRuntimeConfig {
                     kind,
                     binary_path: path,
                     remote_host: remote,
                 });
             }
+            installed_but_silent.get_or_insert(name);
         }
     }
 
-    None
+    Err(match installed_but_silent {
+        Some("podman") => "Podman is installed but not responding. Start the Podman machine \
+             (`podman machine start`) and try again."
+            .to_string(),
+        Some(_) => "Docker is installed but not responding. Start Docker Desktop (or the \
+             Docker daemon) and try again."
+            .to_string(),
+        None => "No container runtime found. Install Docker or Podman.".to_string(),
+    })
 }
 
 // ─── Command Builder ─────────────────────────────────────────────────────────
 
 fn build_cmd(config: &ContainerRuntimeConfig) -> tokio::process::Command {
     let mut cmd = tokio::process::Command::new(&config.binary_path);
+    // Every runtime call goes through here, so this is the one place that has to
+    // suppress the console window Windows would otherwise flash (see std_command).
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
     if let Some(ref host) = config.remote_host {
         match config.kind {
             ContainerRuntimeKind::Docker => {
@@ -280,6 +380,30 @@ fn build_cmd(config: &ContainerRuntimeConfig) -> tokio::process::Command {
             }
         }
     }
+    cmd
+}
+
+/// Run a shell command line on the host, with the host's own shell.
+fn host_shell_command(command: &str) -> tokio::process::Command {
+    #[cfg(windows)]
+    let mut cmd = {
+        let mut c = tokio::process::Command::new("cmd");
+        // raw_arg, not arg: Rust quotes arguments by CommandLineToArgvW's rules
+        // and cmd.exe does not follow them, so a command line containing quotes
+        // — `julia -e "using Pkg"`, say — arrives mangled. This is what tokio
+        // documents raw_arg for.
+        c.raw_arg("/C");
+        c.raw_arg(command);
+        c.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        c
+    };
+    #[cfg(not(windows))]
+    let mut cmd = {
+        let mut c = tokio::process::Command::new("sh");
+        c.args(["-c", command]);
+        c
+    };
+    cmd.kill_on_drop(true);
     cmd
 }
 
@@ -322,6 +446,26 @@ fn emit_output(app: &tauri::AppHandle, kind: &str, text: &str) {
 #[cfg(target_os = "linux")]
 fn get_display_forwarding_args_platform() -> Vec<String> {
     let mut args = Vec::new();
+
+    // WSL2 draws through WSLg, which is a Wayland/X11 bridge mounted at
+    // /mnt/wslg rather than the usual host X server. This check used to sit in
+    // the Windows branch, where it could never fire: a Windows process asking
+    // whether /mnt/wslg exists is asking about a Linux path it will never see.
+    // A julIDE running under WSL2 is a *Linux* build, so this is where it goes.
+    if Path::new("/mnt/wslg").exists() {
+        args.push("-v".into());
+        args.push("/tmp/.X11-unix:/tmp/.X11-unix:rw".into());
+        args.push("-v".into());
+        args.push("/mnt/wslg:/mnt/wslg:rw".into());
+        args.push("--env".into());
+        args.push("DISPLAY=:0".into());
+        args.push("--env".into());
+        args.push("WAYLAND_DISPLAY=wayland-0".into());
+        args.push("--env".into());
+        args.push("XDG_RUNTIME_DIR=/mnt/wslg/runtime-dir".into());
+        return args;
+    }
+
     // X11 socket — do NOT apply :Z here; the socket is shared and relabeling
     // it would break X11 for the host. Instead use :ro.
     if Path::new("/tmp/.X11-unix").exists() {
@@ -378,25 +522,12 @@ fn get_display_forwarding_args_platform() -> Vec<String> {
     args
 }
 
+/// On Windows the container talks to an X server running on the host — VcXsrv,
+/// X410 or similar — reached through Docker Desktop's `host.docker.internal`.
+/// There is no host socket to bind-mount, so there is nothing else to pass.
 #[cfg(target_os = "windows")]
 fn get_display_forwarding_args_platform() -> Vec<String> {
-    let mut args = Vec::new();
-    if Path::new("/mnt/wslg").exists() {
-        args.push("-v".into());
-        args.push("/tmp/.X11-unix:/tmp/.X11-unix:rw".into());
-        args.push("-v".into());
-        args.push("/mnt/wslg:/mnt/wslg:rw".into());
-        args.push("--env".into());
-        args.push("DISPLAY=:0".into());
-        args.push("--env".into());
-        args.push("WAYLAND_DISPLAY=wayland-0".into());
-        args.push("--env".into());
-        args.push("XDG_RUNTIME_DIR=/mnt/wslg/runtime-dir".into());
-    } else {
-        args.push("--env".into());
-        args.push("DISPLAY=host.docker.internal:0.0".into());
-    }
-    args
+    vec!["--env".into(), "DISPLAY=host.docker.internal:0.0".into()]
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
@@ -441,7 +572,15 @@ fn volume_suffix(selinux: bool) -> &'static str {
 
 fn get_gpu_passthrough_args() -> Vec<String> {
     let mut args = Vec::new();
-    if Path::new("/usr/bin/nvidia-smi").exists() {
+    // The hard-coded Unix path never matched on Windows, so asking for GPU
+    // passthrough there silently did nothing. `nvidia-smi` ships on PATH with
+    // the Windows driver, which is what find_binary already knows how to check.
+    let has_nvidia = if cfg!(windows) {
+        find_binary("nvidia-smi").is_some()
+    } else {
+        Path::new("/usr/bin/nvidia-smi").exists()
+    };
+    if has_nvidia {
         args.push("--gpus".into());
         args.push("all".into());
     }
@@ -453,6 +592,107 @@ fn get_gpu_passthrough_args() -> Vec<String> {
     args
 }
 
+// ─── Host ↔ Container Paths ──────────────────────────────────────────────────
+
+/// A host path in the form a container runtime accepts as a bind-mount source.
+///
+/// Docker Desktop and Podman both take a Windows path with forward slashes
+/// (`C:/Users/me/proj`) and translate it into their Linux VM; backslashes are
+/// accepted far less consistently, and `-v` splits its argument on colons, so
+/// the fewer oddities in the string the better.
+///
+/// A UNC path is rejected rather than passed through. `\\wsl$\Ubuntu\home\me`
+/// and `\\server\share` are not files the runtime's VM can reach, and the
+/// failure Docker reports for one is a mount error several steps later with
+/// nothing in it that points back at the folder that was opened.
+fn host_mount_path(workspace_path: &str) -> Result<String, String> {
+    if workspace_path.starts_with("\\\\") || workspace_path.starts_with("//") {
+        return Err(format!(
+            "The workspace at {} is on a network or WSL path, which cannot be mounted into a \
+             container. Move the project onto a local drive, or run julIDE inside that Linux \
+             environment instead of mounting into it.",
+            workspace_path
+        ));
+    }
+    if cfg!(windows) {
+        Ok(workspace_path.replace('\\', "/"))
+    } else {
+        Ok(workspace_path.to_string())
+    }
+}
+
+/// Rewrite a host path as the path the same file has inside the container.
+///
+/// The frontend only ever holds host paths — they are what the file tree, the
+/// tabs and the dialogs deal in — so "run this file in the container" used to
+/// hand the container a path from the machine outside it. That is wrong the
+/// moment `workspaceFolder` is not the host path, which is every time, since it
+/// defaults to `/workspace`; on Windows it is not even the right *shape* of
+/// path. Anything outside the workspace is passed through untouched: it is
+/// either already a container path or something we cannot map, and inventing a
+/// translation for it would be worse than letting the container say it is
+/// missing.
+fn map_into_container(host_path: &str, host_workspace: &str, workspace_folder: &str) -> String {
+    let normalize = |s: &str| {
+        let s = s.replace('\\', "/");
+        s.strip_suffix('/').map(str::to_string).unwrap_or(s)
+    };
+    let path = normalize(host_path);
+    let root = normalize(host_workspace);
+    if root.is_empty() {
+        return path;
+    }
+
+    // `get` rather than indexing: the prefix length comes from a different
+    // string, so it is not guaranteed to land on a character boundary, and
+    // slicing would panic rather than simply not match. Windows compares paths
+    // case-insensitively, so a tab opened as `c:\proj\a.jl` still belongs to a
+    // workspace recorded as `C:\proj`.
+    let same_prefix = match path.get(..root.len()) {
+        Some(head) if cfg!(windows) => head.eq_ignore_ascii_case(&root),
+        Some(head) => head == root,
+        None => false,
+    };
+    if !same_prefix {
+        return path;
+    }
+
+    // Guards against `/home/me/proj-other` matching `/home/me/proj`: the
+    // remainder has to start a new path segment, or be nothing at all.
+    let relative = &path[root.len()..];
+    if !relative.is_empty() && !relative.starts_with('/') {
+        return path;
+    }
+
+    let folder = workspace_folder
+        .strip_suffix('/')
+        .unwrap_or(workspace_folder);
+    if relative.is_empty() {
+        folder.to_string()
+    } else {
+        format!("{}{}", folder, relative)
+    }
+}
+
+/// `map_into_container` against the dev container that is currently running.
+///
+/// Returns the path unchanged when no dev container is active, which is what
+/// the container commands want: they are then talking to a plain container the
+/// user picked from the panel, and julIDE knows nothing about how it is mounted.
+fn to_container_path(host_path: &str) -> String {
+    let (host_workspace, workspace_folder) = {
+        let state = CONTAINER_STATE.lock_recover();
+        (
+            state.host_workspace_path.clone(),
+            state.workspace_folder.clone(),
+        )
+    };
+    match (host_workspace, workspace_folder) {
+        (Some(root), Some(folder)) => map_into_container(host_path, &root, &folder),
+        _ => host_path.to_string(),
+    }
+}
+
 // ─── Tauri Commands: Runtime ─────────────────────────────────────────────────
 
 #[tauri::command]
@@ -462,9 +702,7 @@ pub async fn container_detect_runtime(
 ) -> Result<ContainerRuntimeConfig, String> {
     let pref = preferred.as_deref().unwrap_or("auto");
     let host = remote_host.as_deref().unwrap_or("");
-    let config = detect_runtime_impl(pref, host)
-        .await
-        .ok_or_else(|| "No container runtime found. Install Docker or Podman.".to_string())?;
+    let config = detect_runtime_impl(pref, host).await?;
     {
         let mut cached = CACHED_RUNTIME.lock_recover();
         *cached = Some(config.clone());
@@ -926,8 +1164,10 @@ pub async fn devcontainer_up(
             "status",
             &format!("Running initializeCommand: {}", cmd_str),
         );
-        let output = tokio::process::Command::new("sh")
-            .args(["-c", &cmd_str])
+        // This one runs on *this* machine, not in the container, so it needs the
+        // host's shell. Windows has no `sh`, and the lifecycle commands further
+        // down deliberately keep `sh -c` because that shell is the container's.
+        let output = host_shell_command(&cmd_str)
             .current_dir(&workspace_path)
             .output()
             .await
@@ -1093,9 +1333,10 @@ pub async fn devcontainer_up(
     if let Some(ref custom_mount) = config.workspace_mount {
         create_cmd.arg("--mount").arg(custom_mount);
     } else {
+        let source = host_mount_path(&workspace_path)?;
         create_cmd
             .arg("-v")
-            .arg(format!("{}:{}:rw{}", workspace_path, workspace_folder, z));
+            .arg(format!("{}:{}:rw{}", source, workspace_folder, z));
     }
     create_cmd.arg("-w").arg(workspace_folder);
 
@@ -1254,6 +1495,10 @@ pub async fn devcontainer_up(
         state.active_container_id = Some(container_id.clone());
         state.active_container_name = Some(container_name.clone());
         state.container_state = ContainerState::Running;
+        // Recorded so host paths coming back from the frontend can be mapped
+        // onto the mount point — see to_container_path.
+        state.host_workspace_path = Some(workspace_path.clone());
+        state.workspace_folder = Some(workspace_folder.to_string());
     }
 
     emit_status(&app, "running", Some(&container_name), Some(&container_id));
@@ -1343,6 +1588,11 @@ pub async fn devcontainer_down(app: tauri::AppHandle) -> Result<(), String> {
         state.active_container_id = None;
         state.active_container_name = None;
         state.container_state = ContainerState::None;
+        // The mount is gone with the container, so the mapping it described has
+        // to go too — otherwise a later exec would translate paths against a
+        // workspace folder that no longer exists anywhere.
+        state.host_workspace_path = None;
+        state.workspace_folder = None;
     }
     emit_status(&app, "none", Some("Dev container removed"), None);
     Ok(())
@@ -1393,6 +1643,11 @@ pub async fn container_pty_create(
     }
     cmd.arg("exec");
     cmd.arg("-it");
+    // The frontend passes null, so without this the shell opens wherever the
+    // image's WORKDIR happens to be rather than in the mounted project.
+    let working_dir = working_dir
+        .map(|wd| to_container_path(&wd))
+        .or_else(|| CONTAINER_STATE.lock_recover().workspace_folder.clone());
     if let Some(ref wd) = working_dir {
         cmd.arg("-w");
         cmd.arg(wd);
@@ -1401,7 +1656,9 @@ pub async fn container_pty_create(
     cmd.arg(shell);
 
     cmd.env("TERM", "xterm-256color");
-    if let Ok(home) = std::env::var("HOME") {
+    // Windows names the home directory USERPROFILE; HOME is normally unset there.
+    let home = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE"));
+    if let Ok(home) = home {
         cmd.env("HOME", &home);
     }
 
@@ -1423,12 +1680,14 @@ pub async fn container_julia_run(
 ) -> Result<(), String> {
     let rt = get_runtime()?;
 
+    // The frontend passes host paths — the only kind it has — and Julia is about
+    // to resolve them inside the container, where they do not exist.
     let mut cmd = build_cmd(&rt);
     cmd.arg("exec").arg(&container_id).arg("julia");
     if let Some(ref proj) = project_path {
-        cmd.arg(format!("--project={}", proj));
+        cmd.arg(format!("--project={}", to_container_path(proj)));
     }
-    cmd.arg(&file_path);
+    cmd.arg(to_container_path(&file_path));
     cmd.stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
 
@@ -1490,4 +1749,74 @@ pub async fn container_julia_run(
     });
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn maps_a_workspace_file_onto_the_mount_point() {
+        // The default workspaceFolder is /workspace, so this is the ordinary
+        // case on every platform — not a Windows special case.
+        assert_eq!(
+            map_into_container("/home/me/proj/src/a.jl", "/home/me/proj", "/workspace"),
+            "/workspace/src/a.jl"
+        );
+        assert_eq!(
+            map_into_container("/home/me/proj", "/home/me/proj", "/workspace"),
+            "/workspace"
+        );
+    }
+
+    #[test]
+    fn maps_a_windows_path_onto_a_linux_mount_point() {
+        assert_eq!(
+            map_into_container(
+                "C:\\Users\\me\\proj\\src\\a.jl",
+                "C:\\Users\\me\\proj",
+                "/work"
+            ),
+            "/work/src/a.jl"
+        );
+    }
+
+    #[test]
+    fn tolerates_a_trailing_separator_on_either_side() {
+        assert_eq!(
+            map_into_container("/home/me/proj/a.jl", "/home/me/proj/", "/workspace/"),
+            "/workspace/a.jl"
+        );
+    }
+
+    #[test]
+    fn leaves_a_path_outside_the_workspace_alone() {
+        // Either it is already a container path or it is something we cannot
+        // map; guessing would produce a path that silently points elsewhere.
+        assert_eq!(
+            map_into_container("/opt/julia/bin", "/home/me/proj", "/workspace"),
+            "/opt/julia/bin"
+        );
+        // A prefix match on the string must not be mistaken for a path match.
+        assert_eq!(
+            map_into_container("/home/me/proj-other/a.jl", "/home/me/proj", "/workspace"),
+            "/home/me/proj-other/a.jl"
+        );
+    }
+
+    #[test]
+    fn rejects_a_unc_workspace_as_a_mount_source() {
+        // Docker's own failure for this arrives several steps later and never
+        // mentions the folder that caused it.
+        assert!(host_mount_path("\\\\wsl$\\Ubuntu\\home\\me\\proj").is_err());
+        assert!(host_mount_path("\\\\server\\share\\proj").is_err());
+    }
+
+    #[test]
+    fn passes_a_local_path_through_as_a_mount_source() {
+        assert_eq!(
+            host_mount_path("/home/me/proj").unwrap(),
+            "/home/me/proj".to_string()
+        );
+    }
 }

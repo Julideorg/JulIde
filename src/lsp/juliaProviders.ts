@@ -139,7 +139,7 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
     triggerCharacters: [".", "(", ",", " "],
     provideCompletionItems: async (model, position) => {
       if (!lspClient.supports("completionProvider")) return { suggestions: [] };
-      const uri = `file://${model.uri.path}`;
+      const uri = model.uri.toString();
       try {
         const items = await lspClient.getCompletions(
           uri,
@@ -182,7 +182,7 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
   monaco.languages.registerHoverProvider("julia", {
     provideHover: async (model, position) => {
       if (!lspClient.supports("hoverProvider")) return null;
-      const uri = `file://${model.uri.path}`;
+      const uri = model.uri.toString();
       try {
         const hover = await lspClient.getHover(uri, position.lineNumber - 1, position.column - 1);
         if (!hover) return null;
@@ -200,7 +200,7 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
   monaco.languages.registerDefinitionProvider("julia", {
     provideDefinition: async (model, position) => {
       if (!lspClient.supports("definitionProvider")) return [];
-      const uri = `file://${model.uri.path}`;
+      const uri = model.uri.toString();
       try {
         const locations = await lspClient.getDefinition(
           uri,
@@ -223,7 +223,7 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
     signatureHelpRetriggerCharacters: [","],
     provideSignatureHelp: async (model, position) => {
       if (!lspClient.supports("signatureHelpProvider")) return null;
-      const uri = `file://${model.uri.path}`;
+      const uri = model.uri.toString();
       try {
         const help = await lspClient.getSignatureHelp(
           uri,
@@ -266,7 +266,7 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
   monaco.languages.registerReferenceProvider("julia", {
     provideReferences: async (model, position) => {
       if (!lspClient.supports("referencesProvider")) return [];
-      const uri = `file://${model.uri.path}`;
+      const uri = model.uri.toString();
       try {
         const locations = await lspClient.getReferences(
           uri,
@@ -287,7 +287,7 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
   monaco.languages.registerRenameProvider("julia", {
     provideRenameEdits: async (model, position, newName) => {
       if (!lspClient.supports("renameProvider")) return { edits: [] };
-      const uri = `file://${model.uri.path}`;
+      const uri = model.uri.toString();
       try {
         const edit = await lspClient.rename(
           uri,
@@ -302,7 +302,7 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
       }
     },
     resolveRenameLocation: async (model, position) => {
-      const uri = `file://${model.uri.path}`;
+      const uri = model.uri.toString();
       try {
         const range = await lspClient.prepareRename(
           uri,
@@ -330,7 +330,7 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
   monaco.languages.registerCodeActionProvider("julia", {
     provideCodeActions: async (model, range, context) => {
       if (!lspClient.supports("codeActionProvider")) return { actions: [], dispose: () => {} };
-      const uri = `file://${model.uri.path}`;
+      const uri = model.uri.toString();
       try {
         const lspRange = {
           start: { line: range.startLineNumber - 1, character: range.startColumn - 1 },
@@ -371,7 +371,7 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
   monaco.languages.registerDocumentFormattingEditProvider("julia", {
     provideDocumentFormattingEdits: async (model, options) => {
       if (!lspClient.supports("documentFormattingProvider")) return [];
-      const uri = `file://${model.uri.path}`;
+      const uri = model.uri.toString();
       try {
         const edits = await lspClient.formatting(uri, options.tabSize, options.insertSpaces);
         return edits.map((edit) => ({
@@ -390,7 +390,7 @@ export function registerJuliaLspProviders(monaco: typeof Monaco): void {
       // Fatou has no inlay hint support at all; without this gate every
       // viewport change would round-trip a request it always answers empty.
       if (!lspClient.supports("inlayHintProvider")) return { hints: [], dispose: () => {} };
-      const uri = `file://${model.uri.path}`;
+      const uri = model.uri.toString();
       try {
         const lspRange = {
           start: { line: range.startLineNumber - 1, character: range.startColumn - 1 },
@@ -446,7 +446,7 @@ function registerDynamicProviders(monaco: typeof Monaco): void {
       monaco.languages.registerDocumentSemanticTokensProvider("julia", {
         getLegend: () => monacoLegend,
         provideDocumentSemanticTokens: async (model) => {
-          const uri = `file://${model.uri.path}`;
+          const uri = model.uri.toString();
           try {
             const result = await lspClient.getSemanticTokensFull(uri);
             if (!result) return { data: new Uint32Array(0) };
@@ -466,7 +466,7 @@ function registerDynamicProviders(monaco: typeof Monaco): void {
     dynamicDisposables.push(
       monaco.languages.registerDocumentRangeFormattingEditProvider("julia", {
         provideDocumentRangeFormattingEdits: async (model, range, options) => {
-          const uri = `file://${model.uri.path}`;
+          const uri = model.uri.toString();
           try {
             const edits = await lspClient.rangeFormatting(
               uri,

@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useIdeStore } from "../../stores/useIdeStore";
 import { usePluginStore } from "../../stores/usePluginStore";
 import { lspClient } from "../../lsp/LspClient";
+import { pathToUri, uriToPath } from "../../lsp/uri";
 import { toast } from "../ui";
 import type { Tone } from "../ui";
 import { openFileAtPath } from "../../services/openFile";
@@ -229,12 +230,12 @@ export const MODES: Mode[] = [
         return {
           id: `${s.name}-${i}`,
           label: s.name,
-          detail: s.containerName || loc?.uri.replace(/^file:\/\//, ""),
+          detail: s.containerName || (loc ? uriToPath(loc.uri) : undefined),
           hint: s.kind ? SYMBOL_KIND[s.kind] : undefined,
           run: async () => {
             if (!loc) return;
-            const path = decodeURIComponent(loc.uri.replace(/^file:\/\//, ""));
-            await openFileAtPath(path, path.split("/").pop() ?? path);
+            const path = uriToPath(loc.uri);
+            await openFileAtPath(path);
             const { line, column } = toMonaco(loc.range.start);
             // Let the editor swap models before moving the cursor.
             setTimeout(() => revealPosition(line, column), 60);
@@ -289,7 +290,7 @@ export const MODES: Mode[] = [
       const state = useIdeStore.getState();
       const tab = state.openTabs.find((t) => t.id === state.activeTabId);
       if (!tab) return [];
-      const raw = (await lspClient.getDocumentSymbols(`file://${tab.path}`)) as LspSymbol[] | null;
+      const raw = (await lspClient.getDocumentSymbols(pathToUri(tab.path))) as LspSymbol[] | null;
       const symbols = flattenSymbols(raw ?? []);
       return rank(query, symbols, (s) => s.name).map((s, i) => {
         const start = s.selectionRange?.start ?? s.range?.start ?? s.location?.range.start;

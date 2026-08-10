@@ -7,6 +7,7 @@ import { useIdeStore } from "../../stores/useIdeStore";
 import { useSettingsStore } from "../../stores/useSettingsStore";
 import { LATEX_UNICODE } from "./latexUnicode";
 import { lspClient } from "../../lsp/LspClient";
+import { pathToUri } from "../../lsp/uri";
 import { PTY_SESSION_ID } from "../../constants";
 import { cellResultDecorations, getActiveTab, runCellAtCursor } from "./runCell";
 import { isNotebookSource, parseJupytext } from "../../notebook/jupytext";
@@ -277,7 +278,7 @@ export function MonacoEditor() {
   // LSP Management
   useEffect(() => {
     if (!activeTab?.path.endsWith(".jl")) return;
-    const uri = `file://${activeTab.path}`;
+    const uri = pathToUri(activeTab.path);
     lspVersionRef.current.set(uri, 1);
     lspClient.didOpen(uri, activeTab.content).catch(console.error);
     return () => {
@@ -420,7 +421,7 @@ export function MonacoEditor() {
       if (activeTab.path.endsWith(".jl")) {
         if (lspChangeTimerRef.current) clearTimeout(lspChangeTimerRef.current);
         lspChangeTimerRef.current = setTimeout(() => {
-          const uri = `file://${activeTab.path}`;
+          const uri = pathToUri(activeTab.path);
           const v = (lspVersionRef.current.get(uri) ?? 1) + 1;
           lspVersionRef.current.set(uri, v);
           lspClient.didChange(uri, value, v).catch(console.error);
@@ -488,7 +489,12 @@ export function MonacoEditor() {
   return (
     <div ref={containerRef} className="editor-container">
       <Editor
-        path={activeTab.path}
+        // The model URI, not just a key: @monaco-editor/react builds the model
+        // with `monaco.Uri.parse(path)`. Handing it the raw OS path made the
+        // model's URI something the language server had never seen (on Windows,
+        // a `C:` scheme), so diagnostics arrived for a URI with no model behind
+        // it and no squiggle was ever drawn.
+        path={pathToUri(activeTab.path)}
         language={getLanguage(activeTab.name)}
         defaultValue={activeTab.content}
         theme={settings.theme}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useIdeStore } from "../../stores/useIdeStore";
 import { lspClient } from "../../lsp/LspClient";
+import { pathToUri } from "../../lsp/uri";
 import { List, ChevronRight, ChevronDown } from "lucide-react";
 
 interface DocumentSymbol {
@@ -136,7 +137,7 @@ export function OutlinePanel() {
     }
     setLoading(true);
     try {
-      const uri = `file://${activeTab.path}`;
+      const uri = pathToUri(activeTab.path);
       const result = await lspClient.getDocumentSymbols(uri);
       setSymbols((result as DocumentSymbol[]) ?? []);
     } catch {
