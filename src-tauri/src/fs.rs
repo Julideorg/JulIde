@@ -75,6 +75,71 @@ pub fn fs_write_file(path: String, content: String) -> Result<(), String> {
     std::fs::write(&path, content).map_err(|e| e.to_string())
 }
 
+/// Size and modification time, for change detection.
+///
+/// A missing file is `exists: false` rather than an error: the callers ask "has this
+/// changed under me?", and "it is not there" is an answer to that, not a fault.
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileStat {
+    pub exists: bool,
+    pub is_dir: bool,
+    pub size: u64,
+    pub mtime_ms: u64,
+}
+
+#[tauri::command]
+pub fn fs_stat(path: String) -> Result<FileStat, String> {
+    let meta = match std::fs::metadata(&path) {
+        Ok(meta) => meta,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(FileStat {
+                exists: false,
+                is_dir: false,
+                size: 0,
+                mtime_ms: 0,
+            })
+        }
+        Err(e) => return Err(e.to_string()),
+    };
+    let mtime_ms = meta
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    Ok(FileStat {
+        exists: true,
+        is_dir: meta.is_dir(),
+        size: meta.len(),
+        mtime_ms,
+    })
+}
+
+/// Write via a temporary file and a rename.
+///
+/// `fs_write_file` is a plain `std::fs::write`, which truncates first — fine for source
+/// text, but a crash midway through a multi-megabyte `.ipynb` would lose every output it
+/// held. The temp name is dot-prefixed so `build_tree` skips it, and a rename emits
+/// Create/Remove rather than Modify, which the editor's reload path already ignores.
+#[tauri::command]
+pub fn fs_write_file_atomic(path: String, content: String) -> Result<(), String> {
+    let target = Path::new(&path);
+    let parent = target.parent().ok_or("path has no parent directory")?;
+    let name = target
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or("path has no file name")?;
+    std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+
+    let tmp = parent.join(format!(".{name}.tmp"));
+    std::fs::write(&tmp, content).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, target).map_err(|e| {
+        let _ = std::fs::remove_file(&tmp);
+        e.to_string()
+    })
+}
+
 #[tauri::command]
 pub fn fs_create_file(path: String) -> Result<(), String> {
     // Create parent dirs if needed
@@ -228,5 +293,53 @@ mod tests {
         let names: Vec<&str> = children.iter().map(|c| c.name.as_str()).collect();
 
         assert_eq!(names, vec!["a.jl", "b.jl", "c.jl"]);
+    }
+
+    #[test]
+    fn stat_reports_a_missing_file_as_absent_rather_than_erroring() {
+        // Callers ask "did this change under me?"; "not there" is an answer.
+        let dir = tempfile::tempdir().unwrap();
+        let missing = dir.path().join("nope.ipynb");
+        let stat = fs_stat(missing.to_str().unwrap().into()).unwrap();
+        assert!(!stat.exists);
+        assert_eq!(stat.size, 0);
+    }
+
+    #[test]
+    fn stat_reports_size_and_a_modification_time() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("a.jl");
+        std::fs::write(&file, b"x = 1\n").unwrap();
+        let stat = fs_stat(file.to_str().unwrap().into()).unwrap();
+        assert!(stat.exists);
+        assert!(!stat.is_dir);
+        assert_eq!(stat.size, 6);
+        assert!(stat.mtime_ms > 0);
+    }
+
+    #[test]
+    fn atomic_write_replaces_the_target_and_leaves_no_temp_behind() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("nb.ipynb");
+        std::fs::write(&file, b"old").unwrap();
+
+        fs_write_file_atomic(file.to_str().unwrap().into(), "new".into()).unwrap();
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "new");
+
+        let leftovers: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .filter(|n| n.ends_with(".tmp"))
+            .collect();
+        assert!(leftovers.is_empty(), "left behind: {leftovers:?}");
+    }
+
+    #[test]
+    fn atomic_write_creates_missing_parent_directories() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("nested/deep/nb.ipynb");
+        fs_write_file_atomic(file.to_str().unwrap().into(), "x".into()).unwrap();
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "x");
     }
 }

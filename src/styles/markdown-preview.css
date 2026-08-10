@@ -162,9 +162,9 @@
 }
 
 /* ── Image placeholder ──────────────────────────────────────────────────── */
-/* No image in a markdown file can load: the CSP allows img-src 'self' data: blob:
-   only — no remote hosts — and there is no command to read local image bytes. So
-   the renderer emits this instead of an <img> that would fail and log a violation. */
+/* Shown when the image escape hatches are off, which is the default. The renderer
+   emits this span instead of an <img>; see src/markdown/renderer.ts. Turning either
+   toggle on switches the renderer to .md-img below, which the preview then resolves. */
 .markdown-preview-body .md-img-missing {
   display: inline-flex;
   align-items: center;
@@ -179,6 +179,48 @@
 .markdown-preview-body .md-img-missing::before {
   content: "🖼";
   font-style: normal;
+}
+
+/* ── Resolvable images ──────────────────────────────────────────────────── */
+/* The span stays in the DOM after the <img> is appended into it: it is the anchor
+   that makes useMarkdownImages idempotent, and it carries the alt text as its own
+   content so a failed resolve still reads correctly. */
+.markdown-preview-body .md-img {
+  display: inline-block;
+  color: var(--fg-lo);
+  font-style: italic;
+}
+
+/* `![](x.png)` — no alt text at all, so give the placeholder something to be. */
+.markdown-preview-body .md-img:empty::before {
+  content: "🖼";
+  font-style: normal;
+}
+
+.markdown-preview-body .md-img--loading {
+  opacity: 0.6;
+}
+
+.markdown-preview-body .md-img--error {
+  color: var(--status-danger);
+  text-decoration: underline dotted;
+}
+
+/* The image has landed, so the alt text must stop rendering next to it. `font-size: 0`
+   rather than `display: none`, which would take the <img> child down with it. */
+.markdown-preview-body .md-img--done {
+  font-size: 0;
+  font-style: normal;
+}
+.markdown-preview-body .md-img--done::before {
+  content: none;
+}
+
+.markdown-preview-body .md-img-el {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
 }
 
 /* ── Tab-strip toggle ───────────────────────────────────────────────────── */

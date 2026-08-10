@@ -57,12 +57,32 @@ pub struct Settings {
     pub settings_version: u32,
     #[serde(default = "default_true")]
     pub start_maximized: bool,
+    /// Show text labels under the activity bar icons.
+    ///
+    /// Existed on the TypeScript side only until 0.4.2, so `settings_save` — which
+    /// writes the whole struct — dropped it on every write and the toggle reset itself
+    /// on restart.
+    #[serde(default = "default_true")]
+    pub activity_bar_labels: bool,
     /// Sidebar width in pixels. Persisted so a resized layout survives a restart.
     #[serde(default = "default_sidebar_width")]
     pub sidebar_width: u32,
     /// Bottom panel height in pixels.
     #[serde(default = "default_bottom_panel_height")]
     pub bottom_panel_height: u32,
+    /// Render images stored in the open workspace (relative paths in markdown).
+    ///
+    /// Off by default. Reads bytes off disk under the workspace root and hands them to
+    /// the webview as a blob — no network, and traversal outside the root is refused.
+    #[serde(default)]
+    pub allow_local_images: bool,
+    /// Render `https://` images in markdown.
+    ///
+    /// Off by default, and deliberately separate from [`Self::allow_local_images`]:
+    /// this one leaks the reader's IP address and read time to whoever hosts the image,
+    /// which viewing a cloned repository's README should not do silently.
+    #[serde(default)]
+    pub allow_remote_images: bool,
 }
 
 fn default_font_size() -> u32 {
@@ -138,8 +158,11 @@ impl Default for Settings {
             format_on_save: false,
             settings_version: SETTINGS_VERSION,
             start_maximized: default_true(),
+            activity_bar_labels: default_true(),
             sidebar_width: default_sidebar_width(),
             bottom_panel_height: default_bottom_panel_height(),
+            allow_local_images: false,
+            allow_remote_images: false,
         }
     }
 }
@@ -294,6 +317,39 @@ mod tests {
         assert_eq!(s.fatou_indent_width, 4);
         assert!(!s.format_on_save);
         assert!(s.recent_workspaces.is_empty());
+        // Both image escape hatches are opt-in: the default posture must stay closed.
+        assert!(!s.allow_local_images);
+        assert!(!s.allow_remote_images);
+    }
+
+    #[test]
+    fn activity_bar_labels_survives_a_save() {
+        // It used to exist only in the TS Settings interface, so serde silently dropped
+        // it from every settings_save and the toggle reset itself on restart.
+        let json = serde_json::to_string(&Settings {
+            activity_bar_labels: false,
+            ..Default::default()
+        })
+        .unwrap();
+        assert!(json.contains("activityBarLabels"), "got: {json}");
+        let back: Settings = serde_json::from_str(&json).unwrap();
+        assert!(!back.activity_bar_labels);
+        // Absent from an older file means "on", matching the TS default.
+        let old: Settings = serde_json::from_str(r#"{"fontSize": 16}"#).unwrap();
+        assert!(old.activity_bar_labels);
+    }
+
+    #[test]
+    fn image_settings_default_off_for_existing_installs() {
+        // `settings_save` writes every field, so every existing install has a settings
+        // file without these keys. They must read as false rather than failing to parse.
+        let s: Settings = serde_json::from_str(r#"{"fontSize": 16}"#).unwrap();
+        assert!(!s.allow_local_images);
+        assert!(!s.allow_remote_images);
+
+        let json = serde_json::to_string(&Settings::default()).unwrap();
+        assert!(json.contains("allowLocalImages"), "got: {json}");
+        assert!(json.contains("allowRemoteImages"), "got: {json}");
     }
 
     #[test]

@@ -3,8 +3,11 @@ import {
   escapeHtml,
   isSanitizerAvailable,
   sanitizeMarkdown,
+  sanitizeSvgDocument,
   MARKDOWN_ALLOWED_ATTR,
   MARKDOWN_ALLOWED_TAGS,
+  SVG_FORBID_ATTR,
+  SVG_FORBID_TAGS,
 } from "./sanitize";
 
 /**
@@ -99,5 +102,35 @@ describe("escapeHtml", () => {
 
   test("leaves ordinary prose alone", () => {
     expect(escapeHtml("Plots.jl v1.40 — fast")).toBe("Plots.jl v1.40 — fast");
+  });
+});
+
+describe("SVG allowlist", () => {
+  test("forbids every element that can execute, load or navigate", () => {
+    for (const tag of ["script", "foreignObject", "a", "use", "image", "iframe", "object"]) {
+      expect(SVG_FORBID_TAGS).toContain(tag);
+    }
+  });
+
+  test("forbids href in every spelling, so no external reference survives", () => {
+    expect(SVG_FORBID_ATTR).toContain("href");
+    expect(SVG_FORBID_ATTR).toContain("xlink:href");
+  });
+
+  test("the markdown allowlist is unaffected — svg and img are still forbidden there", () => {
+    // The SVG path is for bytes julIDE fetched itself. A *document* must still never
+    // be able to express an image or an inline SVG.
+    expect(MARKDOWN_ALLOWED_TAGS).not.toContain("svg");
+    expect(MARKDOWN_ALLOWED_TAGS).not.toContain("img");
+    expect(MARKDOWN_ALLOWED_ATTR).not.toContain("src");
+  });
+});
+
+describe("SVG fails closed without a DOM", () => {
+  test("returns null rather than the source when no sanitizer is available", () => {
+    // Same discipline as sanitizeMarkdown's escaping fallback: the one thing that must
+    // never happen is unsanitized markup becoming a URL because DOMPurify wasn't there.
+    expect(isSanitizerAvailable()).toBe(false);
+    expect(sanitizeSvgDocument("<svg xmlns='http://www.w3.org/2000/svg'/>")).toBeNull();
   });
 });

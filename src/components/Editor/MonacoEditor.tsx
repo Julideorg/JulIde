@@ -1,51 +1,23 @@
 // src/components/Editor/MonacoEditor.tsx
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import Editor, { OnMount } from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { useIdeStore } from "../../stores/useIdeStore";
 import { useSettingsStore } from "../../stores/useSettingsStore";
 import { LATEX_UNICODE } from "./latexUnicode";
 import { lspClient } from "../../lsp/LspClient";
 import { PTY_SESSION_ID } from "../../constants";
-import type { JuliaOutputEvent } from "../../types";
-import { stripAnsiForDisplay } from "../../utils/juliaOutput";
+import { cellResultDecorations, getActiveTab, runCellAtCursor } from "./runCell";
+import { isNotebookSource, parseJupytext } from "../../notebook/jupytext";
+import { useCellLayer } from "./notebook/useCellLayer";
+import { setActiveCellLayer } from "./notebook/cellLens";
+import { runCell, runCellAndAdvance } from "./notebook/cellActions";
+import { syncToNotebook } from "../../notebook/pairing";
+import { toast } from "../ui";
 
 const SAVE_DEBOUNCE_MS = 800;
 const DEFER_RENDER_MS = 200; // Time to let Monaco paint before firing heavy IPC/Scans
-
-function getCellRange(
-  model: Monaco.editor.ITextModel,
-  lineNumber: number,
-): { startLine: number; endLine: number } {
-  const lineCount = model.getLineCount();
-  let startLine = 1;
-  let endLine = lineCount;
-
-  for (let i = lineNumber; i >= 1; i--) {
-    const content = model.getLineContent(i).trimStart();
-    if (content.startsWith("##")) {
-      startLine = i === lineNumber ? i + 1 : i + 1;
-      break;
-    }
-  }
-
-  const currentContent = model.getLineContent(lineNumber).trimStart();
-  if (currentContent.startsWith("##")) {
-    startLine = lineNumber + 1;
-  }
-
-  for (let i = startLine; i <= lineCount; i++) {
-    const content = model.getLineContent(i).trimStart();
-    if (content.startsWith("##") && i > startLine) {
-      endLine = i - 1;
-      break;
-    }
-  }
-
-  return { startLine, endLine };
-}
 
 function getLanguage(filename: string): string {
   const ext = filename.split(".").pop()?.toLowerCase();
@@ -79,7 +51,6 @@ export function MonacoEditor() {
   const updateTabContent = useIdeStore((s) => s.updateTabContent);
   const markTabSaved = useIdeStore((s) => s.markTabSaved);
   const breakpoints = useIdeStore((s) => s.breakpoints);
-  const toggleBreakpoint = useIdeStore((s) => s.toggleBreakpoint);
   const debug = useIdeStore((s) => s.debug);
   const problems = useIdeStore((s) => s.problems);
   const blameEnabled = useIdeStore((s) => s.blameEnabled);
@@ -91,6 +62,10 @@ export function MonacoEditor() {
 
   const activeTab = openTabs.find((t) => t.id === activeTabId) ?? null;
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
+  // State as well as a ref: the cell layer is a hook, so it needs a render to attach.
+  const [mountedEditor, setMountedEditor] = useState<Monaco.editor.IStandaloneCodeEditor | null>(
+    null,
+  );
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lspChangeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cellUpdateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -103,43 +78,52 @@ export function MonacoEditor() {
   const errorLensDecoRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
   const blameDecoRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const cellLayerRef = useRef<import("./notebook/cellZones").NotebookCellLayer | null>(null);
+  const notebookContextRef = useRef<Monaco.editor.IContextKey<boolean> | null>(null);
 
   const updateCellDecorations = useCallback(() => {
     const editor = editorRef.current;
-    if (!editor || !cellDecoRef.current || !activeTab?.path.endsWith(".jl")) return;
+    if (!editor || !cellDecoRef.current) return;
+    // Read the path from the store: this runs from a setTimeout in handleMount, which
+    // captured the mount-time closure.
+    if (!getActiveTab()?.path.endsWith(".jl")) return;
 
     const model = editor.getModel();
     if (!model) return;
 
-    const decos: Monaco.editor.IModelDeltaDecoration[] = [];
-    const lineCount = model.getLineCount();
-
-    for (let i = 1; i <= lineCount; i++) {
-      const content = model.getLineContent(i).trimStart();
-      if (content.startsWith("##")) {
-        decos.push({
-          range: { startLineNumber: i, startColumn: 1, endLineNumber: i, endColumn: 1 },
-          options: {
-            isWholeLine: true,
-            className: "code-cell-separator",
-            glyphMarginClassName: "code-cell-glyph",
-          },
-        });
-      }
-    }
+    // One parse drives the decorations and Ctrl+Enter alike, so they cannot disagree
+    // about where a cell ends. It also understands `# %%`, which the previous
+    // `startsWith("##")` scan did not — a percent notebook read as one giant cell.
+    const doc = parseJupytext(model.getValue());
+    const decos: Monaco.editor.IModelDeltaDecoration[] = doc.cells
+      .filter((cell) => !cell.implicit)
+      .map((cell) => ({
+        range: {
+          startLineNumber: cell.range.markerLine,
+          startColumn: 1,
+          endLineNumber: cell.range.markerLine,
+          endColumn: 1,
+        },
+        options: {
+          isWholeLine: true,
+          className: "code-cell-separator",
+          glyphMarginClassName: "code-cell-glyph",
+        },
+      }));
     cellDecoRef.current.set(decos);
-  }, [activeTab?.path]);
+  }, []);
 
   const handleMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     setEditorInstance(editor);
+    setMountedEditor(editor);
 
     editor.onMouseDown((e) => {
-      if (e.target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) {
-        const line = e.target.position?.lineNumber;
-        if (line && activeTab) {
-          toggleBreakpoint(activeTab.path, line);
-        }
+      if (e.target.type !== monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return;
+      const line = e.target.position?.lineNumber;
+      const tab = getActiveTab();
+      if (line && tab) {
+        useIdeStore.getState().toggleBreakpoint(tab.path, line);
       }
     });
 
@@ -173,100 +157,35 @@ export function MonacoEditor() {
       ]);
     });
 
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
-      const model = editor.getModel();
-      const position = editor.getPosition();
-      if (!model || !position || !activeTab?.path.endsWith(".jl")) return;
-
-      const { startLine, endLine } = getCellRange(model, position.lineNumber);
-      const lines: string[] = [];
-      for (let i = startLine; i <= endLine; i++) {
-        lines.push(model.getLineContent(i));
-      }
-      const code = lines.join("\n").trim();
-      if (!code) return;
-
-      if (cellResultDecoRef.current) {
-        cellResultDecoRef.current.set([
-          {
-            range: {
-              startLineNumber: endLine,
-              startColumn: 1,
-              endLineNumber: endLine,
-              endColumn: 1,
-            },
-            options: {
-              isWholeLine: true,
-              after: { content: "  ... running", inlineClassName: "cell-result-running" },
-            },
-          },
-        ]);
-      }
-
-      const outputLines: string[] = [];
-      let resultUnlisten: (() => void) | null = null;
-
-      listen<JuliaOutputEvent>("julia-output", (event) => {
-        const { kind, text } = event.payload;
-        if (kind === "stdout" || kind === "stderr") {
-          if (text) outputLines.push(text);
-        } else if (kind === "done") {
-          const resultText =
-            stripAnsiForDisplay(outputLines.join("; ").slice(0, 120)).trim() || "(no output)";
-          if (cellResultDecoRef.current) {
-            cellResultDecoRef.current.set([
-              {
-                range: {
-                  startLineNumber: endLine,
-                  startColumn: 1,
-                  endLineNumber: endLine,
-                  endColumn: 1,
-                },
-                options: {
-                  isWholeLine: true,
-                  after: { content: `  => ${resultText}`, inlineClassName: "cell-result-text" },
-                },
-              },
-            ]);
-          }
-          const store = useIdeStore.getState();
-          store.setIsRunning(false);
-          resultUnlisten?.();
-        }
-      }).then((fn) => {
-        resultUnlisten = fn;
-      });
-
-      const store = useIdeStore.getState();
-      store.setIsRunning(true);
-      store.appendOutput({ kind: "info", text: `Cell [Ln ${startLine}-${endLine}]` });
-      invoke("julia_eval", {
-        code,
-        projectPath: store.workspacePath ?? null,
-      }).catch((e) => {
-        store.appendOutput({ kind: "stderr", text: String(e) });
-        store.setIsRunning(false);
-        if (cellResultDecoRef.current) {
-          cellResultDecoRef.current.set([
-            {
-              range: {
-                startLineNumber: endLine,
-                startColumn: 1,
-                endLineNumber: endLine,
-                endColumn: 1,
-              },
-              options: {
-                isWholeLine: true,
-                after: {
-                  content: `  => Error: ${String(e).slice(0, 80)}`,
-                  inlineClassName: "cell-result-error",
-                },
-              },
-            },
-          ]);
-        }
-      });
+    // Notebook files run through the persistent kernel so cells share state; a plain
+    // `##` script keeps the old one-shot path, which needs no kernel at all.
+    const layerNow = () => cellLayerRef.current;
+    editor.addAction({
+      id: "julide.notebook.runCell",
+      label: "Run Cell",
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
+      contextMenuGroupId: "julide-notebook",
+      contextMenuOrder: 1,
+      run: () => {
+        const layer = layerNow();
+        const tab = getActiveTab();
+        if (layer && tab && isNotebookSource(tab.content)) void runCell(editor, layer);
+        else void runCellAtCursor(editor);
+      },
     });
+    editor.addAction({
+      id: "julide.notebook.runCellAndAdvance",
+      label: "Run Cell and Advance",
+      keybindings: [monaco.KeyMod.Shift | monaco.KeyCode.Enter],
+      precondition: "julideNotebookFile",
+      contextMenuGroupId: "julide-notebook",
+      contextMenuOrder: 2,
+      run: () => {
+        const layer = layerNow();
+        if (layer) void runCellAndAdvance(editor, layer);
+      },
+    });
+    notebookContextRef.current = editor.createContextKey<boolean>("julideNotebookFile", false);
 
     editor.onDidChangeCursorPosition((e) => {
       setCursorPosition(e.position.lineNumber, e.position.column);
@@ -281,6 +200,7 @@ export function MonacoEditor() {
     debugDecoRef.current = editor.createDecorationsCollection([]);
     cellDecoRef.current = editor.createDecorationsCollection([]);
     cellResultDecoRef.current = editor.createDecorationsCollection([]);
+    cellResultDecorations.set(editor, cellResultDecoRef.current);
     errorLensDecoRef.current = editor.createDecorationsCollection([]);
     blameDecoRef.current = editor.createDecorationsCollection([]);
 
@@ -337,7 +257,19 @@ export function MonacoEditor() {
           console.error("Format on save failed:", e);
         }
       }
-      await saveFile(tab.id, tab.path, editor.getValue());
+      const text = editor.getValue();
+      await saveFile(tab.id, tab.path, text);
+
+      // Pairing runs on the explicit save only, never on the 800ms autosave — see the
+      // note at the top of notebook/pairing.ts. The two files may drift between saves
+      // and reconverge here; the .ipynb is a pure projection, so nothing is lost.
+      void syncToNotebook(tab.path, text, "save").then((result) => {
+        if (result.status === "conflict") {
+          toast.warning("The paired notebook changed on disk", result.message ?? "");
+        } else if (result.status === "error") {
+          toast.error("Could not update the paired notebook", result.message ?? "");
+        }
+      });
     },
     [saveFile],
   );
@@ -511,6 +443,20 @@ export function MonacoEditor() {
     };
   }, []);
 
+  // Cell output panels. Only for jupytext files: a plain script gets no view zones and
+  // no anchors, so the layer costs nothing when it is not wanted.
+  const isNotebook = !!activeTab?.path.endsWith(".jl") && isNotebookSource(activeTab.content);
+  const { portals } = useCellLayer(mountedEditor, isNotebook, (layer) => {
+    cellLayerRef.current = layer;
+    // The lens commands are module-global, so they need to know which editor owns the
+    // cells right now.
+    setActiveCellLayer(layer ? mountedEditor : null, layer);
+  });
+
+  useEffect(() => {
+    notebookContextRef.current?.set(isNotebook);
+  }, [isNotebook]);
+
   if (!activeTab) {
     return (
       <div className="editor-empty">
@@ -576,6 +522,11 @@ export function MonacoEditor() {
           padding: { top: 8, bottom: 8 },
         }}
       />
+      {/*
+        Cell outputs. Rendered here as portals into Monaco-owned view-zone nodes, so the
+        panels participate in the React tree while Monaco keeps control of their layout.
+      */}
+      {portals}
     </div>
   );
 }

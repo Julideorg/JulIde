@@ -38,6 +38,17 @@ export interface Settings {
   sidebarWidth: number;
   /** Bottom panel height in px. */
   bottomPanelHeight: number;
+  /**
+   * Render images stored in the open workspace (relative paths in markdown).
+   * Off by default; reads bytes off disk under the workspace root, no network.
+   */
+  allowLocalImages: boolean;
+  /**
+   * Render `https://` images in markdown. Off by default, and separate from
+   * {@link allowLocalImages} because this one tells the image host your IP address
+   * and when you opened the file.
+   */
+  allowRemoteImages: boolean;
 }
 
 interface SettingsStore {
@@ -82,6 +93,8 @@ export const defaultSettings: Settings = {
   startMaximized: true,
   sidebarWidth: 240,
   bottomPanelHeight: 220,
+  allowLocalImages: false,
+  allowRemoteImages: false,
 };
 
 /**

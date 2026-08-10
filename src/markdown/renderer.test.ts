@@ -101,8 +101,8 @@ describe("links", () => {
   });
 });
 
-describe("images", () => {
-  test("no <img> is ever emitted — nothing can load under the CSP", () => {
+describe("images (default: blocked)", () => {
+  test("no <img> is ever emitted — the preview decides, not the document", () => {
     const html = renderMarkdownUnsafe("![a diagram](./diagram.png)");
     expect(html).not.toContain("<img");
     expect(html).toContain("md-img-missing");
@@ -122,6 +122,62 @@ describe("images", () => {
 
   test("an image with no alt text still renders a placeholder", () => {
     expect(renderMarkdownUnsafe("![](./x.png)")).toContain("md-img-missing");
+  });
+});
+
+describe('images with { images: "resolvable" }', () => {
+  const R = { images: "resolvable" } as const;
+
+  test("still emits no <img> — the element is created after sanitization", () => {
+    // This is what lets `img` stay in FORBID_TAGS and `src` in FORBID_ATTR.
+    const html = renderMarkdownUnsafe("![a diagram](./diagram.png)", R);
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain(" src=");
+    expect(html).toContain('<span class="md-img" data-md-src="./diagram.png">a diagram</span>');
+  });
+
+  test("the class changes, so the resolver finds only these", () => {
+    const html = renderMarkdownUnsafe("![a](./x.png)", R);
+    expect(html).toContain('class="md-img"');
+    expect(html).not.toContain("md-img-missing");
+  });
+
+  test("a remote image gets the same span; the scheme is judged at resolve time", () => {
+    expect(renderMarkdownUnsafe("![badge](https://img.shields.io/x.svg)", R)).toContain(
+      'data-md-src="https://img.shields.io/x.svg"',
+    );
+  });
+
+  test("a query string survives the round trip through the attribute", () => {
+    // Badge URLs carry them, and &amp; must decode back to & via getAttribute.
+    const html = renderMarkdownUnsafe("![b](https://img.shields.io/x?a=1&b=2)", R);
+    expect(html).toContain('data-md-src="https://img.shields.io/x?a=1&amp;b=2"');
+  });
+
+  test("an image with no alt text yields an empty span", () => {
+    expect(renderMarkdownUnsafe("![](./x.png)", R)).toContain(
+      '<span class="md-img" data-md-src="./x.png"></span>',
+    );
+  });
+
+  test("alt text cannot break out of the span", () => {
+    const html = renderMarkdownUnsafe('![" onerror="alert(1)](./x.png)', R);
+    expect(html).not.toContain('onerror="alert(1)"');
+    expect(html).toContain("&quot;");
+  });
+
+  test("a hostile src is carried inertly, for the resolver to refuse", () => {
+    // data-md-src is not a URI attribute, so ALLOWED_URI_REGEXP does not apply to it.
+    // classifyImageSrc is what refuses this, and it is tested there.
+    const html = renderMarkdownUnsafe("![x](javascript:alert(1))", R);
+    expect(html).not.toContain("<img");
+    expect(html).toContain('data-md-src="javascript:alert(1)"');
+  });
+
+  test("resolvable mode changes nothing else about the document", () => {
+    // The option must be a switch on one renderer and nothing else.
+    const src = "# T\n\n[l](https://x.dev)\n\n- [x] done\n\n<script>alert(1)</script>";
+    expect(renderMarkdownUnsafe(src, R)).toBe(renderMarkdownUnsafe(src));
   });
 });
 

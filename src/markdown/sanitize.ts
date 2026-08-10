@@ -139,3 +139,75 @@ export function sanitizeMarkdown(dirty: string): string {
 export function isSanitizerAvailable(): boolean {
   return DOMPurify.isSupported === true && typeof DOMPurify.sanitize === "function";
 }
+
+/* ─── Standalone SVG documents ──────────────────────────────────────────────────
+ *
+ * Separate from everything above, and deliberately so: `svg` stays in the markdown
+ * FORBID_TAGS list, because a document must still never be able to *express* an SVG.
+ * This path is for bytes julIDE fetched itself, on the user's instruction, and is only
+ * reached when the image settings are on (see src-tauri/src/images.rs).
+ *
+ * Rendering an SVG through `<img>` is spec'd as secure static mode — no script, no
+ * external references — and that is not sufficient on its own. `URL.createObjectURL`
+ * makes a real, navigable URL, and a document opened from `blob:` inherits its
+ * creator's origin, which here is the realm holding the IPC bridge. The preview cancels
+ * anchor clicks, but an `<img>` is not an anchor and the webview's own "open image in
+ * new tab" is outside that handler. So: sanitize, and hand it back as `data:` rather
+ * than `blob:` (opaque origin, and no top-level navigation to it).
+ */
+
+/** Everything that can execute, load, or navigate — gone before the bytes become a URL. */
+export const SVG_FORBID_TAGS = [
+  "script",
+  "foreignObject",
+  "a",
+  "use",
+  "image",
+  "iframe",
+  "embed",
+  "object",
+  "audio",
+  "video",
+  "handler",
+  "listener",
+  "set",
+  "animate",
+  "animateTransform",
+  "animateMotion",
+];
+
+/**
+ * No href in any spelling.
+ *
+ * Gradients and filters reference by `fill="url(#id)"`, which is an attribute *value*
+ * rather than a URI attribute, so nothing legitimate breaks.
+ */
+export const SVG_FORBID_ATTR = ["href", "xlink:href", "src", "formaction", "ping"];
+
+const SVG_CONFIG = {
+  USE_PROFILES: { svg: true, svgFilters: true },
+  FORBID_TAGS: SVG_FORBID_TAGS,
+  FORBID_ATTR: SVG_FORBID_ATTR,
+  ALLOW_DATA_ATTR: false,
+  ALLOW_ARIA_ATTR: false,
+};
+
+const SVG_NAMESPACE = 'xmlns="http://www.w3.org/2000/svg"';
+
+/**
+ * Sanitize a standalone SVG document, or fail closed with `null`.
+ *
+ * Returns null rather than the source when no sanitizer is available — same reason
+ * `sanitizeMarkdown` escapes instead of passing through. The one thing that must never
+ * happen is unsanitized markup becoming a URL because the sanitizer quietly wasn't there.
+ */
+export function sanitizeSvgDocument(source: string): string | null {
+  if (!isSanitizerAvailable()) return null;
+  const clean = DOMPurify.sanitize(source, SVG_CONFIG);
+  if (!clean.includes("<svg")) return null;
+  // DOMPurify parses as HTML and returns `body.innerHTML`, which can drop the root
+  // namespace. Without `xmlns` the data: document is not an SVG at all and renders
+  // nothing — a silently blank image rather than an error.
+  if (/\sxmlns\s*=/.test(clean)) return clean;
+  return clean.replace(/<svg\b/i, `<svg ${SVG_NAMESPACE}`);
+}

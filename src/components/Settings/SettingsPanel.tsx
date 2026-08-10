@@ -217,6 +217,46 @@ export function SettingsPanel() {
               </label>
               <span className="settings-hint">Takes effect on next launch</span>
             </SettingRow>
+
+            {/*
+              Both default off. julIDE's markdown preview renders no images at all
+              otherwise — see src/markdown/renderer.ts. Neither toggle widens the CSP:
+              bytes are read in Rust and handed over as a blob. They are two settings
+              rather than one because the risks are not comparable.
+            */}
+            <SettingRow label="Workspace Images">
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={settings.allowLocalImages}
+                  onChange={(e) => updateSettings({ allowLocalImages: e.target.checked })}
+                />
+                <span className="settings-toggle-label">
+                  {settings.allowLocalImages ? "Shown" : "Hidden"}
+                </span>
+              </label>
+              <span className="settings-hint">
+                Show images stored in the open workspace. No network access; files outside the
+                workspace are still refused.
+              </span>
+            </SettingRow>
+
+            <SettingRow label="Remote Images">
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={settings.allowRemoteImages}
+                  onChange={(e) => updateSettings({ allowRemoteImages: e.target.checked })}
+                />
+                <span className="settings-toggle-label">
+                  {settings.allowRemoteImages ? "Shown" : "Hidden"}
+                </span>
+              </label>
+              <span className="settings-hint">
+                Fetch <code>https://</code> images such as README badges. Whoever hosts an image
+                learns your IP address and when you opened the file.
+              </span>
+            </SettingRow>
           </SettingsSection>
 
           <SettingsSection title="Julia">

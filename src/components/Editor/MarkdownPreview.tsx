@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useIdeStore } from "../../stores/useIdeStore";
+import { useSettingsStore } from "../../stores/useSettingsStore";
 import { openExternal } from "../../services/openExternal";
 import { openFileAtPath } from "../../services/openFile";
 import { classifyMarkdownHref } from "../../markdown/links";
 import { isMarkdownPath, renderMarkdown } from "../../markdown/renderer";
+import { useMarkdownImages } from "../../markdown/useMarkdownImages";
 import { toast } from "../ui";
 
 /**
@@ -31,8 +33,27 @@ export function MarkdownPreview({ tabId }: { tabId: string }) {
     return () => clearTimeout(t);
   }, [content]);
 
-  const html = useMemo(() => renderMarkdown(debounced), [debounced]);
+  const allowLocalImages = useSettingsStore((s) => s.settings.allowLocalImages);
+  const allowRemoteImages = useSettingsStore((s) => s.settings.allowRemoteImages);
+  const policy = useMemo(
+    () => ({ local: allowLocalImages, remote: allowRemoteImages }),
+    [allowLocalImages, allowRemoteImages],
+  );
+
+  // With both toggles off the renderer emits inert placeholders and the resolver never
+  // runs. The store starts unloaded with both defaulting to false, so the pre-load state
+  // is fail-closed; the cost is one re-render at startup once settings arrive.
+  const html = useMemo(
+    () =>
+      renderMarkdown(debounced, {
+        images: policy.local || policy.remote ? "resolvable" : "blocked",
+      }),
+    [debounced, policy],
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  useMarkdownImages(bodyRef, { html, docPath, workspacePath, policy });
 
   const onClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -103,8 +124,18 @@ export function MarkdownPreview({ tabId }: { tabId: string }) {
         nowhere else: marked with raw-HTML passthrough off, then DOMPurify's allowlist,
         with the CSP (script-src 'self', no unsafe-inline) underneath both. Do not feed
         this element from anywhere but src/markdown/renderer.ts.
+
+        This element's *children* are also mutated by useMarkdownImages, which swaps an
+        <img> into each resolvable placeholder. That is deliberate and is what keeps
+        `img` and `src` forbidden in the sanitizer allowlist: the document can ask for
+        an image, but only julIDE's own code can create one, from bytes it fetched
+        itself under a setting the user turned on.
       */}
-      <div className="markdown-preview-body" dangerouslySetInnerHTML={{ __html: html }} />
+      <div
+        className="markdown-preview-body"
+        ref={bodyRef}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
     </div>
   );
 }

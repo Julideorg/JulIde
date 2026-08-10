@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { useIdeStore } from "../../stores/useIdeStore";
+import { openFileAtPath } from "../../services/openFile";
 import { useSettingsStore } from "../../stores/useSettingsStore";
 import { showConfirm } from "../ui";
 import type { FileNode } from "../../types";
@@ -355,7 +356,6 @@ function FileTreeNode({ node, depth, onOpen, onRefresh }: FileTreeNodeProps) {
 export function FileExplorer() {
   const workspacePath = useIdeStore((s) => s.workspacePath);
   const fileTree = useIdeStore((s) => s.fileTree);
-  const openFile = useIdeStore((s) => s.openFile);
   const setWorkspace = useIdeStore((s) => s.setWorkspace);
   const setFileTree = useIdeStore((s) => s.setFileTree);
 
@@ -383,31 +383,23 @@ export function FileExplorer() {
     }
   }, [workspacePath, setFileTree]);
 
-  const handleOpen = useCallback(
-    async (node: FileNode) => {
-      if (node.is_dir) return;
-      const existingTabs = useIdeStore.getState().openTabs;
-      const existing = existingTabs.find((t) => t.path === node.path);
-      if (existing) {
-        useIdeStore.getState().setActiveTab(existing.id);
-        return;
-      }
-      try {
-        const content = await invoke<string>("fs_read_file", { path: node.path });
-        openFile({
-          id: `${Date.now()}-${Math.random()}`,
-          path: node.path,
-          name: node.name,
-          content,
-          isDirty: false,
-          language: node.name.endsWith(".jl") ? "julia" : "plaintext",
-        });
-      } catch (e) {
-        console.error("Cannot open file:", e);
-      }
-    },
-    [openFile],
-  );
+  const handleOpen = useCallback(async (node: FileNode) => {
+    if (node.is_dir) return;
+    const existingTabs = useIdeStore.getState().openTabs;
+    const existing = existingTabs.find((t) => t.path === node.path);
+    if (existing) {
+      useIdeStore.getState().setActiveTab(existing.id);
+      return;
+    }
+    try {
+      // Delegated rather than duplicated: openFileAtPath is the single place that
+      // intercepts `.ipynb` and registers a jupytext pairing, and it also gives every
+      // tab the same `id: path` convention this used to diverge from.
+      await openFileAtPath(node.path, node.name);
+    } catch (e) {
+      console.error("Cannot open file:", e);
+    }
+  }, []);
 
   const handleRootPromptConfirm = async (name: string) => {
     if (!workspacePath) return;

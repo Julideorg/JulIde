@@ -337,19 +337,21 @@ const unlisten = await listen<PayloadType>("event-name", (event) => {
 
 ### Event Catalog
 
-| Event              | Payload                               | Source                                          |
-| ------------------ | ------------------------------------- | ----------------------------------------------- |
-| `julia-output`     | `{ kind, text, exit_code? }`          | `julia.rs` — script stdout/stderr/done          |
-| `pty-output`       | `{ session_id, data }`                | `pty.rs` — terminal output                      |
-| `lsp-status`       | `{ status, message? }`                | `lsp.rs` — LSP lifecycle                        |
-| `lsp-notification` | `{ method, params, id? }`             | `lsp.rs` — LSP push notifications               |
-| `debug-stopped`    | `{ file, line, reason }`              | `debugger.rs` — breakpoint hit                  |
-| `debug-output`     | `{ kind, text }`                      | `debugger.rs` — debugger stdout                 |
-| `debug-variables`  | `{ variables[] }`                     | `debugger.rs` — variable values                 |
-| `fs-changed`       | `{ path, kind }`                      | `watcher.rs` — file create/modify/remove        |
-| `pluto-status`     | `{ status, message? }`                | `pluto.rs` — Pluto server lifecycle             |
-| `container-status` | `{ status, message?, container_id? }` | `container.rs` — Container state change         |
-| `container-output` | `{ kind, text, exit_code? }`          | `container.rs` — Container build/run/log output |
+| Event              | Payload                               | Source                                                   |
+| ------------------ | ------------------------------------- | -------------------------------------------------------- |
+| `julia-output`     | `{ kind, text, exit_code? }`          | `julia.rs` — script stdout/stderr/done                   |
+| `pty-output`       | `{ session_id, data }`                | `pty.rs` — terminal output                               |
+| `lsp-status`       | `{ status, message? }`                | `lsp.rs` — LSP lifecycle                                 |
+| `lsp-notification` | `{ method, params, id? }`             | `lsp.rs` — LSP push notifications                        |
+| `debug-stopped`    | `{ file, line, reason }`              | `debugger.rs` — breakpoint hit                           |
+| `debug-output`     | `{ kind, text }`                      | `debugger.rs` — debugger stdout                          |
+| `debug-variables`  | `{ variables[] }`                     | `debugger.rs` — variable values                          |
+| `fs-changed`       | `{ path, kind }`                      | `watcher.rs` — file create/modify/remove                 |
+| `pluto-status`     | `{ status, message? }`                | `pluto.rs` — Pluto server lifecycle                      |
+| `container-status` | `{ status, message?, container_id? }` | `container.rs` — Container state change                  |
+| `container-output` | `{ kind, text, exit_code? }`          | `container.rs` — Container build/run/log output          |
+| `notebook-output`  | `{ session_id, exec_id, kind, … }`    | `notebook_session.rs` — cell stream/display/result/error |
+| `notebook-status`  | `{ session_id, state, exec_id? }`     | `notebook_session.rs` — kernel and cell lifecycle        |
 
 ### Command Catalog
 
@@ -546,7 +548,25 @@ Output is streamed via `julia-output` events. The PackageManager component liste
 
 ### Code Cell Execution
 
-Julia files can contain code cells separated by `##` comment markers. Each `##` line defines a cell boundary. Pressing `Ctrl/Cmd+Enter` executes the current cell (the cell containing the cursor). Cell boundaries are shown with visual decorations in the editor gutter, and results are displayed inline and streamed to the Output panel.
+Julia files can contain code cells delimited by `# %%` markers (the [jupytext](https://jupytext.org/) percent format) or by julIDE's older `##` separator. Pressing `Ctrl/Cmd+Enter` executes the cell containing the cursor; `Shift+Enter` runs it and advances. Cell boundaries are shown with gutter decorations, and each cell in a jupytext file gets a Run Cell / Run Below toolbar.
+
+Cell detection is string-aware: a `##` heading inside a docstring, or a marker inside a `#= =#` block comment, does not split a cell. In a file that uses `# %%`, a plain `## TODO` comment is just a comment.
+
+**Execution differs by file type.** A jupytext notebook runs against a _persistent kernel_ (see below), so cells share state. A plain `##` script keeps the older one-shot path, where each cell is a fresh `julia -e` process.
+
+### Notebook Kernels
+
+`notebook_session.rs` owns one long-lived `julia` process per workspace, driven over stdin by `notebook_driver.jl`. The driver duplicates file descriptors 0 and 1 before redirecting them, so protocol framing carries only JSON and user output — including writes from C libraries and subprocesses — is captured and forwarded as attributed `stream` messages. It lives in its own `module` so its names cannot collide with the user's.
+
+Cells are evaluated into `Main` with `Meta.parseall` (real file and line numbers in stack traces), `REPL.softscope` (so a top-level loop over a global works) and `Base.invokelatest` (so a cell can use a method it just defined). Rust owns the execution queue with one cell in flight; an error drops the rest, matching Jupyter.
+
+Interrupting sends `SIGINT`, which the driver turns into an `InterruptException` rather than an exit. Windows has no equivalent that does not kill the process, so `notebook_session_interrupt` returns `false` there and the UI offers a restart.
+
+These commands are deliberately absent from `COMMAND_PERMISSIONS`. `julia_eval` is already arbitrary execution, but a _persistent_ session lets a caller read every variable the user's cells defined and rewrite `Main` underneath them.
+
+### Notebook Pairing
+
+A `.jl` header declaring `jupytext.formats: ipynb,jl:percent` is paired with a sibling `.ipynb`, written on explicit save only — never on the typing autosave, which would rewrite the notebook constantly, destroy conflict detection, and make the file useless in git. Outputs are matched back to cells using jupytext's own four-rule reconciliation, so inserting, deleting or reordering cells does not scramble them. Writes go through `fs_write_file_atomic` and are stamped, so the resulting watcher event is recognised as our own and cannot loop back into another write.
 
 ### Julia Evaluation
 

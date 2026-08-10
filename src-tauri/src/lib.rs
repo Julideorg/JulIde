@@ -8,10 +8,13 @@ mod git_gitea;
 mod git_github;
 mod git_gitlab;
 mod git_provider;
+mod http;
+mod images;
 mod julia;
 mod lsp;
 mod marketplace;
 mod menu;
+mod notebook_session;
 mod plugin_protocol;
 mod plugins;
 mod pluto;
@@ -129,6 +132,8 @@ pub fn run() {
             fs::fs_get_tree,
             fs::fs_read_file,
             fs::fs_write_file,
+            fs::fs_write_file_atomic,
+            fs::fs_stat,
             fs::fs_create_file,
             fs::fs_create_dir,
             fs::fs_delete_entry,
@@ -269,9 +274,33 @@ pub fn run() {
             marketplace::marketplace_install,
             marketplace::marketplace_uninstall,
             marketplace::marketplace_check_updates,
+            // Images — deliberately absent from COMMAND_PERMISSIONS too. The command is
+            // gated on a user setting, and a plugin that could call it would be reading
+            // workspace files and making outbound requests under the user's answer to a
+            // question the user was never asked about that plugin.
+            images::image_load,
+            // Notebook kernels — deliberately absent from COMMAND_PERMISSIONS, like the
+            // marketplace commands above. `julia_eval` is already arbitrary execution so
+            // the capability class is not new, but the *persistence* is: a plugin
+            // reaching these could read every variable the user's cells defined and
+            // rewrite Main underneath them.
+            notebook_session::notebook_session_start,
+            notebook_session::notebook_session_exec,
+            notebook_session::notebook_session_interrupt,
+            notebook_session::notebook_session_restart,
+            notebook_session::notebook_session_stop,
+            notebook_session::notebook_session_status,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        // `.run(context)` gives no exit hook, and `kill_on_drop` does not help because
+        // nothing drops the session registry at exit() — so quitting used to leave one
+        // orphaned `julia` per notebook kernel.
+        .run(|_app, event| {
+            if matches!(event, tauri::RunEvent::Exit) {
+                notebook_session::kill_all_on_exit();
+            }
+        });
 }
 
 #[cfg(all(test, target_os = "linux"))]

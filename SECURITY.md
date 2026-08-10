@@ -63,6 +63,28 @@ Understanding the trust model helps when judging whether something is a bug:
 - **The webview** loads no remote code: Monaco is bundled locally, and a
   Content-Security-Policy restricts `script-src` to `'self'`. Any way to get remote or
   injected script executing in the webview is a serious bug — it holds the IPC bridge.
+  The one thing that can now cross from the network into the page is _image bytes_, and
+  only with the setting below turned on; they never become script.
+- **Markdown preview images are off by default, behind two separate switches.**
+  Turning on _workspace images_ lets a document cause julIDE to read image files from
+  disk. Reads are confined to the open workspace, both ends of the path are canonicalized
+  so a symlink cannot lead out of it, and only PNG, JPEG, GIF, WebP and SVG are accepted
+  — decided by the file's own magic bytes, never by its extension. Turning on _remote
+  images_ lets a document cause julIDE to make `https` requests while you read it, which
+  tells the image's host your IP address and when you opened the file; URLs pointing at
+  private or loopback addresses are refused, and redirects are limited and re-checked at
+  every hop.
+
+  Neither switch widens the content security policy. The bytes are read or fetched in
+  Rust and handed to the preview as a `blob:` or `data:` URL, so `img-src` stays
+  `'self' data: blob:` and `connect-src` never gains an origin. The `<img>` element is
+  created programmatically after the document has been sanitized, which is why `img` and
+  `src` remain forbidden in the sanitizer's allowlist: a README can ask for an image, but
+  it cannot put one on the page. SVG is additionally run through a sanitizer that strips
+  every script, external reference and `href` before it becomes a URL, and is delivered
+  as `data:` rather than `blob:` — a blob URL is navigable and would inherit julIDE's own
+  origin. The command behind all of this is deliberately unavailable to plugins.
+
 - **Updates** are verified against a signing key held by the maintainer. julIDE
   binaries themselves are not currently OS code-signed, so Windows SmartScreen and
   macOS Gatekeeper will warn on first launch. That is expected, not a compromise.

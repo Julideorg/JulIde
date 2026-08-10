@@ -9,6 +9,23 @@ import { showInputDialog } from "../components/InputDialog/InputDialog";
 import { showBestieTemplateDialog } from "../components/BestieTemplateDialog/BestieTemplateDialog";
 import { useModeBarStore } from "../components/ModeBar/ModeBar";
 import { isMarkdownPath } from "../markdown/renderer";
+import { runCellAtCursor } from "../components/Editor/runCell";
+import { getActiveCellLayer } from "../components/Editor/notebook/cellLens";
+import type { NotebookCellLayer } from "../components/Editor/notebook/cellZones";
+import {
+  changeCellType,
+  clearAllOutputs,
+  insertCell,
+  interrupt,
+  isNotebookTab,
+  restart,
+  runAbove,
+  runAll,
+  runBelow,
+} from "../components/Editor/notebook/cellActions";
+import { newNotebookSource } from "../notebook/ipynb";
+import { syncToNotebook, writeTracked } from "../notebook/pairing";
+import { openFileAtPath } from "./openFile";
 import { toast } from "../components/ui";
 import type { FileNode, JuliaOutputEvent, Problem } from "../types";
 
@@ -822,11 +839,172 @@ function registerBuiltinCommands() {
     label: "Run Code Cell (Ctrl+Enter)",
     shortcut: "⌘↵",
     execute: () => {
-      // Trigger via the editor action
       const editor = ide().editorInstance;
-      if (editor) {
-        editor.trigger("command-palette", "editor.action.triggerSuggest", null);
+      if (!editor) return;
+      // Previously fired `editor.action.triggerSuggest`, which opened the completion
+      // widget instead of running anything. Shares the Ctrl+Enter implementation now.
+      void runCellAtCursor(editor);
+    },
+  });
+
+  registerNotebookCommands(store);
+}
+
+/**
+ * Notebook commands.
+ *
+ * The ModeBar ranks every command without consulting a `when` clause, so the guard has
+ * to live inside `execute` — same shape as the markdown commands above.
+ */
+function registerNotebookCommands(store: ReturnType<typeof usePluginStore.getState>) {
+  type Editor = NonNullable<ReturnType<typeof useIdeStore.getState>["editorInstance"]>;
+  const withNotebook = (fn: (editor: Editor, layer: NotebookCellLayer) => void) => () => {
+    const editor = useIdeStore.getState().editorInstance;
+    const layer = getActiveCellLayer();
+    if (!editor || !layer || !isNotebookTab()) {
+      toast.info("Not a notebook", "Add a `# %%` cell marker to make this file a notebook.");
+      return;
+    }
+    fn(editor, layer);
+  };
+
+  const commands: Array<[string, string, () => void]> = [
+    ["notebook.run-all", "Notebook: Run All Cells", withNotebook((e, l) => void runAll(e, l))],
+    [
+      "notebook.run-above",
+      "Notebook: Run All Cells Above",
+      withNotebook((e, l) => void runAbove(e, l)),
+    ],
+    [
+      "notebook.run-below",
+      "Notebook: Run All Cells Below",
+      withNotebook((e, l) => void runBelow(e, l)),
+    ],
+    [
+      "notebook.insert-cell-below",
+      "Notebook: Insert Cell Below",
+      withNotebook((e) => insertCell(e, "below")),
+    ],
+    [
+      "notebook.insert-cell-above",
+      "Notebook: Insert Cell Above",
+      withNotebook((e) => insertCell(e, "above")),
+    ],
+    [
+      "notebook.insert-markdown-cell",
+      "Notebook: Insert Markdown Cell Below",
+      withNotebook((e) => insertCell(e, "below", "markdown")),
+    ],
+    [
+      "notebook.to-markdown",
+      "Notebook: Change Cell to Markdown",
+      withNotebook((e) => changeCellType(e, "markdown")),
+    ],
+    [
+      "notebook.to-code",
+      "Notebook: Change Cell to Code",
+      withNotebook((e) => changeCellType(e, "code")),
+    ],
+  ];
+
+  for (const [id, label, execute] of commands) {
+    store.registerCommand({ id, label, category: "Notebook", execute });
+  }
+
+  store.registerCommand({
+    id: "notebook.interrupt",
+    label: "Notebook: Interrupt Kernel",
+    category: "Notebook",
+    execute: () => {
+      void interrupt().then((ok) => {
+        if (!ok) {
+          // Windows has no signal that interrupts Julia rather than killing it, so say
+          // so instead of leaving a button that quietly does nothing.
+          toast.warning(
+            "Interrupt is not supported here",
+            "Restart the kernel instead — Windows has no signal that interrupts Julia without killing it.",
+          );
+        }
+      });
+    },
+  });
+
+  store.registerCommand({
+    id: "notebook.restart",
+    label: "Notebook: Restart Kernel",
+    category: "Notebook",
+    execute: () => {
+      void restart().catch((e: unknown) => toast.error("Could not restart the kernel", String(e)));
+    },
+  });
+
+  store.registerCommand({
+    id: "notebook.clear-outputs",
+    label: "Notebook: Clear All Outputs",
+    category: "Notebook",
+    execute: () => clearAllOutputs(),
+  });
+
+  store.registerCommand({
+    id: "notebook.new",
+    label: "Notebook: New Jupytext Notebook",
+    category: "Notebook",
+    execute: () => {
+      const workspacePath = useIdeStore.getState().workspacePath;
+      if (!workspacePath) {
+        toast.info("No workspace open", "Open a folder first.");
+        return;
       }
+      void showInputDialog({
+        title: "New Jupytext Notebook",
+        placeholder: "analysis.jl",
+        validate: (v) => (v.trim() && !v.includes("/") ? null : "Enter a file name without a path"),
+      }).then(async (name) => {
+        if (!name) return;
+        const fileName = name.endsWith(".jl") ? name : `${name}.jl`;
+        const path = `${workspacePath}/${fileName}`;
+        try {
+          const version = useJuliaStore.getState().version;
+          const source = newNotebookSource(
+            version
+              ? {
+                  displayName: `Julia ${version}`,
+                  name: `julia-${version.split(".").slice(0, 2).join(".")}`,
+                }
+              : undefined,
+          );
+          // Both halves written up front, so the pair exists from the first save.
+          await writeTracked(path, source);
+          await syncToNotebook(path, source, "open");
+          await openFileAtPath(path, fileName);
+        } catch (e) {
+          toast.error("Could not create the notebook", String(e));
+        }
+      });
+    },
+  });
+
+  store.registerCommand({
+    id: "notebook.sync",
+    label: "Notebook: Sync Paired .ipynb",
+    category: "Notebook",
+    execute: () => {
+      const tab = useIdeStore
+        .getState()
+        .openTabs.find((t) => t.id === useIdeStore.getState().activeTabId);
+      if (!tab) return;
+      void syncToNotebook(tab.path, tab.content, "manual").then((result) => {
+        if (result.status === "unpaired") {
+          toast.info(
+            "This file is not paired",
+            "Add `formats: ipynb,jl:percent` under `jupytext:` in the header.",
+          );
+        } else if (result.status === "conflict" || result.status === "error") {
+          toast.warning("Could not sync", result.message ?? "");
+        } else {
+          toast.success("Notebook synced", "");
+        }
+      });
     },
   });
 }

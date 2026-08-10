@@ -3,6 +3,7 @@ import { loader } from "@monaco-editor/react";
 import { registerJuliaLanguage } from "./components/Editor/juliaLanguage";
 import { defineThemes } from "./themes/themes";
 import { registerJuliaLspProviders } from "./lsp/juliaProviders";
+import { registerCellLens } from "./components/Editor/notebook/cellLens";
 import editorWorker from "monaco-editor/editor/editor.worker?worker";
 import jsonWorker from "monaco-editor/language/json/json.worker?worker";
 import cssWorker from "monaco-editor/language/css/css.worker?worker";
@@ -73,3 +74,9 @@ defineThemes(monaco);
  * here restores them without putting the work back on the mount path.
  */
 registerJuliaLspProviders(monaco);
+
+/**
+ * The notebook cell toolbar, for the same once-globally reason as the two above.
+ * The provider is a no-op on any `.jl` file that has no `# %%` markers.
+ */
+registerCellLens(monaco);

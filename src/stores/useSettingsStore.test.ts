@@ -20,6 +20,10 @@ describe("initial state", () => {
     expect(settings.containerRuntime).toBe("auto");
     expect(settings.plutoPort).toBe(3000);
     expect(settings.recentWorkspaces).toEqual([]);
+    // The image escape hatches are opt-in; a default flip would silently start
+    // reading files and making network requests on behalf of every existing user.
+    expect(settings.allowLocalImages).toBe(false);
+    expect(settings.allowRemoteImages).toBe(false);
   });
 
   test("loaded is false initially", () => {

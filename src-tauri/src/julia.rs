@@ -24,7 +24,7 @@ fn validate_package_name(name: &str) -> Result<(), String> {
 }
 
 /// Validate that a path does not contain null bytes or ASCII control characters.
-fn validate_path(path: &str, label: &str) -> Result<(), String> {
+pub(crate) fn validate_path(path: &str, label: &str) -> Result<(), String> {
     if path.contains('\0') {
         return Err(format!("{} must not contain null bytes", label));
     }

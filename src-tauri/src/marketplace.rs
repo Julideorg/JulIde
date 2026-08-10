@@ -22,6 +22,7 @@
 //! `plugin_*` commands are. A plugin that can install plugins is privilege escalation
 //! with no legitimate use.
 
+use crate::http::{assert_https, read_capped, HTTP};
 use crate::plugins::validate_plugin_name;
 use crate::sync::LockRecover;
 use flate2::read::GzDecoder;
@@ -158,85 +159,6 @@ pub struct InstallResult {
 
 // ─── HTTP ───────────────────────────────────────────────────────────────────
 
-/// One hardened client for every registry request.
-///
-/// Built once because the hardening must not be re-derived — and re-forgotten — at each
-/// call site, which is exactly what happened in the git provider modules, where every
-/// client is built with no timeout and no redirect policy at all.
-static HTTP: Lazy<reqwest::Client> = Lazy::new(|| {
-    reqwest::Client::builder()
-        .https_only(true)
-        .connect_timeout(Duration::from_secs(10))
-        .redirect(reqwest::redirect::Policy::custom(|attempt| {
-            // Limited, not disabled: GitHub sends release-asset downloads to a storage
-            // host, so refusing redirects would break the common hosting layout. Each
-            // hop is re-checked, because "the first URL was fine" says nothing about
-            // where it points next.
-            if attempt.previous().len() >= 3 {
-                return attempt.error("too many redirects");
-            }
-            if attempt.url().scheme() != "https" {
-                return attempt.stop();
-            }
-            attempt.follow()
-        }))
-        .user_agent(concat!("julIDE/", env!("CARGO_PKG_VERSION")))
-        .build()
-        .expect("registry HTTP client")
-});
-
-/// Reject a URL before it is fetched, with a message worth reading.
-fn assert_https(raw: &str) -> Result<url::Url, String> {
-    let parsed = url::Url::parse(raw).map_err(|_| format!("not a valid URL: {raw}"))?;
-    if parsed.scheme() != "https" {
-        return Err(format!("refusing a non-https URL: {raw}"));
-    }
-    if !parsed.username().is_empty() || parsed.password().is_some() {
-        return Err(format!("refusing a URL with embedded credentials: {raw}"));
-    }
-    if parsed.host_str().is_none() {
-        return Err(format!("URL has no host: {raw}"));
-    }
-    Ok(parsed)
-}
-
-/// Read a response body, giving up past `cap`.
-///
-/// `content_length` is advisory — it may be absent and it may lie — so the loop is the
-/// guard. Checking the header first only avoids downloading something already known to
-/// be too large.
-async fn read_capped(
-    mut response: reqwest::Response,
-    cap: usize,
-    what: &str,
-) -> Result<Vec<u8>, String> {
-    if !response.status().is_success() {
-        // 404 on raw.githubusercontent.com means the file is not at that path on that
-        // branch — which for a registry that has not been published yet is the normal
-        // state, not a fault. Saying "HTTP 404" leaves the reader to guess between
-        // "not published", "wrong branch" and "something is broken".
-        if response.status() == tauri::http::StatusCode::NOT_FOUND {
-            return Err(format!(
-                "{what} was not found at {}. The plugin registry may not be published yet.",
-                response.url()
-            ));
-        }
-        return Err(format!("{what}: HTTP {}", response.status()));
-    }
-    if matches!(response.content_length(), Some(n) if n > cap as u64) {
-        return Err(format!("{what} is larger than the {cap} byte limit"));
-    }
-
-    let mut out: Vec<u8> = Vec::new();
-    while let Some(chunk) = response.chunk().await.map_err(|e| e.to_string())? {
-        if out.len() + chunk.len() > cap {
-            return Err(format!("{what} exceeded the {cap} byte limit"));
-        }
-        out.extend_from_slice(&chunk);
-    }
-    Ok(out)
-}
-
 async fn get_capped(
     url: &str,
     cap: usize,
@@ -250,7 +172,16 @@ async fn get_capped(
         .send()
         .await
         .map_err(|e| format!("{what}: {e}"))?;
-    read_capped(response, cap, what).await
+    read_capped(
+        response,
+        cap,
+        what,
+        // 404 on raw.githubusercontent.com means the file is not at that path on that
+        // branch — which for a registry that has not been published yet is the normal
+        // state, not a fault.
+        Some("The plugin registry may not be published yet."),
+    )
+    .await
 }
 
 // ─── Signature verification ─────────────────────────────────────────────────
@@ -813,21 +744,6 @@ pub async fn marketplace_check_updates() -> Result<Vec<AvailableUpdate>, String>
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn https_only_and_no_credentials() {
-        assert!(assert_https("https://example.com/x").is_ok());
-        for bad in [
-            "http://example.com/x",
-            "file:///etc/passwd",
-            "ftp://example.com/x",
-            "javascript:alert(1)",
-            "https://user:pw@example.com/x",
-            "not a url",
-        ] {
-            assert!(assert_https(bad).is_err(), "{bad}");
-        }
-    }
 
     #[test]
     fn sha256_matches_known_vectors() {

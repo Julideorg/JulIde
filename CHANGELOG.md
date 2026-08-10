@@ -7,6 +7,118 @@ julIDE aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Added
+
+- **The markdown preview can show images — two switches, both off until you turn them
+  on.** **Settings → Appearance** gains _Workspace Images_ (files a document references
+  by relative path) and _Remote Images_ (`https://` URLs, which is what README badges
+  are). 0.4.1 shipped a placeholder in place of every image; that is still exactly what
+  you get until you opt in, and it is still the default.
+
+  Neither switch widens julIDE's content security policy, which is what made this worth
+  doing carefully rather than quickly. `img-src` is still `'self' data: blob:` and
+  `connect-src` still names no remote origin: the bytes are read or fetched in **Rust**
+  and handed to the preview as a blob, the same "network happens outside the webview"
+  rule the plugin registry already follows. The `<img>` element is created
+  programmatically _after_ the document has been sanitized, so `img` and `src` remain
+  forbidden in the sanitizer's allowlist — a README still cannot put an image tag on the
+  page; it can only ask, and be refused.
+
+  What is checked before any byte is read: the setting, again, in Rust — the preview is
+  not the boundary. Local paths are re-resolved and canonicalized in Rust and must land
+  inside the open workspace, so a symlink cannot lead out of it. Remote URLs must be
+  `https`, carry no credentials, and not point at a private or loopback address;
+  redirects are limited to three hops and re-checked at each one. An 8 MiB cap and a
+  10-second timeout apply. Only PNG, JPEG, GIF, WebP and SVG are accepted, and the format
+  is decided by the file's own magic bytes rather than its extension or the server's
+  `Content-Type` — an HTML error page served as `image/png` is refused rather than
+  rendered.
+
+  **Remote images have a privacy cost, and the settings panel says so:** every badge in a
+  README is a request to whoever serves it, telling them your IP address and the moment
+  you opened the file — including in repositories you cloned only to read.
+
+  SVG gets extra handling, because it is both the risky format and most of the reason to
+  want this. Each one is run through DOMPurify's SVG profile — no scripts, no external
+  references, no `href` of any kind — and delivered as a `data:` URL rather than a blob,
+  because a blob URL is navigable and would inherit julIDE's own origin if anything ever
+  opened it.
+
+- **Jupyter notebooks, in plain `.jl` files.** julIDE now reads and runs the
+  [jupytext](https://jupytext.org/) percent format: a `.jl` file with `# %%` markers _is_
+  a notebook, with no separate document model and no second copy of your code. The file
+  text stays the only source of truth, so the language server, autosave, git diff and
+  undo all keep working exactly as they do in any other file — which is the whole reason
+  to build it this way rather than as a grid of cell editors.
+
+  **Cells share state.** A persistent Julia kernel runs behind the notebook, so `x = 1`
+  in one cell is visible from the next — the thing that made the old `##` cells not
+  really cells. It is a real kernel: soft scope (so a top-level `for` loop over a global
+  works), multi-statement cells, `;` suppression, methods defined and used in the same
+  cell, and a full MIME bundle so plots come back as images rather than as
+  `Plot{...}`. Errors carry a real Julia stacktrace pointing at your own file and line.
+
+  **Outputs render inline**, in a panel under each cell — text, images, sanitized HTML
+  tables, and tracebacks. Editing a cell dims its output rather than deleting it, the way
+  Jupyter does; a one-character fix should not silently discard a thirty-second plot.
+
+  Each cell gets a **Run Cell / Run Below** toolbar and an execution count. Ctrl+Enter
+  runs a cell, Shift+Enter runs it and moves on, and the command palette has the rest
+  under `Notebook:` — run all/above/below, insert a cell, change a cell between code and
+  markdown, interrupt, restart, clear outputs, and create a new notebook. Interrupting
+  works on macOS and Linux; on Windows there is no signal that interrupts Julia without
+  killing it, so the command says so and offers a restart instead of quietly doing
+  nothing.
+
+  **`.ipynb` pairing.** A header declaring `formats: ipynb,jl:percent` keeps a real
+  notebook alongside the script, so outputs survive a restart and you can hand the
+  `.ipynb` to someone who has never heard of julIDE. Opening an `.ipynb` opens its
+  script. Outputs are matched back to cells with jupytext's own rules, so inserting,
+  deleting and reordering cells does not scramble which plot belongs to which. The
+  notebook is written atomically and only on an explicit save — not on the typing
+  autosave, which would rewrite megabytes every second and make the file unusable in
+  git. If it changed on disk underneath julIDE, the save stops and says so rather than
+  overwriting someone else's work.
+
+- **Code cells understand the jupytext percent format.** `# %%` markers now delimit
+  cells, alongside the `##` separator julIDE already had — so a `.jl` file written by
+  [jupytext](https://jupytext.org/), VS Code or Spyder is read as the notebook it is
+  rather than as one undivided block. `# %% [markdown]`, `# %% [raw]`, cell titles,
+  marker metadata, Spyder's `# %%%` sub-cells and the `# <codecell>` / `# In[1]:`
+  spellings are all recognised, and the `# ---` YAML header is understood as a header
+  rather than treated as code.
+
+  The parser round-trips byte for byte, which is what will let a later change edit one
+  cell without reformatting the rest of the file.
+
+### Fixed
+
+- **A `##` heading inside a docstring no longer splits a code cell.** Cell detection was
+  a plain "does this line start with `##`" scan, so a docstring containing a Markdown
+  heading — `"""\n## Examples\n"""` — cut the cell in two and Ctrl+Enter ran only part of
+  it. Scanning is now aware of Julia strings and of nested `#= =#` block comments. For
+  the same reason, `##` no longer splits cells in a file that uses `# %%` markers, where
+  an ordinary `## TODO` comment previously would.
+- **Ctrl+Enter and gutter breakpoints acted on the wrong file after switching tabs.** The
+  editor is mounted once and reused across tabs, so both handlers were still holding the
+  tab that happened to be open when the editor first mounted. Breakpoints were toggled
+  against that file's path, and cell execution silently did nothing if the original tab
+  was not a `.jl` file. Both now read the active tab at the moment they run, the way the
+  save path already did.
+- **Running a code cell leaked an event listener every time.** The `julia-output`
+  subscription was only torn down on successful completion, so any run that errored left
+  it attached for the rest of the session — and every surviving listener then also
+  received later runs' output, appending it to a dead cell's inline result. There is now
+  one subscription for the app's lifetime.
+- **"Run Code Cell" in the command palette opened the autocomplete popup** instead of
+  running the cell. It now shares the Ctrl+Enter implementation.
+- **The Activity Bar Labels setting reset itself on every restart.** It existed on the
+  TypeScript side only, and `settings_save` writes the whole settings struct — so the
+  field was silently dropped on each write. It now persists.
+- **Quitting julIDE could leave orphaned Julia processes.** Nothing dropped the session
+  registry at exit, so `kill_on_drop` never fired. Kernels are now reaped on the app's
+  exit event.
+
 ## [0.4.1] - 2026-08-09
 
 Markdown files can be read as well as edited. Dropdown menus finally follow the theme on

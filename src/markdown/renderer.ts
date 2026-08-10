@@ -38,7 +38,22 @@ export function slugify(text: string): string {
  * answer to `#usage`. Reset for every render — hence an instance rather than the shared
  * `marked` singleton, which would leak slug state between documents.
  */
-function createMarked() {
+/**
+ * `"blocked"` — every image is an inert placeholder. The default, so every existing
+ * call site keeps today's behaviour.
+ *
+ * `"resolvable"` — images become spans the preview *may* resolve after sanitization.
+ * Emitting one promises nothing: the setting is re-checked and the path re-confined in
+ * Rust before a byte is read.
+ */
+export type ImageMode = "blocked" | "resolvable";
+
+export interface RenderOptions {
+  images?: ImageMode;
+}
+
+function createMarked(options: RenderOptions = {}) {
+  const images = options.images ?? "blocked";
   const seen = new Map<string, number>();
   const md = new Marked({
     gfm: true,
@@ -89,15 +104,24 @@ function createMarked() {
       },
 
       image({ href, title, text }) {
-        // Never emit <img>. The CSP allows `img-src 'self' data: blob:` only — no remote
-        // hosts — and there is no command to read local image bytes, so *every* image in
-        // a markdown file would fail to load and log a CSP violation per attempt. A
-        // placeholder says so plainly instead of showing a broken-image icon.
-        const label = escapeHtml(text || title || "image");
-        return (
-          `<span class="md-img-missing" data-md-src="${escapeHtml(href)}" ` +
-          `title="Images are not shown in preview">${label}</span>`
-        );
+        // Never an <img>, in either mode. The element is created programmatically by
+        // useMarkdownImages *after* sanitization, which is what lets `img` stay in
+        // FORBID_TAGS and `src` in FORBID_ATTR: a document can ask for an image, but
+        // it can never put one on the page itself.
+        const src = escapeHtml(href);
+        if (images === "blocked") {
+          const label = escapeHtml(text || title || "image");
+          return (
+            `<span class="md-img-missing" data-md-src="${src}" ` +
+            `title="Images are turned off in Settings → Appearance">${label}</span>`
+          );
+        }
+        // The alt is the span's *text content* rather than a data attribute:
+        // ALLOW_DATA_ATTR is false, so a second data-* would need adding to the
+        // sanitizer allowlist. It also degrades correctly — if resolution fails, the
+        // visible text is already the alt text.
+        const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
+        return `<span class="md-img" data-md-src="${src}"${titleAttr}>${escapeHtml(text)}</span>`;
       },
     },
   });
@@ -121,11 +145,11 @@ function stripTags(html: string): string {
  * Exported for tests: this is the layer whose escaping can be verified without a DOM.
  * Application code should call `renderMarkdown` instead.
  */
-export function renderMarkdownUnsafe(source: string): string {
-  return createMarked().parse(source) as string;
+export function renderMarkdownUnsafe(source: string, options?: RenderOptions): string {
+  return createMarked(options).parse(source) as string;
 }
 
 /** Parse and sanitize. The only function the preview component should use. */
-export function renderMarkdown(source: string): string {
-  return sanitizeMarkdown(renderMarkdownUnsafe(source));
+export function renderMarkdown(source: string, options?: RenderOptions): string {
+  return sanitizeMarkdown(renderMarkdownUnsafe(source, options));
 }

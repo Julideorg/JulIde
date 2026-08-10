@@ -167,6 +167,19 @@ export function scrapeCommands(source: string): string[] {
     );
   }
 
+  // Same shape of invariant for the image commands. `image_load` is "read this
+  // workspace file, or GET this https URL, and hand me the bytes" — mapped to a
+  // permission it would be a file-read and network-egress channel for a plugin whose
+  // frame CSP says `connect-src 'none'`, routing around the declared-network model.
+  // It is also gated on a setting the user answered about julIDE, not about a plugin.
+  const imageCommands = Object.keys(COMMAND_PERMISSIONS).filter((c) => c.startsWith("image_"));
+  if (imageCommands.length > 0) {
+    throw new Error(
+      `COMMAND_PERMISSIONS must never map an image command: ${imageCommands.join(", ")}. ` +
+        `It would give a plugin workspace file reads and arbitrary https egress.`,
+    );
+  }
+
   return commands;
 }
 

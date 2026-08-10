@@ -24,6 +24,9 @@ import { fatouConfigPayload, lspStartOptions } from "./lsp/lspConfig";
 import { setMonacoMarkers } from "./lsp/juliaProviders";
 import type { JuliaOutputEvent } from "./types";
 import { parseMimeLine } from "./utils/juliaOutput";
+import { invalidateImage, setImageWorkspaceRoot } from "./markdown/images";
+import { notebookSessionId, stopSession } from "./services/notebookSession";
+import { handleFsChange } from "./notebook/pairing";
 import type { LspPublishDiagnosticsParams } from "./lsp/LspClient";
 import type {
   ContainerOutputEvent,
@@ -78,12 +81,21 @@ export default function App() {
 
   // File watcher: start when workspace opens
   useEffect(() => {
+    // Rust confines image reads to this root, and a different workspace is a different
+    // set of images — so the cache is dropped along with it.
+    setImageWorkspaceRoot(workspacePath);
     if (!workspacePath) return;
     invoke("watcher_start", { workspacePath }).catch(console.error);
     // Also refresh git state when workspace opens
     refreshGit();
+    // Captured now: by the time this cleanup runs the store already holds the new
+    // workspace, so recomputing the id would stop the wrong kernel.
+    const kernelId = notebookSessionId();
     return () => {
       invoke("watcher_stop").catch(console.error);
+      // A kernel is scoped to its workspace — its `--project` and every variable in
+      // Main belong to the project that is being closed.
+      void stopSession(kernelId).catch(() => {});
     };
     // Zustand actions are stable, so refreshGit is deliberately not a dep: including
     // it would not change behaviour, and the watcher must restart only on workspace change.
@@ -91,12 +103,36 @@ export default function App() {
 
   // Handle fs-changed events: refresh tree, reload open file content
   useEffect(() => {
+    // Reload an open file changed externally, when the user has no unsaved work in it.
+    const reloadIfUnmodified = (payload: { path: string; kind: string }) => {
+      if (payload.kind !== "modify") return;
+      const state = useIdeStore.getState();
+      const tab = state.openTabs.find((t) => t.path === payload.path);
+      if (!tab || tab.isDirty) return;
+      invoke<string>("fs_read_file", { path: tab.path })
+        .then((content) => {
+          if (content !== tab.content) state.updateTabContent(tab.id, content, false);
+        })
+        .catch(() => {});
+    };
+
     let unlisten: (() => void) | null = null;
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
     let gitDebounce: ReturnType<typeof setTimeout> | null = null;
 
     listen<{ path: string; kind: string }>("fs-changed", (e) => {
+      // A cached image is keyed by path with no expiry, so an edited diagram would keep
+      // serving the old bytes for as long as a preview stays open.
+      invalidateImage(e.payload.path);
+
+      // First refusal to the pairing engine, so our own .ipynb writes do not come back
+      // round as a reload and trigger another write.
+      void handleFsChange(e.payload.path).then((owned) => {
+        if (owned) return;
+        reloadIfUnmodified(e.payload);
+      });
+
       // Debounce tree refresh (many events can fire rapidly)
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(async () => {
@@ -115,21 +151,6 @@ export default function App() {
       gitDebounce = setTimeout(() => {
         useIdeStore.getState().refreshGit();
       }, 1000);
-
-      // Reload open file if modified externally and not dirty
-      if (e.payload.kind === "modify") {
-        const state = useIdeStore.getState();
-        const tab = state.openTabs.find((t) => t.path === e.payload.path);
-        if (tab && !tab.isDirty) {
-          invoke<string>("fs_read_file", { path: tab.path })
-            .then((content) => {
-              if (content !== tab.content) {
-                state.updateTabContent(tab.id, content, false);
-              }
-            })
-            .catch(() => {});
-        }
-      }
     }).then((fn) => {
       unlisten = fn;
     });
