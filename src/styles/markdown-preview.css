@@ -161,6 +161,34 @@
   color: var(--mode-run);
 }
 
+/* ── Maths ──────────────────────────────────────────────────────────────── */
+/* The renderer emits an inert placeholder carrying TeX as text; useMarkdownMath
+   typesets it after sanitization. These rules therefore have to read well both
+   before KaTeX has run and after — the pre-typeset state is the author's source,
+   and on a slow first paint it is what the reader sees. */
+.markdown-preview-body .md-math {
+  font-family: var(--font-mono);
+}
+/* KaTeX owns the type once it has run: its own metrics depend on the surrounding
+   font-size, and forcing the mono stack on the output makes the glyphs disagree
+   with the fonts KaTeX bundles. */
+.markdown-preview-body .md-math--done {
+  font-family: inherit;
+}
+.markdown-preview-body .md-math--display {
+  display: block;
+  margin: var(--space-5) 0;
+  /* A wide matrix scrolls inside its own box rather than widening the pane. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+}
+/* Malformed TeX that KaTeX itself could not report on — the source is put back. */
+.markdown-preview-body .md-math--error {
+  color: var(--status-danger);
+  text-decoration: underline dotted;
+}
+
 /* ── Image placeholder ──────────────────────────────────────────────────── */
 /* Shown when the image escape hatches are off, which is the default. The renderer
    emits this span instead of an <img>; see src/markdown/renderer.ts. Turning either

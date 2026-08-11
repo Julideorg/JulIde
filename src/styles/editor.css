@@ -54,34 +54,72 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The unsaved dot and the close button occupy one slot, the way VS Code does it: the
+   dot is the resting state of a modified tab, and pointing at the tab turns it into an
+   X. Stacking them rather than swapping `display` keeps the tab's width steady, so a
+   row of tabs does not shuffle sideways as the pointer crosses it. */
+.editor-tab-slot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+/* Which of the two is visible is carried by custom properties rather than by a pile of
+   descendant rules. The states overlap — active *and* dirty *and* hovered is a real
+   combination — and expressing that with `opacity` directly means every new rule has to
+   out-specify the last, which is how the old `opacity: 1 !important` here came about.
+   Custom properties cascade per element, so the slot simply overrides the tab. */
+.editor-tab {
+  --tab-close-opacity: 0;
+  --tab-dot-opacity: 0;
+}
+.editor-tab.active {
+  --tab-close-opacity: 0.7;
+}
+.editor-tab:hover {
+  --tab-close-opacity: 1;
+}
+/* A modified tab rests as a dot and becomes an X only under the pointer or keyboard. */
+.editor-tab-slot.dirty {
+  --tab-close-opacity: 0;
+  --tab-dot-opacity: 1;
+}
+.editor-tab:hover .editor-tab-slot.dirty,
+.editor-tab-slot.dirty:focus-within {
+  --tab-close-opacity: 1;
+  --tab-dot-opacity: 0;
+}
+
 .editor-tab-dirty {
   color: var(--mode-brand);
   font-size: 10px;
-  flex-shrink: 0;
+  line-height: 1;
+  opacity: var(--tab-dot-opacity);
+  transition: opacity var(--dur-1) var(--ease-out);
 }
 .editor-tab-close {
+  position: absolute;
+  inset: 0;
   background: none;
   border: none;
   color: var(--fg-lo);
   cursor: pointer;
-  padding: 1px;
+  padding: 0;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.1s;
+  justify-content: center;
+  opacity: var(--tab-close-opacity);
+  transition: opacity var(--dur-1) var(--ease-out);
 }
-.editor-tab:hover .editor-tab-close {
-  opacity: 1;
-}
-.editor-tab.active .editor-tab-close {
-  opacity: 0.7;
-}
-.editor-tab-close:hover {
+.editor-tab-close:hover,
+.editor-tab-close:focus-visible {
   background: var(--surface-active);
   color: var(--fg-hi);
-  opacity: 1 !important;
+  --tab-close-opacity: 1;
 }
 
 /* =========================================================

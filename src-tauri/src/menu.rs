@@ -143,6 +143,16 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
             "CmdOrCtrl+Shift+P"
         ))
         .separator()
+        // Accelerators here *and* a keydown listener in the webview (src/services/zoom.ts):
+        // the accelerator alone does not reach the page reliably on Linux or Windows.
+        // Where both fire, zoom.ts coalesces them so a press is still one step.
+        // `=` rather than `Plus`: muda renders no accelerator at all for the latter on
+        // GTK, which left the menu item looking unbound. The physical key is the same
+        // one, and it is what the webview handler matches (KeyboardEvent.code "Equal").
+        .item(&cmd_item!("Zoom In", "view.zoom-in", "CmdOrCtrl+="))
+        .item(&cmd_item!("Zoom Out", "view.zoom-out", "CmdOrCtrl+-"))
+        .item(&cmd_item!("Reset Zoom", "view.zoom-reset", "CmdOrCtrl+0"))
+        .separator()
         .item(&cmd_item!("Split Editor", "editor.split"))
         .separator()
         .item(&cmd_item!(

@@ -9,6 +9,14 @@ export interface Settings {
   tabSize: number;
   minimapEnabled: boolean;
   wordWrap: string;
+  /**
+   * Write the file a moment after typing stops.
+   *
+   * Off by default. Existing installs are unaffected: `settings_save` writes every
+   * field, so their `settings.json` already carries `autoSave: true` and keeps it —
+   * quietly disabling autosave under someone who has been relying on it would be a way
+   * to lose work, not a fix.
+   */
   autoSave: boolean;
   theme: string;
   terminalFontSize: number;
@@ -49,6 +57,14 @@ export interface Settings {
    * and when you opened the file.
    */
   allowRemoteImages: boolean;
+  /**
+   * Interface zoom, as a webview scale factor. 1.0 is 100%.
+   *
+   * Scales the whole window — chrome, editor and terminal alike — because the webview
+   * applies it, not the stylesheet. Separate from {@link fontSize}, which is the
+   * editor's text and nothing else. Stepped through `src/services/zoom.ts`.
+   */
+  uiZoom: number;
 }
 
 interface SettingsStore {
@@ -71,7 +87,7 @@ export const defaultSettings: Settings = {
   tabSize: 4,
   minimapEnabled: true,
   wordWrap: "off",
-  autoSave: true,
+  autoSave: false,
   theme: "julide-dark",
   activityBarLabels: true,
   terminalFontSize: 13,
@@ -95,6 +111,7 @@ export const defaultSettings: Settings = {
   bottomPanelHeight: 220,
   allowLocalImages: false,
   allowRemoteImages: false,
+  uiZoom: 1,
 };
 
 /**

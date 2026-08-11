@@ -27,6 +27,8 @@ import type { JuliaOutputEvent } from "./types";
 import { parseMimeLine } from "./utils/juliaOutput";
 import { invalidateImage, setImageWorkspaceRoot } from "./markdown/images";
 import { notebookSessionId, stopSession } from "./services/notebookSession";
+import { applyZoom, matchZoomKey, zoomIn, zoomOut, zoomReset } from "./services/zoom";
+import { installCloseGuard } from "./services/requestCloseTab";
 import { containerSupported } from "./services/containerSupport";
 import { handleFsChange } from "./notebook/pairing";
 import type { LspPublishDiagnosticsParams } from "./lsp/LspClient";
@@ -70,9 +72,12 @@ export default function App() {
   const settingsLoaded = useSettingsStore((s) => s.loaded);
   useEffect(() => {
     if (!settingsLoaded) return;
-    const { sidebarWidth: w, bottomPanelHeight: h } = useSettingsStore.getState().settings;
+    const { sidebarWidth: w, bottomPanelHeight: h, uiZoom } = useSettingsStore.getState().settings;
     if (w) setSidebarWidth(w);
     if (h) setBottomPanelHeight(h);
+    // applyZoom rather than setZoom: this is restoring what is already on disk, and
+    // writing it straight back would be a settings save on every launch.
+    if (uiZoom && uiZoom !== 1) void applyZoom(uiZoom);
   }, [settingsLoaded, setSidebarWidth, setBottomPanelHeight]);
   const setProblems = useIdeStore((s) => s.setProblems);
   const setPlutoStatus = useIdeStore((s) => s.setPlutoStatus);
@@ -113,7 +118,9 @@ export default function App() {
       if (!tab || tab.isDirty) return;
       invoke<string>("fs_read_file", { path: tab.path })
         .then((content) => {
-          if (content !== tab.content) state.updateTabContent(tab.id, content, false);
+          // resetTabContent, not updateTabContent: these bytes *are* what is on disk, so
+          // they become the new baseline rather than an edit measured against the old one.
+          if (content !== tab.content) state.resetTabContent(tab.id, content);
         })
         .catch(() => {});
     };
@@ -237,6 +244,7 @@ export default function App() {
                 path: nbPath,
                 name,
                 content,
+                savedContent: content,
                 isDirty: false,
                 language: "julia",
               });
@@ -422,6 +430,33 @@ export default function App() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [setActiveBottomPanel, setActiveSidebarView]);
+
+  // Unsaved-changes guard on quit. The backend cancels every window close and asks
+  // here instead, so nothing closes the window until confirmDiscardAllUnsaved says so.
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    installCloseGuard().then((fn) => {
+      unlisten = fn;
+    });
+    return () => unlisten?.();
+  }, []);
+
+  // Zoom, on its own listener and in the **capture** phase: Monaco and xterm both
+  // swallow keys while focused, and Ctrl+- is a control sequence to a terminal. Kept
+  // separate from the block above so the rest keep their bubble-phase behaviour, where
+  // the focused editor still gets first refusal.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const zoom = matchZoomKey(e);
+      if (!zoom) return;
+      e.preventDefault();
+      if (zoom === "in") zoomIn();
+      else if (zoom === "out") zoomOut();
+      else zoomReset();
+    };
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, []);
 
   const onBottomDragStart = useCallback(
     (e: React.MouseEvent) => {

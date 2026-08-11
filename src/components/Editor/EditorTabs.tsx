@@ -2,24 +2,22 @@ import { useCallback, useRef } from "react";
 import { Code, Eye, X } from "lucide-react";
 import { useIdeStore } from "../../stores/useIdeStore";
 import { isMarkdownPath } from "../../markdown/renderer";
+import { requestCloseTab } from "../../services/requestCloseTab";
 
 export function EditorTabs() {
   const openTabs = useIdeStore((s) => s.openTabs);
   const activeTabId = useIdeStore((s) => s.activeTabId);
   const setActiveTab = useIdeStore((s) => s.setActiveTab);
-  const closeTab = useIdeStore((s) => s.closeTab);
   const reorderTabs = useIdeStore((s) => s.reorderTabs);
   const toggleTabViewMode = useIdeStore((s) => s.toggleTabViewMode);
 
   const dragIndexRef = useRef<number | null>(null);
 
-  const handleClose = useCallback(
-    (e: React.MouseEvent, id: string) => {
-      e.stopPropagation();
-      closeTab(id);
-    },
-    [closeTab],
-  );
+  // requestCloseTab, not the store's closeTab: a tab with unsaved changes asks first.
+  const handleClose = useCallback((e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    void requestCloseTab(id);
+  }, []);
 
   const handleTogglePreview = useCallback(
     (e: React.MouseEvent, id: string) => {
@@ -29,15 +27,12 @@ export function EditorTabs() {
     [toggleTabViewMode],
   );
 
-  const handleMiddleClick = useCallback(
-    (e: React.MouseEvent, id: string) => {
-      if (e.button === 1) {
-        e.preventDefault();
-        closeTab(id);
-      }
-    },
-    [closeTab],
-  );
+  const handleMiddleClick = useCallback((e: React.MouseEvent, id: string) => {
+    if (e.button === 1) {
+      e.preventDefault();
+      void requestCloseTab(id);
+    }
+  }, []);
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     dragIndexRef.current = index;
@@ -86,11 +81,6 @@ export function EditorTabs() {
           onDrop={(e) => handleDrop(e, index)}
         >
           <span className="editor-tab-name">{tab.name}</span>
-          {tab.isDirty && (
-            <span className="editor-tab-dirty" title="Unsaved changes">
-              ●
-            </span>
-          )}
           {isMarkdownPath(tab.path) && (
             <button
               className="editor-tab-preview"
@@ -102,14 +92,26 @@ export function EditorTabs() {
               {tab.viewMode === "preview" ? <Code size={12} /> : <Eye size={12} />}
             </button>
           )}
-          <button
-            className="editor-tab-close"
-            onClick={(e) => handleClose(e, tab.id)}
-            title="Close"
-            aria-label="Close"
-          >
-            <X size={12} />
-          </button>
+          {/*
+            The dot and the close button share one slot, as they do in VS Code: the dot
+            is what you see at rest, and hovering or focusing the tab turns it into an X.
+            Both are always rendered — swapping which is *visible* is a CSS concern, and
+            rendering the button conditionally would take it out of the tab order for
+            exactly the tabs that most need closing deliberately.
+          */}
+          <span className={`editor-tab-slot ${tab.isDirty ? "dirty" : ""}`}>
+            <span className="editor-tab-dirty" aria-hidden="true">
+              ●
+            </span>
+            <button
+              className="editor-tab-close"
+              onClick={(e) => handleClose(e, tab.id)}
+              title={tab.isDirty ? "Close (unsaved changes)" : "Close"}
+              aria-label={tab.isDirty ? `Close ${tab.name}, unsaved changes` : `Close ${tab.name}`}
+            >
+              <X size={12} />
+            </button>
+          </span>
         </div>
       ))}
     </div>

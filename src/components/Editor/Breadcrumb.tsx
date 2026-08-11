@@ -74,6 +74,7 @@ export function Breadcrumb() {
         path: filePath,
         name: filename,
         content,
+        savedContent: content,
         isDirty: false,
         language: filename.split(".").pop() ?? "plaintext",
       };

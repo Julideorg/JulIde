@@ -23,7 +23,7 @@ A modern, fully-featured IDE for the [Julia](https://julialang.org/) programming
 
 - **Monaco Editor** with full Julia syntax highlighting via a custom Monarch tokenizer
 - **25+ Julia snippets** — function, struct, try/catch, @testset, comprehensions, macros, and more
-- **Tabbed multi-file editing** with dirty indicators and auto-save
+- **Tabbed multi-file editing** with unsaved-change dots and optional auto-save
 - **Split editor** — side-by-side editing with a resizable divider
 - **Breadcrumb navigation** showing the file path below the tab bar
 - **Find & Replace** (Cmd/Ctrl+F, Cmd/Ctrl+H) via Monaco's built-in widget
@@ -122,6 +122,8 @@ so per-project config wins over the IDE's defaults.
 - **Command palette** (Cmd/Ctrl+Shift+P) with 35+ commands
 - **Settings panel** (Cmd/Ctrl+,) — configure editor, terminal, and appearance
 - **Theme support** — Dark and Light themes with full CSS variable system
+- **Interface zoom** (Cmd/Ctrl+`=` / `-` / `0`) — scales the whole window, editor and terminal included
+- **Markdown preview** — KaTeX maths (`$…$`, `$$…$$`, `\(…\)`, `\[…\]`) and code blocks highlighted by Monaco, matching the editor's own theme
 - **Welcome screen** with recent projects on startup
 - **Resizable panels** — sidebar and bottom panel with drag handles
 - **Outline panel** — LSP-powered document symbol tree in the sidebar (functions, structs, modules, etc.)
@@ -487,6 +489,9 @@ julIDE
 | `` Ctrl+` ``       | Toggle terminal          |
 | `Cmd/Ctrl+G`       | Go to Line               |
 | `Ctrl/Cmd+Enter`   | Run code cell            |
+| `Cmd/Ctrl+=`       | Zoom in                  |
+| `Cmd/Ctrl+-`       | Zoom out                 |
+| `Cmd/Ctrl+0`       | Reset zoom               |
 | `Cmd/Ctrl+,`       | Open settings            |
 
 ---
@@ -504,7 +509,7 @@ Available settings:
 | `tabSize`              | `4`                   | Indentation width                                    |
 | `minimapEnabled`       | `true`                | Show minimap                                         |
 | `wordWrap`             | `off`                 | Word wrap mode                                       |
-| `autoSave`             | `true`                | Auto-save on change                                  |
+| `autoSave`             | `false`               | Write the file 800ms after typing stops              |
 | `theme`                | `julide-dark`         | Color theme (`julide-dark` or `julide-light`)        |
 | `terminalFontSize`     | `13`                  | Terminal font size                                   |
 | `containerRuntime`     | `auto`                | Container runtime (`auto`, `docker`, or `podman`)    |
@@ -521,6 +526,7 @@ Available settings:
 | `fatouIndentWidth`     | `4`                   | Spaces per indent level Fatou formats with           |
 | `formatOnSave`         | `false`               | Format through the language server on explicit save  |
 | `startMaximized`       | `true`                | Start the window maximized                           |
+| `uiZoom`               | `1.0`                 | Interface zoom factor (0.5–3.0), whole window        |
 
 ---
 

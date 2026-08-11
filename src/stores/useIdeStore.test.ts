@@ -14,6 +14,8 @@ function makeTab(overrides: Partial<EditorTab> = {}): EditorTab {
     path: "/test/file.jl",
     name: "file.jl",
     content: 'println("hello")',
+    // A freshly opened tab matches disk, which is what makes isDirty derivable.
+    savedContent: 'println("hello")',
     isDirty: false,
     language: "julia",
     ...overrides,
@@ -90,20 +92,49 @@ describe("tab management", () => {
     expect(useIdeStore.getState().activeTabId).toBe("tab-1");
   });
 
-  test("updateTabContent updates content and isDirty", () => {
+  test("updateTabContent updates content and derives isDirty", () => {
     useIdeStore.getState().openFile(makeTab());
-    useIdeStore.getState().updateTabContent("tab-1", "new content", true);
+    useIdeStore.getState().updateTabContent("tab-1", "new content");
 
     const tab = useIdeStore.getState().openTabs[0];
     expect(tab.content).toBe("new content");
     expect(tab.isDirty).toBe(true);
   });
 
-  test("markTabSaved sets isDirty to false", () => {
-    useIdeStore.getState().openFile(makeTab({ isDirty: true }));
+  test("editing back to the saved text clears isDirty, as in VS Code", () => {
+    // Derived rather than latched, so undo puts the tab back the way it found it.
+    useIdeStore.getState().openFile(makeTab({ content: "a", savedContent: "a" }));
+    useIdeStore.getState().updateTabContent("tab-1", "ab");
+    expect(useIdeStore.getState().openTabs[0].isDirty).toBe(true);
+
+    useIdeStore.getState().updateTabContent("tab-1", "a");
+    expect(useIdeStore.getState().openTabs[0].isDirty).toBe(false);
+  });
+
+  test("markTabSaved clears isDirty and moves the baseline to what was written", () => {
+    useIdeStore.getState().openFile(makeTab({ content: "a", savedContent: "a" }));
+    useIdeStore.getState().updateTabContent("tab-1", "edited");
     useIdeStore.getState().markTabSaved("tab-1");
 
-    expect(useIdeStore.getState().openTabs[0].isDirty).toBe(false);
+    const tab = useIdeStore.getState().openTabs[0];
+    expect(tab.isDirty).toBe(false);
+    expect(tab.savedContent).toBe("edited");
+
+    // And the old text is now an edit, rather than a return to the baseline.
+    useIdeStore.getState().updateTabContent("tab-1", "a");
+    expect(useIdeStore.getState().openTabs[0].isDirty).toBe(true);
+  });
+
+  test("resetTabContent adopts disk content as the new baseline", () => {
+    // The external-change reload path: these bytes *are* what is on disk, so the tab
+    // must come out clean rather than looking edited against the old baseline.
+    useIdeStore.getState().openFile(makeTab({ content: "a", savedContent: "a" }));
+    useIdeStore.getState().resetTabContent("tab-1", "changed on disk");
+
+    const tab = useIdeStore.getState().openTabs[0];
+    expect(tab.content).toBe("changed on disk");
+    expect(tab.savedContent).toBe("changed on disk");
+    expect(tab.isDirty).toBe(false);
   });
 });
 

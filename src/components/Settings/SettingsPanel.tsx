@@ -9,6 +9,7 @@ import { lspStartOptions } from "../../lsp/lspConfig";
 import { useModalA11y } from "../../hooks/useModalA11y";
 import { Select } from "../ui";
 import { containerSupported } from "../../services/containerSupport";
+import { setZoom, ZOOM_STEPS, zoomLabel } from "../../services/zoom";
 import { PluginSettings } from "./PluginSettings";
 import { GitAuthSettings } from "../Git/GitAuthSettings";
 
@@ -189,6 +190,23 @@ export function SettingsPanel() {
                   { value: "julide-light", label: "julIDE Paper (light)" },
                 ]}
               />
+            </SettingRow>
+
+            <SettingRow label="Zoom">
+              <Select
+                className="settings-select"
+                value={String(settings.uiZoom)}
+                // Applied through the zoom service, not updateSettings: the webview has
+                // to be rescaled as well as the value stored.
+                onChange={(value) => void setZoom(Number(value))}
+                options={ZOOM_STEPS.map((step) => ({
+                  value: String(step),
+                  label: zoomLabel(step),
+                }))}
+              />
+              <span className="settings-hint">
+                Scales the whole interface, editor and terminal included
+              </span>
             </SettingRow>
 
             <SettingRow label="Activity Bar Labels">

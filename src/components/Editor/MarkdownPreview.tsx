@@ -5,7 +5,9 @@ import { openExternal } from "../../services/openExternal";
 import { openFileAtPath } from "../../services/openFile";
 import { classifyMarkdownHref } from "../../markdown/links";
 import { isMarkdownPath, renderMarkdown } from "../../markdown/renderer";
+import { useMarkdownHighlight } from "../../markdown/useMarkdownHighlight";
 import { useMarkdownImages } from "../../markdown/useMarkdownImages";
+import { useMarkdownMath } from "../../markdown/useMarkdownMath";
 import { toast } from "../ui";
 
 /**
@@ -33,6 +35,10 @@ export function MarkdownPreview({ tabId }: { tabId: string }) {
     return () => clearTimeout(t);
   }, [content]);
 
+  // Fenced code is painted by Monaco, so it follows the editor's theme and indent width.
+  const theme = useSettingsStore((s) => s.settings.theme);
+  const tabSize = useSettingsStore((s) => s.settings.tabSize);
+
   const allowLocalImages = useSettingsStore((s) => s.settings.allowLocalImages);
   const allowRemoteImages = useSettingsStore((s) => s.settings.allowRemoteImages);
   const policy = useMemo(
@@ -54,6 +60,8 @@ export function MarkdownPreview({ tabId }: { tabId: string }) {
   const bodyRef = useRef<HTMLDivElement>(null);
 
   useMarkdownImages(bodyRef, { html, docPath, workspacePath, policy });
+  useMarkdownMath(bodyRef, { html });
+  useMarkdownHighlight(bodyRef, { html, theme, tabSize });
 
   const onClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {

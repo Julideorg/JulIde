@@ -27,6 +27,7 @@ import {
 import { newNotebookSource } from "../notebook/ipynb";
 import { syncToNotebook, writeTracked } from "../notebook/pairing";
 import { openFileAtPath } from "./openFile";
+import { zoomIn, zoomOut, zoomReset } from "./zoom";
 import { toast } from "../components/ui";
 import type { FileNode, JuliaOutputEvent, Problem } from "../types";
 
@@ -323,6 +324,27 @@ function registerBuiltinCommands(containers: boolean) {
       await invoke("fs_write_file", { path: tab.path, content });
       s.markTabSaved(tab.id);
     },
+  });
+
+  store.registerCommand({
+    id: "view.zoom-in",
+    label: "Zoom In",
+    shortcut: "⌘+",
+    execute: () => zoomIn(),
+  });
+
+  store.registerCommand({
+    id: "view.zoom-out",
+    label: "Zoom Out",
+    shortcut: "⌘-",
+    execute: () => zoomOut(),
+  });
+
+  store.registerCommand({
+    id: "view.zoom-reset",
+    label: "Reset Zoom",
+    shortcut: "⌘0",
+    execute: () => zoomReset(),
   });
 
   store.registerCommand({

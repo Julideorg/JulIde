@@ -15,7 +15,13 @@ pub struct Settings {
     pub minimap_enabled: bool,
     #[serde(default = "default_word_wrap")]
     pub word_wrap: String,
-    #[serde(default = "default_true")]
+    /// Write the file a moment after typing stops.
+    ///
+    /// Off by default. Existing installs keep whatever they already have on disk —
+    /// `settings_save` writes every field, so they all carry `autoSave: true` — because
+    /// switching autosave off under someone relying on it loses work rather than fixing
+    /// anything.
+    #[serde(default)]
     pub auto_save: bool,
     #[serde(default = "default_theme")]
     pub theme: String,
@@ -83,10 +89,21 @@ pub struct Settings {
     /// which viewing a cloned repository's README should not do silently.
     #[serde(default)]
     pub allow_remote_images: bool,
+    /// Interface zoom, as a webview scale factor. 1.0 is 100%.
+    ///
+    /// Scales the whole window — chrome, editor and terminal alike — because it is
+    /// applied by the webview itself rather than by the stylesheet. Distinct from
+    /// [`Self::font_size`], which is the editor's text and nothing else.
+    #[serde(default = "default_ui_zoom")]
+    pub ui_zoom: f32,
 }
 
 fn default_font_size() -> u32 {
     14
+}
+
+fn default_ui_zoom() -> f32 {
+    1.0
 }
 fn default_sidebar_width() -> u32 {
     240
@@ -139,7 +156,7 @@ impl Default for Settings {
             tab_size: default_tab_size(),
             minimap_enabled: default_true(),
             word_wrap: default_word_wrap(),
-            auto_save: default_true(),
+            auto_save: false,
             theme: default_theme(),
             terminal_font_size: default_terminal_font_size(),
             recent_workspaces: Vec::new(),
@@ -163,6 +180,7 @@ impl Default for Settings {
             bottom_panel_height: default_bottom_panel_height(),
             allow_local_images: false,
             allow_remote_images: false,
+            ui_zoom: default_ui_zoom(),
         }
     }
 }
@@ -183,6 +201,13 @@ impl Settings {
         self.pluto_port = self.pluto_port.clamp(1024, 65535);
         self.sidebar_width = self.sidebar_width.clamp(150, 800);
         self.bottom_panel_height = self.bottom_panel_height.clamp(80, 1200);
+        // A zoom of 0 — or NaN, which a hand-edited `null` deserializes into — leaves a
+        // window that cannot be read or clicked back to normal. `is_finite` first,
+        // because `clamp` panics on NaN rather than correcting it.
+        if !self.ui_zoom.is_finite() {
+            self.ui_zoom = default_ui_zoom();
+        }
+        self.ui_zoom = self.ui_zoom.clamp(0.5, 3.0);
 
         if !matches!(
             self.word_wrap.as_str(),
@@ -308,7 +333,9 @@ mod tests {
         assert_eq!(s.theme, "julide-dark");
         assert!(s.minimap_enabled);
         assert_eq!(s.word_wrap, "off");
-        assert!(s.auto_save);
+        // Off for a fresh install, so an unsaved file stays visibly unsaved. An install
+        // that already has `autoSave: true` on disk keeps it — see the field's docs.
+        assert!(!s.auto_save);
         assert_eq!(s.terminal_font_size, 13);
         assert_eq!(s.container_runtime, "auto");
         assert_eq!(s.pluto_port, 3000);
@@ -350,6 +377,37 @@ mod tests {
         let json = serde_json::to_string(&Settings::default()).unwrap();
         assert!(json.contains("allowLocalImages"), "got: {json}");
         assert!(json.contains("allowRemoteImages"), "got: {json}");
+    }
+
+    #[test]
+    fn ui_zoom_defaults_to_100_percent_and_is_clamped() {
+        // Absent from every settings file written before zoom existed.
+        let s: Settings = serde_json::from_str(r#"{"fontSize": 16}"#).unwrap();
+        assert_eq!(s.ui_zoom, 1.0);
+
+        let json = serde_json::to_string(&Settings::default()).unwrap();
+        assert!(json.contains("uiZoom"), "got: {json}");
+
+        // A hand-edited file must not be able to leave a window that cannot be read.
+        let tiny = Settings {
+            ui_zoom: 0.0001,
+            ..Default::default()
+        }
+        .clamped();
+        assert_eq!(tiny.ui_zoom, 0.5);
+        let huge = Settings {
+            ui_zoom: 40.0,
+            ..Default::default()
+        }
+        .clamped();
+        assert_eq!(huge.ui_zoom, 3.0);
+        // clamp panics on NaN, so it has to be caught before we get there.
+        let nan = Settings {
+            ui_zoom: f32::NAN,
+            ..Default::default()
+        }
+        .clamped();
+        assert_eq!(nan.ui_zoom, 1.0);
     }
 
     #[test]

@@ -36,6 +36,7 @@ export async function openFileAtPath(
     path,
     name,
     content,
+    savedContent: content,
     isDirty: false,
     language: name.split(".").pop() ?? "plaintext",
     ...overrides,

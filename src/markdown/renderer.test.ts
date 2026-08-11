@@ -229,3 +229,69 @@ describe("isMarkdownPath", () => {
     }
   });
 });
+
+describe("math", () => {
+  test("inline $…$ becomes a placeholder carrying the TeX as text", () => {
+    const html = renderMarkdownUnsafe("Einstein said $E = mc^2$ once.");
+    expect(html).toContain('<span class="md-math">E = mc^2</span>');
+  });
+
+  test("inline \\(…\\) is accepted too", () => {
+    expect(renderMarkdownUnsafe("also \\(a+b\\) here")).toContain(
+      '<span class="md-math">a+b</span>',
+    );
+  });
+
+  test("$$…$$ on its own is a block, so it is not wrapped in a paragraph", () => {
+    const html = renderMarkdownUnsafe("$$\n\\int_0^1 x\\,dx\n$$");
+    expect(html).toContain('<div class="md-math md-math--display">');
+    expect(html).toContain("\\int_0^1 x\\,dx");
+    expect(html).not.toContain("<p>");
+  });
+
+  test("\\[…\\] is a display block as well", () => {
+    const html = renderMarkdownUnsafe("\\[\n\\frac{a}{b}\n\\]");
+    expect(html).toContain('<div class="md-math md-math--display">');
+    expect(html).toContain("\\frac{a}{b}");
+  });
+
+  test("$$…$$ mid-paragraph stays inline but keeps display styling", () => {
+    const html = renderMarkdownUnsafe("before $$x^2$$ after");
+    expect(html).toContain('<span class="md-math md-math--display">x^2</span>');
+  });
+
+  test("the TeX is escaped, so it cannot carry markup out of the document", () => {
+    const html = renderMarkdownUnsafe("$<img src=x onerror=alert(1)>$");
+    expect(html).not.toContain("<img");
+    expect(html).toContain("&lt;img");
+  });
+
+  // The currency cases. A README that mentions prices must not turn into equations.
+  test("prices in prose are left alone", () => {
+    const html = renderMarkdownUnsafe("The book cost $5 and the pen $10.");
+    expect(html).not.toContain("md-math");
+    expect(html).toContain("$5");
+    expect(html).toContain("$10");
+  });
+
+  test("an escaped \\$ is literal", () => {
+    const html = renderMarkdownUnsafe("costs \\$5 today");
+    expect(html).not.toContain("md-math");
+  });
+
+  test("inline maths may not span a newline", () => {
+    const html = renderMarkdownUnsafe("open $a\n\nb$ close");
+    expect(html).not.toContain("md-math");
+  });
+
+  test("a $ inside a code span is not maths", () => {
+    const html = renderMarkdownUnsafe("use `$PATH$` in the shell");
+    expect(html).not.toContain("md-math");
+    expect(html).toContain("<code>$PATH$</code>");
+  });
+
+  test("a $ inside a fenced block is not maths", () => {
+    const html = renderMarkdownUnsafe("```sh\necho $HOME and $USER\n```");
+    expect(html).not.toContain("md-math");
+  });
+});

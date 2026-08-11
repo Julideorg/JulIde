@@ -74,8 +74,20 @@ interface ConfirmRequest {
   message: string;
   confirmLabel: string;
   tone: Tone;
-  resolve: (ok: boolean) => void;
+  /**
+   * A third answer, between confirming and cancelling — "Don't Save" against a "Save".
+   *
+   * Optional because two buttons is the normal case. Sharing one store and one host
+   * rather than standing up a parallel set for the one dialog that needs three: the
+   * focus trap, the scrim rules and the `alertdialog` role are the fiddly parts, and
+   * they should not exist twice.
+   */
+  secondaryLabel?: string;
+  resolve: (choice: ConfirmChoice) => void;
 }
+
+/** `confirm` is the primary button, `secondary` the middle one where there is one. */
+export type ConfirmChoice = "confirm" | "secondary" | "cancel";
 
 interface ConfirmState {
   request: ConfirmRequest | null;
@@ -104,7 +116,28 @@ export function showConfirm(message: string, options: ConfirmOptions = {}): Prom
       message,
       confirmLabel: options.confirmLabel ?? "Delete",
       tone: options.tone ?? "shell",
-      resolve,
+      resolve: (choice) => resolve(choice === "confirm"),
+    });
+  });
+}
+
+/**
+ * Ask what to do about a file with unsaved changes.
+ *
+ * Escape and the scrim both mean "cancel" — the safe answer, and the one that leaves
+ * the work where it is. Discarding is deliberately the middle button rather than the
+ * primary one, so the emphasised action is the one that keeps the file.
+ */
+export function showUnsavedPrompt(fileName: string): Promise<"save" | "discard" | "cancel"> {
+  return new Promise((resolve) => {
+    useConfirmStore.getState().open({
+      title: "Unsaved changes",
+      message: `Do you want to save the changes you made to ${fileName}?`,
+      confirmLabel: "Save",
+      secondaryLabel: "Don't Save",
+      tone: "brand",
+      resolve: (choice) =>
+        resolve(choice === "confirm" ? "save" : choice === "secondary" ? "discard" : "cancel"),
     });
   });
 }
@@ -114,8 +147,8 @@ export function ConfirmDialogHost() {
   const request = useConfirmStore((s) => s.request);
   const close = useConfirmStore((s) => s.close);
 
-  const settle = (ok: boolean) => {
-    request?.resolve(ok);
+  const settle = (choice: ConfirmChoice) => {
+    request?.resolve(choice);
     close();
   };
 
@@ -124,11 +157,18 @@ export function ConfirmDialogHost() {
       open={request !== null}
       role="alertdialog"
       title={request?.title ?? ""}
-      onClose={() => settle(false)}
+      onClose={() => settle("cancel")}
       footer={
         <>
-          <Button onClick={() => settle(false)}>Cancel</Button>
-          <Button variant="filled" tone={request?.tone ?? "shell"} onClick={() => settle(true)}>
+          <Button onClick={() => settle("cancel")}>Cancel</Button>
+          {request?.secondaryLabel && (
+            <Button onClick={() => settle("secondary")}>{request.secondaryLabel}</Button>
+          )}
+          <Button
+            variant="filled"
+            tone={request?.tone ?? "shell"}
+            onClick={() => settle("confirm")}
+          >
             {request?.confirmLabel}
           </Button>
         </>

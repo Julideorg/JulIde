@@ -227,6 +227,7 @@
     "pty-output": "terminal"
   },
   "allCommands": [
+    "app_confirm_close",
     "container_detect_runtime",
     "container_exec",
     "container_inspect",
@@ -241,6 +242,7 @@
     "container_set_runtime",
     "container_start",
     "container_stop",
+    "container_support_available",
     "debug_continue",
     "debug_get_breakpoints",
     "debug_get_variables",

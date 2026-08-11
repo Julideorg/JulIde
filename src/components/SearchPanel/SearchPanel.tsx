@@ -105,6 +105,7 @@ export function SearchPanel() {
         path: result.file,
         name,
         content,
+        savedContent: content,
         isDirty: false,
         language: name.split(".").pop() ?? "plaintext",
       };

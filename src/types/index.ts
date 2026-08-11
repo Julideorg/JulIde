@@ -10,6 +10,15 @@ export interface EditorTab {
   path: string;
   name: string;
   content: string;
+  /**
+   * What is believed to be on disk: the bytes as opened, or as last written.
+   *
+   * `isDirty` is derived from `content !== savedContent` rather than set by whoever
+   * happens to be editing, so undoing back to the saved text clears the indicator the
+   * way it does in VS Code, and no call site can forget to raise the flag — which is
+   * exactly how the tab dot spent its first two releases permanently switched off.
+   */
+  savedContent: string;
   isDirty: boolean;
   language: string;
   /**

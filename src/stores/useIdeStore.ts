@@ -30,7 +30,10 @@ interface IdeStore {
   openFile: (tab: EditorTab) => void;
   closeTab: (id: string) => void;
   setActiveTab: (id: string) => void;
-  updateTabContent: (id: string, content: string, isDirty: boolean) => void;
+  /** Record an edit. Dirtiness is derived from the tab's saved baseline, not passed in. */
+  updateTabContent: (id: string, content: string) => void;
+  /** Replace both the content and the baseline — for text that came *from* disk. */
+  resetTabContent: (id: string, content: string) => void;
   markTabSaved: (id: string) => void;
   reorderTabs: (fromIndex: number, toIndex: number) => void;
   setTabViewMode: (id: string, mode: "source" | "preview") => void;
@@ -254,18 +257,32 @@ export const useIdeStore = create<IdeStore>()(
       set((s) => {
         s.activeTabId = id;
       }),
-    updateTabContent: (id, content, isDirty) =>
+    updateTabContent: (id, content) =>
       set((s) => {
         const tab = s.openTabs.find((t) => t.id === id);
         if (tab) {
           tab.content = content;
-          tab.isDirty = isDirty;
+          tab.isDirty = content !== tab.savedContent;
+        }
+      }),
+    resetTabContent: (id, content) =>
+      set((s) => {
+        const tab = s.openTabs.find((t) => t.id === id);
+        if (tab) {
+          tab.content = content;
+          tab.savedContent = content;
+          tab.isDirty = false;
         }
       }),
     markTabSaved: (id) =>
       set((s) => {
         const tab = s.openTabs.find((t) => t.id === id);
-        if (tab) tab.isDirty = false;
+        if (tab) {
+          // The baseline moves to whatever was just written, so an edit that merely
+          // restored the previous text does not leave the tab looking dirty.
+          tab.savedContent = tab.content;
+          tab.isDirty = false;
+        }
       }),
     reorderTabs: (fromIndex, toIndex) =>
       set((s) => {

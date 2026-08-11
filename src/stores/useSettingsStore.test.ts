@@ -15,7 +15,10 @@ describe("initial state", () => {
     expect(settings.theme).toBe("julide-dark");
     expect(settings.minimapEnabled).toBe(true);
     expect(settings.wordWrap).toBe("off");
-    expect(settings.autoSave).toBe(true);
+    // Off for a fresh install, so an unsaved file stays visibly unsaved. An install
+    // that already stored `autoSave: true` keeps it, since settings_save writes
+    // every field and loadSettings merges what is on disk over these defaults.
+    expect(settings.autoSave).toBe(false);
     expect(settings.terminalFontSize).toBe(13);
     expect(settings.containerRuntime).toBe("auto");
     expect(settings.plutoPort).toBe(3000);
@@ -24,6 +27,7 @@ describe("initial state", () => {
     // reading files and making network requests on behalf of every existing user.
     expect(settings.allowLocalImages).toBe(false);
     expect(settings.allowRemoteImages).toBe(false);
+    expect(settings.uiZoom).toBe(1);
   });
 
   test("loaded is false initially", () => {

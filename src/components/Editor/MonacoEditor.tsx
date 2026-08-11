@@ -411,12 +411,18 @@ export function MonacoEditor() {
   const handleChange = useCallback(
     (value: string | undefined) => {
       if (!activeTab || value === undefined) return;
-      updateTabContent(activeTab.id, value, false);
+      updateTabContent(activeTab.id, value);
 
+      // Autosave is a setting, and until 0.5.0 it was one nothing read — the debounce
+      // below ran for everyone, which is why "unsaved" never meant anything and the tab
+      // dot stayed dark. Read at schedule time rather than closed over, so turning it
+      // off stops the next keystroke rather than the next remount.
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => {
-        saveFile(activeTab.id, activeTab.path, value);
-      }, SAVE_DEBOUNCE_MS);
+      if (useSettingsStore.getState().settings.autoSave) {
+        saveTimerRef.current = setTimeout(() => {
+          saveFile(activeTab.id, activeTab.path, value);
+        }, SAVE_DEBOUNCE_MS);
+      }
 
       if (activeTab.path.endsWith(".jl")) {
         if (lspChangeTimerRef.current) clearTimeout(lspChangeTimerRef.current);

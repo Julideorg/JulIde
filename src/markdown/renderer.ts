@@ -1,4 +1,5 @@
 import { Marked } from "marked";
+import { mathExtensions } from "./math";
 import { escapeHtml, sanitizeMarkdown } from "./sanitize";
 
 /**
@@ -125,6 +126,10 @@ function createMarked(options: RenderOptions = {}) {
       },
     },
   });
+
+  // TeX delimiters. These only emit inert placeholders — useMarkdownMath typesets them
+  // after sanitization, for the reasons set out in ./math.ts.
+  md.use({ extensions: mathExtensions });
 
   return md;
 }

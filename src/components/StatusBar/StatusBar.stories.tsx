@@ -99,6 +99,7 @@ export const WithOpenFile: Story = {
           path: "/project/main.jl",
           name: "main.jl",
           content: "",
+          savedContent: "",
           isDirty: false,
           language: "julia",
         },

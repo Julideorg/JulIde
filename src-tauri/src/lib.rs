@@ -25,6 +25,7 @@ mod sync;
 mod trust;
 mod updater;
 mod watcher;
+mod window;
 
 use julia::new_julia_state;
 use tauri::Manager;
@@ -127,6 +128,8 @@ pub fn run() {
         .on_menu_event(|app, event| {
             crate::menu::on_menu_event(app, event.id().as_ref());
         })
+        // Ask the frontend about unsaved work before the window goes; see window.rs.
+        .on_window_event(crate::window::on_window_event)
         .invoke_handler(tauri::generate_handler![
             // File system
             fs::fs_get_tree,
@@ -197,6 +200,8 @@ pub fn run() {
             settings::settings_remove_recent_workspace,
             // Updater
             updater::updater_install_capability,
+            // Window lifecycle
+            window::app_confirm_close,
             // Git
             git::git_is_repo,
             git::git_branch_current,

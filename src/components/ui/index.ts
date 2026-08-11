@@ -7,7 +7,13 @@
  */
 
 export { Button, IconButton, type Tone, type ButtonVariant } from "./Button";
-export { Dialog, showConfirm, ConfirmDialogHost } from "./Dialog";
+export {
+  Dialog,
+  showConfirm,
+  showUnsavedPrompt,
+  ConfirmDialogHost,
+  type ConfirmChoice,
+} from "./Dialog";
 export { Panel, EmptyState, Kbd, Badge, Dot, Spinner } from "./Panel";
 export { Input, FieldShell } from "./Field";
 export { Select, type SelectOption } from "./Select";

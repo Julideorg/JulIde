@@ -5,6 +5,88 @@ All notable changes to julIDE are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 julIDE aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+The markdown preview learned to typeset maths and to colour the code inside fences, the
+window learned to zoom, and the tab dot that has been in the markup since 0.4.0 finally
+means something — which turned out to be a change to what "saved" means, not a change to
+a stylesheet.
+
+### Added
+
+- **Maths in the markdown preview**, via [KaTeX](https://katex.org). `$…$` and `\(…\)`
+  inline, `$$…$$` and `\[…\]` for display.
+
+  The care here went into the `$` that is _not_ maths. A price, an escaped `\$`, a
+  `$PATH$` inside a code span, and a shell fence full of `$HOME` all stay literal — an
+  opening `$` has to be followed by a non-space and the
+  closing one preceded by a non-space, and inline maths may not span a newline, so a
+  stray delimiter cannot swallow the rest of a paragraph.
+
+  KaTeX runs on whatever a cloned repository's README happens to contain, so it runs
+  bounded: `trust` off (no `\href`, `\url` or `\includegraphics`), `maxExpand` and
+  `maxSize` set, and a malformed expression rendered in red in place rather than thrown.
+  Nothing is fetched — the fonts are bundled, as Monaco already is, because an IDE aimed
+  at HPC and air-gapped users has to typeset offline.
+
+  **The sanitizer did not have to be relaxed to allow any of this.** KaTeX emits spans
+  carrying inline `style` plus a `<math>` subtree, and `style` and `math` are both on the
+  forbidden list. So the parser only ever emits an inert placeholder holding the TeX as
+  text, and the typesetting happens _after_ DOMPurify has run — the same "the document
+  can ask, only julIDE can create" rule the image support already follows.
+
+- **Fenced code in the markdown preview is highlighted — by Monaco.** Not a second
+  highlighter: the editor is already in the bundle, the Julia Monarch grammar is already
+  registered, and `monaco.editor.colorize` paints with the _active_ julIDE theme. A
+  ` ```julia ` block in a README therefore matches the file open next to it, down to the
+  colour, and follows a theme switch. Every language Monaco ships comes along free,
+  resolved by name, alias or extension (`julia`, `jl`, `python`, `py`, `sh`, …) from
+  Monaco's own registry rather than a hand-written table that could drift from it. An
+  unrecognised tag renders as plain text, exactly as before.
+
+  `renderer.test.ts` has carried a test named "so Julia can be highlighted later" since
+  the preview landed. This is later.
+
+- **Interface zoom** — `Cmd/Ctrl+=`, `Cmd/Ctrl+-`, `Cmd/Ctrl+0`, the View menu, the
+  command palette, or a control in **Settings → Appearance**. The level persists.
+
+  This is webview zoom, so it scales the _whole_ window — activity bar, tabs, editor and
+  terminal grid alike — which is what "Zoom In" does in VS Code and is not what changing
+  the editor's `fontSize` does. Doing it in CSS was considered and dropped: the
+  stylesheet is entirely in `px` with no `rem` anywhere, so scaling the root font size
+  would move nothing, and a CSS `zoom` on the layout root puts Monaco's mouse
+  hit-testing at risk for no gain. The one new ACL entry, `set-webview-zoom`, can only
+  rescale the window it is already rendering in, and the value is clamped in Rust.
+
+### Changed
+
+- **A tab with unsaved changes now shows a dot**, where its close button normally sits,
+  turning back into the close button when you point at the tab — as in VS Code.
+
+  The dot, its CSS and the `isDirty` field have all been there since 0.4.0. Nothing ever
+  set the flag to `true`: every writer passed a hardcoded `false`, so the indicator was
+  unreachable and the "reload a file changed on disk unless it has unsaved work" guard
+  was reading a field that was always `false`. Dirtiness is now derived in the store from
+  the tab's content against what was last read from or written to disk, rather than
+  supplied by whoever happened to be editing — so undoing back to the saved text clears
+  the dot on its own, and no call site can forget to raise it again.
+
+- **Auto-save is now a setting that is actually read, and it is off by default.** It has
+  been in the Settings panel and in `settings.json` since 0.2.0, doing nothing: the
+  editor wrote every buffer 800ms after the last keystroke regardless of it. That is also
+  why "unsaved" could never mean much — nothing stayed unsaved for longer than 800ms.
+
+  **Existing installs keep auto-save on.** `settings_save` writes every field, so every
+  installed copy already has `autoSave: true` on disk and keeps it; only a fresh install
+  gets the new default. Turning it off under someone who has been relying on it is a way
+  to lose work, not a fix. Anyone who _did_ untick the box now gets what they asked for.
+
+- **Closing an edited file asks first.** Closing a tab with unsaved changes — by the
+  close button, by middle-click, or by quitting the app — offers Save, Don't Save and
+  Cancel, and Cancel genuinely cancels the quit. This is load-bearing rather than
+  decorative now that auto-save can be off: before, closing a tab could lose at most the
+  last 800ms of typing; now it could lose an afternoon.
+
 ## [0.5.0] - 2026-08-10
 
 Jupyter notebooks, without a second copy of your code: a `.jl` file with `# %%` markers

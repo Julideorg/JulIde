@@ -112,7 +112,32 @@ bun run tauri build           # Production build with installers
 - Click a file in the explorer to open it in a tab.
 - Use `Cmd/Ctrl+P` (Quick Open) for fuzzy file search.
 - `Cmd/Ctrl+F` for find, `Cmd/Ctrl+H` for find and replace.
-- `Cmd/Ctrl+S` to save (auto-save is also active by default after 800ms).
+- `Cmd/Ctrl+S` to save. A tab with unsaved changes shows a dot where its close button
+  normally sits; hovering the tab turns it back into the close button.
+- Auto-save is **off** by default. Turn it on under **Settings → Editor → Auto Save** to
+  have the file written 800ms after typing stops.
+
+### Markdown Preview
+
+- Open any `.md` file and click the eye icon on its tab, or **View → Toggle Markdown
+  Preview**. **Open Markdown Preview to the Side** puts it in the split pane instead.
+- **Maths** is typeset with KaTeX: `$…$` and `\(…\)` inline, `$$…$$` and `\[…\]` for
+  display. A `$` that is not part of an expression is left alone — a price, an escaped
+  `\$`, and anything inside a code span or fence all stay literal.
+- **Fenced code is highlighted by Monaco**, using the same grammar and theme as the
+  editor, so a ` ```julia ` block in a README matches the file open next to it. Every
+  language Monaco ships works, addressed by name, alias or extension (`julia`, `jl`,
+  `python`, `py`, …). An unrecognised tag renders as plain text.
+- Images stay off until enabled; see **Settings → Appearance**.
+
+### Zooming
+
+- `Cmd/Ctrl+=`, `Cmd/Ctrl+-` and `Cmd/Ctrl+0`, or **View → Zoom In / Zoom Out / Reset
+  Zoom**, or the Zoom control in **Settings → Appearance**.
+- This is webview zoom, so it scales the _whole_ interface — activity bar, tabs, editor
+  and terminal alike — rather than only the editor's text. For editor text on its own,
+  use `fontSize`.
+- The level persists across restarts (`uiZoom`, clamped to 0.5–3.0).
 
 ### Running Julia Code
 
@@ -743,7 +768,7 @@ The IDE supports browsing PRs, issues, and CI status for repositories hosted on 
   "tabSize": 4,
   "minimapEnabled": true,
   "wordWrap": "off",
-  "autoSave": true,
+  "autoSave": false,
   "theme": "julide-dark",
   "terminalFontSize": 13,
   "recentWorkspaces": ["/path/to/project1", "/path/to/project2"],
@@ -756,7 +781,8 @@ The IDE supports browsing PRs, issues, and CI status for repositories hosted on 
   "persistJuliaPackages": true,
   "plutoPort": 3000,
   "juliaPath": "",
-  "startMaximized": true
+  "startMaximized": true,
+  "uiZoom": 1.0
 }
 ```
 
