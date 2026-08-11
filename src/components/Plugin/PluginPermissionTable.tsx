@@ -1,5 +1,6 @@
 import { Globe, WifiOff } from "lucide-react";
 import { PERMISSION_CATALOG, type PluginPermission } from "../../services/pluginPermissions";
+import { useAscii } from "../../services/ascii";
 
 interface Props {
   permissions: readonly PluginPermission[];
@@ -21,6 +22,10 @@ interface Props {
  */
 export function PluginPermissionTable({ permissions, network, addedSince }: Props) {
   const added = new Set(addedSince ?? []);
+  // Folded here rather than in PERMISSION_CATALOG: those literals are mirrored into the
+  // generated permission-catalog.json, so editing them would force a regeneration and
+  // put `check:permission-catalog` at risk of drifting.
+  const ascii = useAscii();
 
   return (
     <>
@@ -35,13 +40,13 @@ export function PluginPermissionTable({ permissions, network, addedSince }: Prop
                 className={`plugin-consent-permission ${info.risk}${added.has(permission) ? " added" : ""}`}
               >
                 <span className="plugin-consent-permission-title">
-                  {info.title}
+                  {ascii(info.title)}
                   {info.risk === "high" && (
                     <span className="plugin-consent-risk-badge">High risk</span>
                   )}
                   {added.has(permission) && <span className="plugin-consent-new-badge">New</span>}
                 </span>
-                <span className="plugin-consent-permission-desc">{info.description}</span>
+                <span className="plugin-consent-permission-desc">{ascii(info.description)}</span>
               </li>
             );
           })}

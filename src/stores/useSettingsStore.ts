@@ -65,6 +65,20 @@ export interface Settings {
    * editor's text and nothing else. Stepped through `src/services/zoom.ts`.
    */
   uiZoom: number;
+  /**
+   * Write julIDE's own interface in plain ASCII, and stop the editor drawing ligatures.
+   *
+   * Two halves, because they are two different complaints with one cause. The chrome
+   * folds its typographic punctuation — `—`, `…`, `·`, `→`, `⌘` — through
+   * `src/services/ascii.ts`. The editor drops the `liga`/`calt` font features, which is
+   * what makes JetBrains Mono draw `!=` as `≠` and `->` as `→` even though the file on
+   * disk is plain ASCII.
+   *
+   * Off by default, and it never touches content julIDE did not write: buffer text,
+   * terminal output, filenames, branch names, Julia's own messages, LaTeX input
+   * (`\alpha`→α) and the markdown preview's document body are all left alone.
+   */
+  asciiOnly: boolean;
 }
 
 interface SettingsStore {
@@ -112,6 +126,7 @@ export const defaultSettings: Settings = {
   allowLocalImages: false,
   allowRemoteImages: false,
   uiZoom: 1,
+  asciiOnly: false,
 };
 
 /**

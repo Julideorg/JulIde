@@ -6,6 +6,7 @@ import { useJuliaStore } from "../../stores/useJuliaStore";
 import { Bug, Container, GitBranch, Play, Zap } from "lucide-react";
 import { Dot, Menu, MenuItem, Popover } from "../ui";
 import { iconSize } from "../../themes/tokens";
+import { useAscii } from "../../services/ascii";
 
 /** Full backend names, for the status item's tooltip. */
 const LSP_BACKEND_NAMES: Record<string, string> = {
@@ -22,6 +23,7 @@ const LSP_BACKEND_LABELS: Record<string, string> = {
 };
 
 export function StatusBar() {
+  const ascii = useAscii();
   const juliaVersion = useIdeStore((s) => s.juliaVersion);
   const juliaStatus = useJuliaStore((s) => s.status);
   const juliaDetectedVersion = useJuliaStore((s) => s.version);
@@ -118,7 +120,7 @@ export function StatusBar() {
                   close();
                 }}
               >
-                {juliaStatus === "missing" ? "Set up Julia…" : "Julia setup and packages…"}
+                {ascii(juliaStatus === "missing" ? "Set up Julia…" : "Julia setup and packages…")}
               </MenuItem>
               <MenuItem
                 onSelect={() => {
@@ -160,7 +162,7 @@ export function StatusBar() {
         {gitBranch && (
           <button
             className="status-item status-git"
-            title={`On branch ${gitBranch} — open Source Control`}
+            title={`On branch ${gitBranch}${ascii(" — ")}open Source Control`}
             onClick={() => usePluginStore.getState().commands.get("git.panel")?.execute()}
           >
             <GitBranch size={iconSize.xs} />
@@ -230,7 +232,7 @@ export function StatusBar() {
                 ? (plutoMessage ?? "Pluto error")
                 : plutoStatus === "ready"
                   ? (plutoMessage ?? "Pluto running")
-                  : "Pluto starting…"
+                  : ascii("Pluto starting…")
             }
           >
             <Dot

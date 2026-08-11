@@ -28,7 +28,23 @@ const CMD_PREFIX: &str = "cmd:";
 /// Menu item id prefix for entries that open a URL.
 const URL_PREFIX: &str = "url:";
 
-pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
+/// The trailing ellipsis on a menu item that opens a dialog.
+///
+/// A HIG convention on macOS, and the one piece of julIDE's chrome the OS draws itself
+/// rather than the webview — so it is folded here rather than through
+/// `src/services/ascii.ts`. Read once at startup: the menu is built before the window,
+/// and rebuilding a live menu on macOS also reconstructs the predefined Edit submenu,
+/// which is what supplies the system clipboard shortcuts.
+fn ell(ascii: bool) -> &'static str {
+    if ascii {
+        "..."
+    } else {
+        "\u{2026}"
+    }
+}
+
+pub fn build<R: Runtime>(app: &AppHandle<R>, ascii: bool) -> tauri::Result<Menu<R>> {
+    let e = ell(ascii);
     // Helper: a menu item that dispatches a frontend command.
     macro_rules! cmd_item {
         ($label:expr, $id:expr) => {
@@ -62,7 +78,11 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
                 Some(about_metadata.clone()),
             )?)
             .separator()
-            .item(&cmd_item!("Settings…", "settings.open", "CmdOrCtrl+,"))
+            .item(&cmd_item!(
+                format!("Settings{}", e),
+                "settings.open",
+                "CmdOrCtrl+,"
+            ))
             .separator()
             .item(&PredefinedMenuItem::services(app, None)?)
             .separator()
@@ -78,16 +98,20 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     // ── File ─────────────────────────────────────────────────────────────
     let mut file = SubmenuBuilder::new(app, "File")
         .item(&cmd_item!(
-            "Open Folder…",
+            format!("Open Folder{}", e),
             "file.open-folder",
             "CmdOrCtrl+O"
         ))
-        .item(&cmd_item!("Go to File…", "file.quick-open", "CmdOrCtrl+P"))
+        .item(&cmd_item!(
+            format!("Go to File{}", e),
+            "file.quick-open",
+            "CmdOrCtrl+P"
+        ))
         .separator()
         .item(&cmd_item!("Save", "file.save", "CmdOrCtrl+S"))
         .separator()
         .item(&cmd_item!(
-            "New Julia Project…",
+            format!("New Julia Project{}", e),
             "julia.new-project-pkgtemplates"
         ));
 
@@ -95,7 +119,11 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     {
         file = file
             .separator()
-            .item(&cmd_item!("Settings…", "settings.open", "CmdOrCtrl+,"))
+            .item(&cmd_item!(
+                format!("Settings{}", e),
+                "settings.open",
+                "CmdOrCtrl+,"
+            ))
             .separator()
             .item(&PredefinedMenuItem::quit(app, Some("Exit"))?);
     }
@@ -127,7 +155,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         ))
         .separator()
         .item(&cmd_item!(
-            "Go to Line…",
+            format!("Go to Line{}", e),
             "editor.go-to-line",
             "CmdOrCtrl+G"
         ))
@@ -138,7 +166,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     // ── View ─────────────────────────────────────────────────────────────
     let mut view = SubmenuBuilder::new(app, "View")
         .item(&cmd_item!(
-            "Command Palette…",
+            format!("Command Palette{}", e),
             "view.command-palette",
             "CmdOrCtrl+Shift+P"
         ))
@@ -196,7 +224,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .item(&cmd_item!("Precompile Project", "julia.precompile"))
         .item(&cmd_item!("Clean Project", "julia.clean"))
         .separator()
-        .item(&cmd_item!("Julia Setup…", "julia.setup"))
+        .item(&cmd_item!(format!("Julia Setup{}", e), "julia.setup"))
         .build()?;
     menu = menu.item(&run);
 
@@ -211,7 +239,10 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
                 .build(app)?,
         )
         .separator()
-        .item(&cmd_item!("Check for Updates…", "app.check-for-updates"));
+        .item(&cmd_item!(
+            format!("Check for Updates{}", e),
+            "app.check-for-updates"
+        ));
 
     #[cfg(not(target_os = "macos"))]
     {

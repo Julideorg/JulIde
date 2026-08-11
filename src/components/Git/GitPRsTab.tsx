@@ -3,10 +3,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { openExternal } from "../../services/openExternal";
 import { GitPullRequest, Plus, ExternalLink, GitMerge, RefreshCw } from "lucide-react";
 import { useIdeStore } from "../../stores/useIdeStore";
+import { useAscii } from "../../services/ascii";
 import { Select } from "../ui";
 import type { GitPullRequest as PR } from "../../types/git";
 
 export function GitPRsTab() {
+  const ascii = useAscii();
   const workspacePath = useIdeStore((s) => s.workspacePath);
   const gitBranch = useIdeStore((s) => s.gitBranch);
   const gitBranches = useIdeStore((s) => s.gitBranches);
@@ -129,7 +131,7 @@ export function GitPRsTab() {
               onChange={(source) => setNewPr({ ...newPr, source })}
               options={gitBranches.map((b) => ({ value: b, label: b }))}
             />
-            <span className="git-pr-arrow">→</span>
+            <span className="git-pr-arrow">{ascii("→")}</span>
             <input
               className="git-commit-input"
               placeholder="Target branch (main)"
@@ -169,7 +171,7 @@ export function GitPRsTab() {
               <div className="git-pr-item-meta">
                 <span>{pr.author}</span>
                 <span>
-                  {pr.sourceBranch} → {pr.targetBranch}
+                  {pr.sourceBranch} {ascii("→")} {pr.targetBranch}
                 </span>
               </div>
               <div className="git-pr-item-actions">

@@ -156,7 +156,7 @@ pub fn parse_owner_repo(remote_url: &str) -> Option<(String, String)> {
 pub fn auth_header_value(raw: &str) -> Result<reqwest::header::HeaderValue, String> {
     let mut value = reqwest::header::HeaderValue::from_str(raw.trim()).map_err(|_| {
         "The stored access token contains characters that are not valid in an HTTP header. \
-         Re-enter it under Source Control → Auth settings."
+         Re-enter it under Source Control > Auth settings."
             .to_string()
     })?;
     value.set_sensitive(true);
@@ -231,7 +231,7 @@ fn get_provider_and_token(
     let url = get_origin_url(workspace_path)?;
     let provider = detect_provider(&url).ok_or("Could not detect git provider")?;
     let token = crate::git_auth::get_stored_token_for_remote(&url).ok_or(format!(
-        "No token stored for {} — configure a PAT in Settings > Git Providers",
+        "No token stored for {} - configure a PAT in Settings > Git Providers",
         provider
     ))?;
     let (owner, repo) =

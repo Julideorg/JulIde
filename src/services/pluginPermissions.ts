@@ -13,6 +13,8 @@
  * all, so adding a new Tauri command never silently widens what plugins can reach.
  */
 
+import { toAscii } from "./ascii";
+
 export type PluginPermission =
   | "workspace:read"
   | "workspace:write"
@@ -351,7 +353,9 @@ export class PluginPermissionError extends Error {
     super(
       required
         ? `Plugin "${pluginId}" tried to ${verb} "${command}" without the "${required}" permission. ` +
-            `Add it to the plugin's plugin.json and re-approve the plugin in Settings → Plugins.`
+            toAscii(
+              `Add it to the plugin's plugin.json and re-approve the plugin in Settings → Plugins.`,
+            )
         : `Plugin "${pluginId}" tried to ${verb} "${command}", which plugins may never ${verb}.`,
     );
     this.name = "PluginPermissionError";

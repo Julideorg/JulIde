@@ -22,8 +22,11 @@
   border: none;
   color: var(--fg-mid);
   cursor: pointer;
-  font-size: 14px;
   padding: 0 2px;
+  /* Holds an SVG rather than a text glyph, so centre it as a box. The icon strokes
+     with currentColor, which is what keeps the :hover rule below working. */
+  display: inline-flex;
+  align-items: center;
 }
 .outline-refresh-btn:hover {
   color: var(--fg-hi);

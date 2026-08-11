@@ -14,6 +14,34 @@ a stylesheet.
 
 ### Added
 
+- **ASCII-only mode** — a toggle in **Settings → Appearance**, off by default.
+
+  It turned out to be two complaints with one cause. The interface writes typographic
+  punctuation — em dashes, ellipses, middots, `→`, and the Mac modifier glyphs — which
+  arrives as boxes for anyone whose font, screen reader or terminal is not up for it. And
+  the editor draws `!=` as `≠`, `<=` as `≤` and `->` as `→` because JetBrains Mono's
+  `liga`/`calt` features were on: **the file on disk was always plain ASCII**, which is
+  exactly what made that one confusing to report.
+
+  Both now fold. The editor keeps `ccmp`, `mark` and `mkmk` on in either mode, so `\bar`
+  still composes its macron — the ligature switch is not `fontLigatures: false`, which
+  Monaco maps to a constant that would have silently dropped the fix for issue 8.
+
+  What the mode does _not_ touch is the point of it: your files, terminal output,
+  filenames, branch names, PR titles, Julia's own diagnostics, `\alpha`+Tab, and the body
+  of a rendered markdown document, maths included. julIDE folds the text it writes, and
+  nothing else. The rule is enforced rather than remembered — a guard test parses every
+  source file with the TypeScript compiler and fails when a new glyph appears in a string
+  literal that no fold covers, with comments excluded by construction, which matters when
+  the codebase carries 12,245 `─` characters in its section separators.
+
+  Two glyphs left rather than folded: the Outline refresh button and the breakpoint close
+  button became lucide icons, which is how every other control around them was already
+  drawn. Five error strings in Rust lost their arrows unconditionally, because an error
+  that reaches a `title` attribute instead of a toast has no fold boundary to pass
+  through. The application menu follows on the next launch — rebuilding a live menu on
+  macOS also reconstructs the Edit submenu that supplies the system clipboard shortcuts.
+
 - **Maths in the markdown preview**, via [KaTeX](https://katex.org). `$…$` and `\(…\)`
   inline, `$$…$$` and `\[…\]` for display.
 

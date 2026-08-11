@@ -12,6 +12,7 @@ import { containerSupported } from "../../services/containerSupport";
 import { setZoom, ZOOM_STEPS, zoomLabel } from "../../services/zoom";
 import { PluginSettings } from "./PluginSettings";
 import { GitAuthSettings } from "../Git/GitAuthSettings";
+import { useAscii } from "../../services/ascii";
 
 export function SettingsPanel() {
   const open = useSettingsStore((s) => s.settingsOpen);
@@ -23,6 +24,7 @@ export function SettingsPanel() {
   const flushSettings = useSettingsStore((s) => s.flushSettings);
   const panelRef = useModalA11y<HTMLDivElement>(open);
   const titleId = useId();
+  const ascii = useAscii();
   const workspacePath = useIdeStore((s) => s.workspacePath);
 
   /**
@@ -223,6 +225,30 @@ export function SettingsPanel() {
               <span className="settings-hint">Labels make views easier to find</span>
             </SettingRow>
 
+            {/*
+              Two halves under one switch, because they are one complaint: the chrome's
+              typographic punctuation, and the editor's ligatures — which are what draw
+              `!=` as a not-equals sign even though the file on disk is plain ASCII.
+              Content julIDE did not write is never folded; see src/services/ascii.ts.
+            */}
+            <SettingRow label="ASCII Only">
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={settings.asciiOnly}
+                  onChange={(e) => updateSettings({ asciiOnly: e.target.checked })}
+                />
+                <span className="settings-toggle-label">
+                  {settings.asciiOnly ? "ASCII" : "Unicode"}
+                </span>
+              </label>
+              <span className="settings-hint">
+                Plain ASCII punctuation in julIDE's own text, and no <code>!=</code> or{" "}
+                <code>-&gt;</code> ligatures in the editor. Your files, terminal output and Julia's
+                Unicode identifiers are untouched. The application menu follows on next launch.
+              </span>
+            </SettingRow>
+
             <SettingRow label="Start Maximized">
               <label className="settings-toggle">
                 <input
@@ -292,9 +318,9 @@ export function SettingsPanel() {
               />
               {settings.lspBackend === "fatou" && (
                 <span className="settings-hint">
-                  Built in — nothing to install, and it does not need Julia. Fatou analyses source
-                  text rather than running it, so it cannot offer types or symbols from installed
-                  packages; choose LanguageServer.jl if you need those.
+                  {ascii("Built in — nothing to install, and it does not need Julia.")} Fatou
+                  analyses source text rather than running it, so it cannot offer types or symbols
+                  from installed packages; choose LanguageServer.jl if you need those.
                 </span>
               )}
               {settings.lspBackend === "jetls" && (
@@ -421,7 +447,9 @@ export function SettingsPanel() {
                   onChange={(e) => updateSettings({ containerRemoteHost: e.target.value })}
                   title="SSH connection address (not a password). Auth uses SSH keys via ssh-agent."
                 />
-                <span className="settings-hint">Uses SSH key auth — never stores passwords</span>
+                <span className="settings-hint">
+                  {ascii("Uses SSH key auth — never stores passwords")}
+                </span>
               </SettingRow>
 
               <SettingRow label="Auto-detect devcontainer.json">

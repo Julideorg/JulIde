@@ -782,7 +782,8 @@ The IDE supports browsing PRs, issues, and CI status for repositories hosted on 
   "plutoPort": 3000,
   "juliaPath": "",
   "startMaximized": true,
-  "uiZoom": 1.0
+  "uiZoom": 1.0,
+  "asciiOnly": false
 }
 ```
 

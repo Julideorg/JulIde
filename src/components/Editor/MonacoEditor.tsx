@@ -16,6 +16,7 @@ import { setActiveCellLayer } from "./notebook/cellLens";
 import { runCell, runCellAndAdvance } from "./notebook/cellActions";
 import { syncToNotebook } from "../../notebook/pairing";
 import { toast } from "../ui";
+import { toAscii } from "../../services/ascii";
 
 const SAVE_DEBOUNCE_MS = 800;
 const DEFER_RENDER_MS = 200; // Time to let Monaco paint before firing heavy IPC/Scans
@@ -314,7 +315,9 @@ export function MonacoEditor() {
       options: {
         isWholeLine: true,
         after: {
-          content: `  ${p.severity === "error" ? "✕" : "⚠"} ${p.message}`,
+          // Monaco owns this string, so there is no JSX to hang a hook on. The glyph
+          // is julIDE's; `p.message` is the language server's and stays as it came.
+          content: `  ${toAscii(p.severity === "error" ? "✕" : "⚠")} ${p.message}`,
           inlineClassName: `error-lens error-lens-${p.severity}`,
         },
       },
@@ -509,7 +512,16 @@ export function MonacoEditor() {
         options={{
           fontSize: settings.fontSize,
           fontFamily: settings.fontFamily,
-          fontLigatures: "'calt' on, 'ccmp' on, 'liga' on, 'mark' on, 'mkmk' on",
+          // ASCII mode drops only `liga`/`calt` — the JetBrains Mono programming
+          // ligatures that draw `!=` as `≠` and `->` as `→` while the file on disk
+          // stays plain ASCII. `ccmp`/`mark`/`mkmk` stay on in both modes: they are
+          // what composes Julia's combining marks (`\bar`+Tab inserts U+0304), and
+          // they were added deliberately to fix issue 8. Spelling the features out
+          // rather than passing `false` matters — Monaco maps `false` to a fixed
+          // `"liga" off, "calt" off`, which drops those three guarantees silently.
+          fontLigatures: settings.asciiOnly
+            ? "'calt' off, 'ccmp' on, 'liga' off, 'mark' on, 'mkmk' on"
+            : "'calt' on, 'ccmp' on, 'liga' on, 'mark' on, 'mkmk' on",
           disableMonospaceOptimizations: true,
           lineNumbers: "on",
           minimap: { enabled: settings.minimapEnabled, scale: 1 },

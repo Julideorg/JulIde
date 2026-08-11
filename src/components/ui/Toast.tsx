@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { create } from "zustand";
 import { AlertTriangle, CheckCircle2, Info, XCircle } from "lucide-react";
 import { iconSize } from "../../themes/tokens";
+import { useAscii } from "../../services/ascii";
 import { Button, IconButton, type Tone } from "./Button";
 import { X } from "lucide-react";
 
@@ -79,6 +80,7 @@ function Icon({ kind }: { kind: ToastKind }): ReactNode {
 
 function ToastRow({ toast: t }: { toast: Toast }) {
   const dismiss = useToastStore((s) => s.dismiss);
+  const ascii = useAscii();
 
   useEffect(() => {
     if (t.duration === null) return;
@@ -92,8 +94,14 @@ function ToastRow({ toast: t }: { toast: Toast }) {
         <Icon kind={t.kind} />
       </span>
       <div className="ui-toast-content">
-        <div className="ui-toast-title">{t.title}</div>
-        {t.message && <div className="ui-toast-message">{t.message}</div>}
+        {/*
+          Most toast bodies are `String(err)`, which is where the messages Rust writes
+          arrive. Folding here is the safety net for those and for plugin-supplied text;
+          the five Rust literals that carry punctuation were also fixed at the source,
+          because not every error reaches a toast — see useMarkdownImages.
+        */}
+        <div className="ui-toast-title">{ascii(t.title)}</div>
+        {t.message && <div className="ui-toast-message">{ascii(t.message)}</div>}
         {t.action && (
           <div className="ui-toast-action">
             <Button

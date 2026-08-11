@@ -86,7 +86,7 @@ fn detect_capability() -> InstallCapability {
         InstallCapability {
             can_self_install: false,
             reason: Some(
-                "This is the portable build, which cannot replace itself — a Windows update \
+                "This is the portable build, which cannot replace itself - a Windows update \
                  runs an installer, and that would install julIDE separately rather than \
                  update this file. Download the new portable build to upgrade."
                     .to_string(),

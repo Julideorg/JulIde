@@ -18,6 +18,7 @@ import { usePluginStore } from "../../stores/usePluginStore";
 import { useModeBarStore } from "../ModeBar/ModeBar";
 import { Button, Dot, Kbd, toast } from "../ui";
 import { iconSize } from "../../themes/tokens";
+import { useAscii } from "../../services/ascii";
 import type { FileNode } from "../../types";
 
 /**
@@ -67,6 +68,7 @@ const CAPABILITIES: {
 ];
 
 export function WelcomeScreen() {
+  const ascii = useAscii();
   const setWorkspace = useIdeStore((s) => s.setWorkspace);
   const recentWorkspaces = useSettingsStore((s) => s.settings.recentWorkspaces);
   const juliaStatus = useJuliaStore((s) => s.status);
@@ -129,13 +131,13 @@ export function WelcomeScreen() {
               onClick={() => setSetupOpen(true)}
             >
               <AlertTriangle size={iconSize.sm} />
-              <span>Julia not found — click to set it up</span>
+              <span>{ascii("Julia not found — click to set it up")}</span>
             </button>
           ) : (
             <p className="welcome-julia-version">
               <Dot tone={juliaStatus === "found" ? "run" : "help"} />
               <span className="tabular">
-                {juliaStatus === "found" ? juliaVersion : "Detecting Julia…"}
+                {juliaStatus === "found" ? juliaVersion : ascii("Detecting Julia…")}
               </span>
             </p>
           )}

@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useIdeStore } from "../stores/useIdeStore";
+import { toAscii } from "./ascii";
 import { computeManifestHash, usePluginPermissionStore } from "../stores/usePluginPermissionStore";
 import { resolveGrant } from "./plugin/consent";
 import { parseManifest, type ParsedManifest } from "./plugin/manifest";
@@ -134,7 +135,7 @@ class PluginHost {
     if (!resolved) {
       useIdeStore.getState().appendOutput({
         kind: "info",
-        text: `Plugin "${manifest.displayName}" was not loaded — permissions declined.`,
+        text: toAscii(`Plugin "${manifest.displayName}" was not loaded — permissions declined.`),
       });
       return;
     }

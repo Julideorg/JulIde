@@ -28,6 +28,9 @@ describe("initial state", () => {
     expect(settings.allowLocalImages).toBe(false);
     expect(settings.allowRemoteImages).toBe(false);
     expect(settings.uiZoom).toBe(1);
+    // Opt-in: turning it on for everyone would rewrite the interface of every existing
+    // install to fix a complaint only some users have.
+    expect(settings.asciiOnly).toBe(false);
   });
 
   test("loaded is false initially", () => {

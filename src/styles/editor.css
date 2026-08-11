@@ -177,6 +177,10 @@
   color: var(--mode-run);
   font-size: 12px;
 }
+/* Drawn by CSS, so no fold in the markup can reach it. See src/services/ascii.ts. */
+.ascii .debug-arrow-glyph::before {
+  content: ">";
+}
 .debug-current-line {
   background: var(--mode-run-tint-weak) !important;
 }

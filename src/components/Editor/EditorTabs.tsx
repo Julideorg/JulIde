@@ -1,10 +1,12 @@
 import { useCallback, useRef } from "react";
 import { Code, Eye, X } from "lucide-react";
 import { useIdeStore } from "../../stores/useIdeStore";
+import { useAscii } from "../../services/ascii";
 import { isMarkdownPath } from "../../markdown/renderer";
 import { requestCloseTab } from "../../services/requestCloseTab";
 
 export function EditorTabs() {
+  const ascii = useAscii();
   const openTabs = useIdeStore((s) => s.openTabs);
   const activeTabId = useIdeStore((s) => s.activeTabId);
   const setActiveTab = useIdeStore((s) => s.setActiveTab);
@@ -101,7 +103,7 @@ export function EditorTabs() {
           */}
           <span className={`editor-tab-slot ${tab.isDirty ? "dirty" : ""}`}>
             <span className="editor-tab-dirty" aria-hidden="true">
-              ●
+              {ascii("●")}
             </span>
             <button
               className="editor-tab-close"

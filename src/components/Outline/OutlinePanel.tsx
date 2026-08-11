@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useIdeStore } from "../../stores/useIdeStore";
 import { lspClient } from "../../lsp/LspClient";
 import { pathToUri } from "../../lsp/uri";
-import { List, ChevronRight, ChevronDown } from "lucide-react";
+import { List, ChevronRight, ChevronDown, RefreshCw } from "lucide-react";
 
 interface DocumentSymbol {
   name: string;
@@ -202,7 +202,9 @@ export function OutlinePanel() {
           title="Refresh"
           aria-label="Refresh"
         >
-          ↻
+          {/* A lucide icon rather than `↻`: the glyph has no readable ASCII fold, and
+              the header already draws its <List /> the same way. */}
+          <RefreshCw size={14} />
         </button>
       </div>
       <div className="outline-tree">

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useModalA11y } from "../../hooks/useModalA11y";
 import { Select } from "../ui";
+import { useAscii } from "../../services/ascii";
 import { create } from "zustand";
 
 export interface BestieTemplateData {
@@ -38,6 +39,7 @@ const STRATEGIES = [
 
 export function BestieTemplateDialog() {
   const { open, resolve } = useStore();
+  const ascii = useAscii();
   const [data, setData] = useState<BestieTemplateData>({
     packageName: "",
     packageOwner: "",
@@ -137,7 +139,7 @@ export function BestieTemplateDialog() {
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
-        <div className="bestie-dialog-title">New Project — BestieTemplate</div>
+        <div className="bestie-dialog-title">{ascii("New Project — BestieTemplate")}</div>
 
         <div className="bestie-dialog-body">
           {field("Package Name", "packageName", {
@@ -179,7 +181,7 @@ export function BestieTemplateDialog() {
               ariaLabelledBy="bestie-strategy-label"
               value={data.strategyLevel}
               onChange={(strategyLevel) => setData((d) => ({ ...d, strategyLevel }))}
-              options={STRATEGIES.map((s) => ({ value: s.value, label: s.label }))}
+              options={STRATEGIES.map((s) => ({ value: s.value, label: ascii(s.label) }))}
             />
           </div>
 

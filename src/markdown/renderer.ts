@@ -1,6 +1,7 @@
 import { Marked } from "marked";
 import { mathExtensions } from "./math";
 import { escapeHtml, sanitizeMarkdown } from "./sanitize";
+import { foldAscii } from "../services/ascii";
 
 /**
  * Markdown → HTML for the preview pane.
@@ -51,10 +52,19 @@ export type ImageMode = "blocked" | "resolvable";
 
 export interface RenderOptions {
   images?: ImageMode;
+  /**
+   * Fold julIDE's own glyphs in the output to ASCII.
+   *
+   * Only julIDE's: the task-list boxes it substitutes for the `<input>` the sanitizer
+   * strips, and the wording it puts in a blocked image's tooltip. The document's own
+   * text is never touched — its em dashes and its maths are its own.
+   */
+  asciiOnly?: boolean;
 }
 
 function createMarked(options: RenderOptions = {}) {
   const images = options.images ?? "blocked";
+  const ascii = (s: string) => foldAscii(s, options.asciiOnly ?? false);
   const seen = new Map<string, number>();
   const md = new Marked({
     gfm: true,
@@ -80,7 +90,7 @@ function createMarked(options: RenderOptions = {}) {
         // both of which the sanitizer strips — and a real ☑/☐ character reads correctly
         // to a screen reader anyway.
         const cls = checked ? "md-task md-task--done" : "md-task";
-        return `<span class="${cls}">${checked ? "☑" : "☐"}</span> `;
+        return `<span class="${cls}">${ascii(checked ? "☑" : "☐")}</span> `;
       },
 
       heading({ tokens, depth }) {
@@ -114,7 +124,7 @@ function createMarked(options: RenderOptions = {}) {
           const label = escapeHtml(text || title || "image");
           return (
             `<span class="md-img-missing" data-md-src="${src}" ` +
-            `title="Images are turned off in Settings → Appearance">${label}</span>`
+            `title="${ascii("Images are turned off in Settings → Appearance")}">${label}</span>`
           );
         }
         // The alt is the span's *text content* rather than a data attribute:

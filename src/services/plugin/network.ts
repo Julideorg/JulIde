@@ -10,6 +10,8 @@
  * re-validates rather than trusting anything the frontend passes it.
  */
 
+import { toAscii } from "../ascii";
+
 export interface NetworkPolicy {
   /** Origins that will appear in `connect-src`, normalised and deduplicated. */
   allowed: string[];
@@ -58,7 +60,7 @@ export function parseNetworkOrigins(raw: readonly string[] | undefined): Network
       continue;
     }
     if (value.includes("*")) {
-      rejected.push({ value, reason: "wildcards are not accepted — name each host" });
+      rejected.push({ value, reason: toAscii("wildcards are not accepted — name each host") });
       continue;
     }
 
@@ -97,7 +99,7 @@ export function parseNetworkOrigins(raw: readonly string[] | undefined): Network
     if (url.pathname !== "/" || url.search !== "" || url.hash !== "") {
       rejected.push({
         value,
-        reason: "must be a bare origin — a path or query is not enforced and misleads",
+        reason: toAscii("must be a bare origin — a path or query is not enforced and misleads"),
       });
       continue;
     }

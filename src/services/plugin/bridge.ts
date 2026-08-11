@@ -24,6 +24,7 @@ import {
 } from "./protocol";
 import { createHostDispatcher, type DispatcherDeps, type FrameRole } from "./dispatcher";
 import type { PluginPermission } from "../pluginPermissions";
+import { toAscii } from "../ascii";
 
 export interface FrameSpec {
   pluginId: string;
@@ -184,10 +185,11 @@ export function createPluginFrame(spec: FrameSpec): FrameHandle {
     // that plugins keep working — unsandboxed — and nothing anywhere says so.
     const failures = isolationFailures(e.data.isolation);
     if (failures.length > 0) {
-      const message =
+      const message = toAscii(
         `Refusing to load plugin "${spec.pluginId}": its sandbox is not intact on this ` +
-        `platform (${failures.join("; ")}). This is a julIDE bug — please report it with ` +
-        `your OS and version. Plugins are disabled rather than run without their sandbox.`;
+          `platform (${failures.join("; ")}). This is a julIDE bug — please report it with ` +
+          `your OS and version. Plugins are disabled rather than run without their sandbox.`,
+      );
       spec.onError?.(message);
       rejectReady(new Error(message));
       void destroy();

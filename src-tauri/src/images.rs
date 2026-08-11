@@ -254,7 +254,7 @@ pub async fn image_load(
 
     if is_remote {
         if !settings.allow_remote_images {
-            return Err("Remote images are turned off. Settings → Appearance.".into());
+            return Err("Remote images are turned off. Settings > Appearance.".into());
         }
         let parsed = assert_https(&href)?;
         if !is_plausibly_public(&parsed) {
@@ -284,7 +284,7 @@ pub async fn image_load(
     }
 
     if !settings.allow_local_images {
-        return Err("Workspace images are turned off. Settings → Appearance.".into());
+        return Err("Workspace images are turned off. Settings > Appearance.".into());
     }
     let workspace = workspace_path.ok_or("no workspace is open")?;
 

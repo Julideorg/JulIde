@@ -109,9 +109,11 @@
   border: none;
   color: var(--fg-lo);
   cursor: pointer;
-  font-size: 14px;
   padding: 0 2px;
   line-height: 1;
+  /* Holds an SVG rather than a text glyph; see .outline-refresh-btn. */
+  display: inline-flex;
+  align-items: center;
 }
 .bp-remove:hover {
   color: var(--mode-shell);

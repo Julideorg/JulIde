@@ -1,5 +1,6 @@
 import { ShieldAlert, Terminal, Container as ContainerIcon } from "lucide-react";
 import { useTrustStore } from "../../stores/useTrustStore";
+import { useAscii } from "../../services/ascii";
 
 /**
  * Asks the user to approve the commands a dev container would run, before it runs them.
@@ -10,6 +11,7 @@ import { useTrustStore } from "../../stores/useTrustStore";
  * shown too, but they are far less dangerous and are labelled as such.
  */
 export function WorkspaceTrustDialog() {
+  const ascii = useAscii();
   const pending = useTrustStore((s) => s.pending);
   const resolve = useTrustStore((s) => s.resolve);
 
@@ -39,8 +41,8 @@ export function WorkspaceTrustDialog() {
 
         <p className="trust-body">
           This folder&rsquo;s <code>devcontainer.json</code> declares commands that will run when
-          the dev container starts. Review them before continuing — a repository you did not write
-          can put anything here.
+          the dev container starts. Review them before continuing{ascii(" — ")}a repository you did
+          not write can put anything here.
         </p>
 
         {hostCommands.length > 0 && (
@@ -78,7 +80,7 @@ export function WorkspaceTrustDialog() {
 
         <p className="trust-note">
           Your choice is remembered for this folder. If <code>devcontainer.json</code> changes later
-          — including on a branch you pull — you will be asked again.
+          {ascii("—")} including on a branch you pull {ascii("—")} you will be asked again.
         </p>
 
         <footer className="trust-footer">

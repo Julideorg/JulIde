@@ -4,6 +4,7 @@ import { useMarketplaceStore } from "../../stores/useMarketplaceStore";
 import { pluginHost } from "../../services/pluginHost";
 import { formatSize } from "../../services/marketplace";
 import { openExternal } from "../../services/openExternal";
+import { useAscii } from "../../services/ascii";
 import { EmptyState } from "../ui";
 import { PluginPermissionTable } from "../Plugin/PluginPermissionTable";
 import { iconSize } from "../../themes/tokens";
@@ -145,6 +146,7 @@ function PluginRow({
   onUninstall,
 }: RowProps) {
   const latest = entry.latest;
+  const ascii = useAscii();
 
   return (
     <div className="marketplace-item">
@@ -175,8 +177,10 @@ function PluginRow({
       {expanded && (
         <div className="marketplace-item-detail">
           <p className="marketplace-meta">
-            {entry.author} · {entry.license}
-            {latest && ` · ${formatSize(latest.sizeBytes)}`} ·{" "}
+            {/* The separators are julIDE's; the author and licence between them are the
+                registry's, and are left exactly as published. */}
+            {entry.author} {ascii("·")} {entry.license}
+            {latest && `${ascii(" · ")}${formatSize(latest.sizeBytes)}`} {ascii("·")}{" "}
             <a
               href="#"
               onClick={(e) => {
@@ -209,7 +213,9 @@ function PluginRow({
                 {update && (
                   <button type="button" onClick={onInstall} disabled={!!busy}>
                     <Download size={iconSize.xs} />
-                    {busy === "updating" ? "Updating…" : `Update to ${update.availableVersion}`}
+                    {busy === "updating"
+                      ? ascii("Updating…")
+                      : `Update to ${update.availableVersion}`}
                   </button>
                 )}
                 <button
@@ -219,13 +225,13 @@ function PluginRow({
                   disabled={!!busy}
                 >
                   <Trash2 size={iconSize.xs} />
-                  {busy === "uninstalling" ? "Removing…" : "Uninstall"}
+                  {busy === "uninstalling" ? ascii("Removing…") : "Uninstall"}
                 </button>
               </>
             ) : (
               <button type="button" onClick={onInstall} disabled={!!busy || !latest}>
                 <Download size={iconSize.xs} />
-                {busy === "installing" ? "Installing…" : "Install"}
+                {busy === "installing" ? ascii("Installing…") : "Install"}
               </button>
             )}
           </div>

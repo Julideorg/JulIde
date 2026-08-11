@@ -1,5 +1,6 @@
 import { Component } from "react";
 import type { ErrorInfo, ReactNode } from "react";
+import { toAscii } from "../../services/ascii";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -84,8 +85,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           <h1 className="error-boundary-title">Something went wrong</h1>
           <p className="error-boundary-message">{error.message}</p>
           <p className="error-boundary-hint">
-            Your open files are saved on disk. Reloading the window usually recovers the session —
-            if it keeps happening, copy the details and open an issue.
+            {/* A class component, so toAscii rather than the hook. This screen renders
+                after a crash and is never re-rendered by a settings change. */}
+            {toAscii(
+              "Your open files are saved on disk. Reloading the window usually recovers the session — if it keeps happening, copy the details and open an issue.",
+            )}
           </p>
           <div className="error-boundary-actions">
             <button type="button" onClick={() => window.location.reload()}>

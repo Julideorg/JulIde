@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { AlertTriangle, CheckCircle2, Download, FolderSearch, RefreshCw } from "lucide-react";
 import { useJuliaStore } from "../../stores/useJuliaStore";
 import { openExternal } from "../../services/openExternal";
+import { useAscii } from "../../services/ascii";
 import type { JuliaOutputEvent } from "../../types";
 
 const JULIA_DOWNLOAD_URL = "https://julialang.org/downloads/";
@@ -39,6 +40,7 @@ export function JuliaSetupDialog() {
 
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const ascii = useAscii();
 
   useEffect(() => {
     if (!setupOpen) return;
@@ -108,10 +110,12 @@ export function JuliaSetupDialog() {
         {!juliaReady ? (
           <>
             <p className="julia-setup-body">
-              julIDE runs your code with a Julia installation on this machine — it does not bundle
-              one. Install Julia, or point julIDE at an existing install.
+              {ascii(
+                "julIDE runs your code with a Julia installation on this machine — it does not bundle one. Install Julia, or point julIDE at an existing install.",
+              )}
             </p>
-            {error && <p className="julia-setup-error">{error}</p>}
+            {/* Covers the messages thrown below and anything Julia detection reports. */}
+            {error && <p className="julia-setup-error">{ascii(error)}</p>}
 
             <div className="julia-setup-actions">
               <button
@@ -136,7 +140,7 @@ export function JuliaSetupDialog() {
                 disabled={busy !== null}
               >
                 <FolderSearch size={14} />
-                {busy === "locate" ? "Checking…" : "Locate manually…"}
+                {ascii(busy === "locate" ? "Checking…" : "Locate manually…")}
               </button>
 
               <button
@@ -145,15 +149,17 @@ export function JuliaSetupDialog() {
                 disabled={busy !== null}
               >
                 <RefreshCw size={14} />
-                {busy === "recheck" || status === "detecting" ? "Checking…" : "Re-check"}
+                {ascii(busy === "recheck" || status === "detecting" ? "Checking…" : "Re-check")}
               </button>
             </div>
           </>
         ) : (
           <>
             <p className="julia-setup-body">
-              Found <strong>{version}</strong>. These optional packages unlock the rest of julIDE —
-              install any you want now, or skip and add them later.
+              Found <strong>{version}</strong>.{" "}
+              {ascii(
+                "These optional packages unlock the rest of julIDE — install any you want now, or skip and add them later.",
+              )}
             </p>
 
             <ul className="julia-setup-packages">
@@ -168,7 +174,7 @@ export function JuliaSetupDialog() {
                     onClick={() => installPackage(pkg.name)}
                     disabled={busy !== null}
                   >
-                    {busy === pkg.name ? "Installing…" : "Install"}
+                    {ascii(busy === pkg.name ? "Installing…" : "Install")}
                   </button>
                 </li>
               ))}

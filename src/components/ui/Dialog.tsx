@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { create } from "zustand";
 import { useModalA11y } from "../../hooks/useModalA11y";
+import { useAscii } from "../../services/ascii";
 import { Button, type Tone } from "./Button";
 
 interface DialogProps {
@@ -32,6 +33,7 @@ export function Dialog({
   role = "dialog",
 }: DialogProps) {
   const ref = useModalA11y<HTMLDivElement>(open, { onEscape: onClose });
+  const ascii = useAscii();
   if (!open) return null;
 
   const titleId = `ui-dialog-title-${title.replace(/\W+/g, "-").toLowerCase()}`;
@@ -53,8 +55,10 @@ export function Dialog({
         className={`ui-dialog${wide ? " ui-dialog--wide" : ""}`}
       >
         <div className="ui-dialog-header">
+          {/* Folded for display only — titleId stays derived from the raw title so the
+              aria-labelledby pairing does not shift when ASCII mode is toggled. */}
           <h2 id={titleId} className="ui-dialog-title">
-            {title}
+            {ascii(title)}
           </h2>
         </div>
         <div className="ui-dialog-body">{children}</div>

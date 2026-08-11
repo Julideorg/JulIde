@@ -2,6 +2,7 @@ import { useCallback, useId, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { FieldShell } from "./Field";
 import { iconSize } from "../../themes/tokens";
+import { useAscii } from "../../services/ascii";
 import { useAnchoredPosition, useDismiss, useScrollActiveIntoView } from "./useAnchoredPosition";
 import {
   appendTypeahead,
@@ -71,6 +72,7 @@ export function Select<T extends string | number>({
   const listboxId = useId();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
+  const ascii = useAscii();
 
   // Typeahead buffer. A ref rather than state: it must not trigger a render, and the
   // timestamp is only ever read inside the keydown handler.
@@ -206,7 +208,9 @@ export function Select<T extends string | number>({
         onClick={() => (open ? closeAndFocus() : openAt(selectedIndex))}
         onKeyDown={onKeyDown}
       >
-        <span className="ui-select-value">{selected?.label ?? placeholder}</span>
+        {/* Only the placeholder folds. Option labels are frequently data — the branch
+            pickers in GitPRsTab build them straight from `gitBranches`. */}
+        <span className="ui-select-value">{selected?.label ?? ascii(placeholder)}</span>
         <ChevronDown size={iconSize.sm} className="ui-select-chevron" aria-hidden="true" />
       </button>
 

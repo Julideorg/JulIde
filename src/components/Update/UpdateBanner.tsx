@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Download, ExternalLink, RefreshCw, X } from "lucide-react";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { useUpdateStore } from "../../stores/useUpdateStore";
+import { useAscii } from "../../services/ascii";
 
 /**
  * Notifies the user when a new julIDE release is available.
@@ -13,6 +14,7 @@ import { useUpdateStore } from "../../stores/useUpdateStore";
  * rather than given a button that cannot work.
  */
 export function UpdateBanner() {
+  const ascii = useAscii();
   const phase = useUpdateStore((s) => s.phase);
   const version = useUpdateStore((s) => s.version);
   const error = useUpdateStore((s) => s.error);
@@ -53,7 +55,7 @@ export function UpdateBanner() {
         {phase === "downloading" && (
           <>
             Downloading {version}
-            {percent !== null ? ` — ${percent}%` : "…"}
+            {percent !== null ? ascii(` — ${percent}%`) : ascii("…")}
           </>
         )}
         {phase === "ready" && <>julIDE {version} is installed. Restart to use it.</>}

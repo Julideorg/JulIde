@@ -4,9 +4,11 @@ import { invoke } from "@tauri-apps/api/core";
 import { pluginHost } from "../../services/pluginHost";
 import { usePluginPermissionStore } from "../../stores/usePluginPermissionStore";
 import { PERMISSION_CATALOG } from "../../services/pluginPermissions";
+import { useAscii } from "../../services/ascii";
 import { FolderOpen, Check, X, AlertCircle } from "lucide-react";
 
 export function PluginSettings() {
+  const ascii = useAscii();
   const [tab, setTab] = useState<"installed" | "browse">("installed");
   const [pluginsDir, setPluginsDir] = useState("");
   const plugins = pluginHost.getPlugins();
@@ -69,8 +71,8 @@ export function PluginSettings() {
                       {grant && grant.permissions.length > 0 && (
                         <span className="settings-plugin-permissions">
                           {grant.permissions
-                            .map((p) => PERMISSION_CATALOG[p]?.title ?? p)
-                            .join(" · ")}
+                            .map((p) => ascii(PERMISSION_CATALOG[p]?.title ?? p))
+                            .join(ascii(" · "))}
                         </span>
                       )}
                       {grant && grant.permissions.length === 0 && (

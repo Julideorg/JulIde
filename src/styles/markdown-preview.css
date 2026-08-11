@@ -208,6 +208,10 @@
   content: "🖼";
   font-style: normal;
 }
+/* julIDE's own placeholder, not the document's text, so ASCII mode folds it. */
+.ascii .markdown-preview-body .md-img-missing::before {
+  content: "[img]";
+}
 
 /* ── Resolvable images ──────────────────────────────────────────────────── */
 /* The span stays in the DOM after the <img> is appended into it: it is the anchor
@@ -223,6 +227,9 @@
 .markdown-preview-body .md-img:empty::before {
   content: "🖼";
   font-style: normal;
+}
+.ascii .markdown-preview-body .md-img:empty::before {
+  content: "[img]";
 }
 
 .markdown-preview-body .md-img--loading {

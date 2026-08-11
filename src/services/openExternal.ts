@@ -1,4 +1,5 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { toAscii } from "./ascii";
 
 /**
  * Open a URL in the user's browser, refusing anything that isn't http(s).
@@ -18,7 +19,7 @@ export async function openExternal(url: string): Promise<void> {
   }
 
   if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-    throw new Error(`Refusing to open non-http(s) URL: ${parsed.protocol}//…`);
+    throw new Error(toAscii(`Refusing to open non-http(s) URL: ${parsed.protocol}//…`));
   }
 
   await openUrl(parsed.toString());

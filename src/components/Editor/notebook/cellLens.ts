@@ -3,6 +3,7 @@ import { isNotebookSource, parseJupytext } from "../../../notebook/jupytext";
 import { useNotebookStore } from "../../../stores/useNotebookStore";
 import type { NotebookCellLayer } from "./cellZones";
 import { runAll, runBelow, runCell } from "./cellActions";
+import { toAscii } from "../../../services/ascii";
 
 /**
  * The per-cell toolbar, as a CodeLens above each `# %%` marker.
@@ -89,14 +90,17 @@ export function registerCellLens(monaco: typeof Monaco): void {
         const state = cellId ? store.cells[cellId] : undefined;
         const badge =
           state?.status === "running"
-            ? "Running…"
+            ? toAscii("Running…")
             : state?.status === "queued"
               ? "Queued"
               : state?.executionCount != null
                 ? `[${state.executionCount}]`
                 : "[ ]";
 
-        lenses.push({ range, command: { id: RUN_CELL, title: "▸ Run Cell", arguments: [line] } });
+        lenses.push({
+          range,
+          command: { id: RUN_CELL, title: toAscii("▸ Run Cell"), arguments: [line] },
+        });
         lenses.push({
           range,
           command: { id: RUN_BELOW, title: "Run Below", arguments: [line] },

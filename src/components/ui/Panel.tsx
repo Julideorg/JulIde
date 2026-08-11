@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { iconSize } from "../../themes/tokens";
+import { useAscii } from "../../services/ascii";
 import type { Tone } from "./Button";
 
 interface PanelProps {
@@ -42,12 +43,15 @@ interface EmptyStateProps {
  * large part of why julIDE's features are hard to discover.
  */
 export function EmptyState({ icon, title, hint, action }: EmptyStateProps) {
+  const ascii = useAscii();
   return (
     <div className="ui-empty">
       {icon && <div className="ui-empty-icon">{icon}</div>}
       <div className="ui-empty-text">
-        <span className="ui-empty-title">{title}</span>
-        {hint && <span className="ui-empty-hint">{hint}</span>}
+        <span className="ui-empty-title">{ascii(title)}</span>
+        {hint && (
+          <span className="ui-empty-hint">{typeof hint === "string" ? ascii(hint) : hint}</span>
+        )}
       </div>
       {action}
     </div>
@@ -56,7 +60,9 @@ export function EmptyState({ icon, title, hint, action }: EmptyStateProps) {
 
 /** Renders a keyboard shortcut inline, e.g. inside an EmptyState hint. */
 export function Kbd({ children }: { children: ReactNode }) {
-  return <kbd className="ui-kbd">{children}</kbd>;
+  const ascii = useAscii();
+  // Only a plain string can be folded; a caller passing elements keeps them intact.
+  return <kbd className="ui-kbd">{typeof children === "string" ? ascii(children) : children}</kbd>;
 }
 
 interface BadgeProps {

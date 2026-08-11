@@ -111,10 +111,10 @@ pub fn run() {
 
             // Native application menu. On macOS this is also what provides the
             // standard Edit menu, and therefore working system clipboard shortcuts.
-            let menu = crate::menu::build(app.handle())?;
+            let settings = crate::settings::settings_load();
+            let menu = crate::menu::build(app.handle(), settings.ascii_only)?;
             app.set_menu(menu)?;
 
-            let settings = crate::settings::settings_load();
             // Only force-maximize on a first run. Once the window-state plugin has
             // a saved geometry, honouring `start_maximized` unconditionally would
             // override whatever size the user actually left the window at.

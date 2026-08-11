@@ -96,6 +96,14 @@ pub struct Settings {
     /// [`Self::font_size`], which is the editor's text and nothing else.
     #[serde(default = "default_ui_zoom")]
     pub ui_zoom: f32,
+    /// Write julIDE's own interface in plain ASCII, and stop the editor drawing ligatures.
+    ///
+    /// Nothing in Rust reads this — it is stored here because `settings_save` serialises
+    /// the whole struct, so a field that lived only on the TypeScript side would be
+    /// dropped on every write. See [`Self::activity_bar_labels`], which was exactly that
+    /// bug until 0.4.2.
+    #[serde(default)]
+    pub ascii_only: bool,
 }
 
 fn default_font_size() -> u32 {
@@ -181,6 +189,7 @@ impl Default for Settings {
             allow_local_images: false,
             allow_remote_images: false,
             ui_zoom: default_ui_zoom(),
+            ascii_only: false,
         }
     }
 }
@@ -347,6 +356,26 @@ mod tests {
         // Both image escape hatches are opt-in: the default posture must stay closed.
         assert!(!s.allow_local_images);
         assert!(!s.allow_remote_images);
+        assert!(!s.ascii_only);
+    }
+
+    #[test]
+    fn ascii_only_survives_a_save() {
+        // The field exists in Rust purely so serde does not drop it: settings_save
+        // serialises the whole struct, which is how activityBarLabels used to reset
+        // itself on every restart.
+        let json = serde_json::to_string(&Settings {
+            ascii_only: true,
+            ..Default::default()
+        })
+        .unwrap();
+        assert!(json.contains("asciiOnly"), "got: {json}");
+        let back: Settings = serde_json::from_str(&json).unwrap();
+        assert!(back.ascii_only);
+
+        // Absent from every settings file written before this existed: read as off.
+        let old: Settings = serde_json::from_str(r#"{"fontSize": 16}"#).unwrap();
+        assert!(!old.ascii_only);
     }
 
     #[test]

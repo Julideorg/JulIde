@@ -17,6 +17,7 @@ import { WorkspaceTrustDialog } from "./components/Container/WorkspaceTrustDialo
 import { UpdateBanner } from "./components/Update/UpdateBanner";
 import { ConfirmDialogHost, ToastHost } from "./components/ui";
 import { useSettingsStore } from "./stores/useSettingsStore";
+import { useAscii } from "./services/ascii";
 import { useIdeStore } from "./stores/useIdeStore";
 import { usePluginStore } from "./stores/usePluginStore";
 import { lspClient } from "./lsp/LspClient";
@@ -540,6 +541,11 @@ export default function App() {
   const currentTheme = useSettingsStore((s) => s.settings.theme);
   const themeClass = currentTheme === "julide-light" ? "theme-light" : "theme-dark";
 
+  // Three glyphs live in CSS `content:` rather than in the markup, where no fold can
+  // reach them. This class is how they switch; see src/services/ascii.ts.
+  const asciiOnly = useSettingsStore((s) => s.settings.asciiOnly);
+  const ascii = useAscii();
+
   // Mirror the theme onto <html>. The class used to live only on .ide-root,
   // but html/body resolve their background from :root — so in light mode the
   // document behind the app stayed dark and showed through during resize and
@@ -548,11 +554,12 @@ export default function App() {
     const root = document.documentElement;
     root.classList.remove("theme-dark", "theme-light");
     root.classList.add(themeClass);
-  }, [themeClass]);
+    root.classList.toggle("ascii", asciiOnly);
+  }, [themeClass, asciiOnly]);
 
   return (
     <div
-      className={`ide-root ${themeClass}`}
+      className={`ide-root ${themeClass}${asciiOnly ? " ascii" : ""}`}
       style={
         {
           "--sidebar-width": `${sidebarWidth}px`,
@@ -613,7 +620,7 @@ export default function App() {
                   <span className="tab-badge">{problems.length}</span>
                 )}
                 {panel.id === "debug" && debug.isDebugging && (
-                  <span className="tab-badge debug-badge">●</span>
+                  <span className="tab-badge debug-badge">{ascii("●")}</span>
                 )}
                 {panel.badge != null &&
                   panel.id !== "problems" &&

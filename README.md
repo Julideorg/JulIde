@@ -527,6 +527,7 @@ Available settings:
 | `formatOnSave`         | `false`               | Format through the language server on explicit save  |
 | `startMaximized`       | `true`                | Start the window maximized                           |
 | `uiZoom`               | `1.0`                 | Interface zoom factor (0.5–3.0), whole window        |
+| `asciiOnly`            | `false`               | Plain ASCII interface text, and no editor ligatures  |
 
 ---
 

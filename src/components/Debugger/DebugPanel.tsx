@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import { Bug } from "lucide-react";
+import { Bug, X } from "lucide-react";
 import { useIdeStore } from "../../stores/useIdeStore";
 import { EmptyState, Kbd } from "../ui";
+import { useAscii } from "../../services/ascii";
 import type { DebugOutputEvent, DebugStoppedEvent, DebugVariablesEvent } from "../../types";
 
 export function DebugPanel() {
+  const ascii = useAscii();
   const debug = useIdeStore((s) => s.debug);
   const setDebugState = useIdeStore((s) => s.setDebugState);
   const appendOutput = useIdeStore((s) => s.appendOutput);
@@ -64,10 +66,10 @@ export function DebugPanel() {
       <div className="debug-status">
         {debug.isPaused ? (
           <span className="debug-paused">
-            ⏸ Paused at {debug.currentFile}:{debug.currentLine}
+            {ascii("⏸")} Paused at {debug.currentFile}:{debug.currentLine}
           </span>
         ) : (
-          <span className="debug-running">▶ Running...</span>
+          <span className="debug-running">{ascii("▶")} Running...</span>
         )}
       </div>
 
@@ -106,6 +108,7 @@ export function DebugPanel() {
 }
 
 function BreakpointsList() {
+  const ascii = useAscii();
   const breakpoints = useIdeStore((s) => s.breakpoints);
   const removeBreakpoint = useIdeStore((s) => s.removeBreakpoint);
 
@@ -117,7 +120,7 @@ function BreakpointsList() {
     <ul className="breakpoints-list">
       {breakpoints.map((bp) => (
         <li key={`${bp.file}:${bp.line}`} className="breakpoint-item">
-          <span className="bp-dot">●</span>
+          <span className="bp-dot">{ascii("●")}</span>
           <span className="bp-location">
             {bp.file.split(/[/\\]/).pop()}:{bp.line}
           </span>
@@ -132,7 +135,9 @@ function BreakpointsList() {
             title="Remove breakpoint"
             aria-label="Remove breakpoint"
           >
-            ×
+            {/* Was a `×` glyph; lucide matches how every other close control here is
+                drawn, and needs no fold. */}
+            <X size={12} />
           </button>
         </li>
       ))}

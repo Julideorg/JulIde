@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { create } from "zustand";
 import { useModalA11y } from "../../hooks/useModalA11y";
 import { useIdeStore } from "../../stores/useIdeStore";
+import { useAscii } from "../../services/ascii";
 import { MODES, parseInput, type ModeResult } from "./modes";
 
 interface ModeBarState {
@@ -32,6 +33,7 @@ export function ModeBarTrigger() {
   const tabs = useIdeStore((s) => s.openTabs);
   const activeTabId = useIdeStore((s) => s.activeTabId);
   const activeTab = tabs.find((t) => t.id === activeTabId);
+  const ascii = useAscii();
 
   return (
     <button type="button" className="mode-bar-trigger" onClick={() => openWith("")}>
@@ -39,7 +41,9 @@ export function ModeBarTrigger() {
       <span className="mode-bar-trigger-label">
         {activeTab ? activeTab.name : "Run, find, or ask"}
       </span>
-      <kbd className="ui-kbd mode-bar-trigger-kbd">{shortcutLabel()}</kbd>
+      {/* Folded here rather than swapped for <Kbd>, which carries no className slot
+          and would drop mode-bar-trigger-kbd. */}
+      <kbd className="ui-kbd mode-bar-trigger-kbd">{ascii(shortcutLabel())}</kbd>
     </button>
   );
 }
@@ -58,6 +62,7 @@ export function ModeBar() {
   const [results, setResults] = useState<ModeResult[]>([]);
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const ascii = useAscii();
 
   const { mode, query } = useMemo(() => parseInput(input), [input]);
   const unavailable = useMemo(() => (open ? (mode.unavailable?.() ?? null) : null), [open, mode]);
@@ -152,10 +157,10 @@ export function ModeBar() {
             ref={inputRef}
             className="mode-bar-input"
             value={input}
-            placeholder={mode.placeholder}
+            placeholder={ascii(mode.placeholder)}
             spellCheck={false}
             autoComplete="off"
-            aria-label={mode.placeholder}
+            aria-label={ascii(mode.placeholder)}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
           />
@@ -177,10 +182,10 @@ export function ModeBar() {
                 }}
               >
                 <span className="mode-bar-legend-key">{m.prefix}</span>
-                <span className="mode-bar-legend-desc">{m.description}</span>
+                <span className="mode-bar-legend-desc">{ascii(m.description)}</span>
               </button>
             ))}
-            <div className="mode-bar-legend-default">{MODES[0].description}</div>
+            <div className="mode-bar-legend-default">{ascii(MODES[0].description)}</div>
           </div>
         ) : results.length === 0 ? (
           <div className="mode-bar-note">No matches</div>
@@ -199,9 +204,15 @@ export function ModeBar() {
                     await r.run();
                   }}
                 >
+                  {/*
+                    `hint` is the one field that is always julIDE's own text — command
+                    shortcuts, "Enter to install", a symbol kind — so it folds. `label`
+                    and `detail` carry filenames, symbol names, container names and LSP
+                    diagnostic text, which are data and are left exactly as they came.
+                  */}
                   <span className="mode-bar-result-label">{r.label}</span>
                   {r.detail && <span className="mode-bar-result-detail">{r.detail}</span>}
-                  {r.hint && <span className="mode-bar-result-hint">{r.hint}</span>}
+                  {r.hint && <span className="mode-bar-result-hint">{ascii(r.hint)}</span>}
                 </button>
               </li>
             ))}

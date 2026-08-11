@@ -41,6 +41,7 @@ export function MarkdownPreview({ tabId }: { tabId: string }) {
 
   const allowLocalImages = useSettingsStore((s) => s.settings.allowLocalImages);
   const allowRemoteImages = useSettingsStore((s) => s.settings.allowRemoteImages);
+  const asciiOnly = useSettingsStore((s) => s.settings.asciiOnly);
   const policy = useMemo(
     () => ({ local: allowLocalImages, remote: allowRemoteImages }),
     [allowLocalImages, allowRemoteImages],
@@ -53,8 +54,9 @@ export function MarkdownPreview({ tabId }: { tabId: string }) {
     () =>
       renderMarkdown(debounced, {
         images: policy.local || policy.remote ? "resolvable" : "blocked",
+        asciiOnly,
       }),
-    [debounced, policy],
+    [debounced, policy, asciiOnly],
   );
   const scrollRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
