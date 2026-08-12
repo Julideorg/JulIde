@@ -1370,9 +1370,9 @@ checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
 name = "fatou"
-version = "0.10.0"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "774d1f994062af8143c7e847b54754b429171f98b6308e50b4603b40c1846599"
+checksum = "321c78ea415db3c7ee84f1439c8fe4d02a6edcd83d3c2c48aa3f580d77053857"
 dependencies = [
  "annotate-snippets",
  "clap",
@@ -1382,6 +1382,8 @@ dependencies = [
  "crossbeam-channel",
  "dirs",
  "env_logger",
+ "fatou-formatter",
+ "fatou-parser 0.2.0",
  "globset",
  "ignore",
  "log",
@@ -1396,6 +1398,37 @@ dependencies = [
  "similar",
  "smol_str",
  "toml 1.1.4+spec-1.1.0",
+]
+
+[[package]]
+name = "fatou-formatter"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfa34f426a07414b4d7795eaa106b03a646a8c67066f53e00ab5fd56ead79647"
+dependencies = [
+ "fatou-parser 0.3.0",
+ "rowan",
+]
+
+[[package]]
+name = "fatou-parser"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a883e89be4f3351ebf272894a32f314cb2f30e685461c82f9bcdae8d1168ba2"
+dependencies = [
+ "rowan",
+ "serde",
+ "unicode-normalization",
+]
+
+[[package]]
+name = "fatou-parser"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64b3f66d0e2c538a98c58540401fd14514423005bff4633f09ca8168709ff9b7"
+dependencies = [
+ "rowan",
+ "serde",
  "unicode-normalization",
 ]
 
@@ -4134,12 +4167,13 @@ checksum = "323c417e1d9665a65b263ec744ba09030cfb277e9daa0b018a4ab62e57bc8189"
 
 [[package]]
 name = "rowan"
-version = "0.16.1"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "417a3a9f582e349834051b8a10c8d71ca88da4211e4093528e36b9845f6b5f21"
+checksum = "14b574c58582fa59fa43a2feb6608b8744184659f08a2e0117e4b8224d95ed61"
 dependencies = [
  "countme",
  "hashbrown 0.14.5",
+ "memoffset",
  "rustc-hash 1.1.0",
  "text-size",
 ]

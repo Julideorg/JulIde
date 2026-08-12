@@ -82,7 +82,7 @@ openssl-sys = { version = "0.9", features = ["vendored"], optional = true }
 # `lsp-server` must stay on the same version fatou depends on, or `Connection`
 # is a different type and `fatou::lsp::serve` cannot be called at all.
 # `cargo tree -d | grep lsp-server` catches a divergence after a fatou bump.
-fatou = "0.10"
+fatou = "0.12"
 lsp-server = "0.10"
 crossbeam-channel = "0.5"
 
