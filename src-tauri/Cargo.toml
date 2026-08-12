@@ -70,7 +70,7 @@ semver = "1"
 # Encodes image bytes for the markdown preview (images.rs). Base64 over IPC rather than
 # a raw byte response, matching how julIDE already moves image data across the boundary
 # in julia.rs's MIME channel. Already in the lock via reqwest, so no new supply chain.
-base64 = "0.22"
+base64 = "0.23"
 async-trait = "0.1"
 openssl-sys = { version = "0.9", features = ["vendored"], optional = true }
 # The built-in language server. Linked as a library rather than shipped as a
