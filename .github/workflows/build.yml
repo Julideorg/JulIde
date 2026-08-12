@@ -223,12 +223,18 @@ jobs:
           ASSET_PATH: ${{ steps.portable.outputs.path }}
         run: |
           set -euo pipefail
+          # No leading slash on these endpoints. `shell: bash` on Windows is Git
+          # Bash, and MSYS2 rewrites any argument that looks like a Unix absolute
+          # path into a Windows one — `/repos/...` reached gh as
+          # `C:/Program Files/Git/repos/...` and it refused the endpoint. The POST
+          # below is immune because it passes a full https:// URL.
+          #
           # Re-running a tag build would otherwise fail with 422 already_exists.
-          gh api "/repos/$REPO/releases/$RELEASE_ID/assets" \
+          gh api "repos/$REPO/releases/$RELEASE_ID/assets" \
             --jq ".[] | select(.name == \"$ASSET_NAME\") | .id" |
             while read -r id; do
               echo "Replacing existing asset $ASSET_NAME (id $id)"
-              gh api --method DELETE "/repos/$REPO/releases/$RELEASE_ID/assets/$id"
+              gh api --method DELETE "repos/$REPO/releases/$RELEASE_ID/assets/$id"
             done
           gh api --method POST \
             -H "Content-Type: application/octet-stream" \
