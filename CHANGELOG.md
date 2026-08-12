@@ -5,7 +5,7 @@ All notable changes to julIDE are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 julIDE aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.6.0] - 2026-08-12
 
 The markdown preview learned to typeset maths and to colour the code inside fences, the
 window learned to zoom, and the tab dot that has been in the markup since 0.4.0 finally
@@ -684,7 +684,8 @@ distribution plumbing a public release needs.
 Earlier beta releases were not accompanied by a changelog. See the
 [releases page](https://github.com/sinisterMage/julide/releases) for their notes.
 
-[Unreleased]: https://github.com/Julideorg/JulIde/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/Julideorg/JulIde/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/Julideorg/JulIde/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Julideorg/JulIde/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/Julideorg/JulIde/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Julideorg/JulIde/compare/v0.3.1...v0.4.0
