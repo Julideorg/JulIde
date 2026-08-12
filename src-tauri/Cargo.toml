@@ -50,7 +50,7 @@ url = "2"
 percent-encoding = "2"
 # Verifies the sha256 recorded in the signed registry index against the bytes actually
 # downloaded. RustCrypto, pure Rust, already in the tree transitively.
-sha2 = "0.10"
+sha2 = "0.11"
 # .tar.gz extraction for plugin bundles. tar rather than zip because tar streams and
 # exposes each member's header *before* a byte is written — which is what makes a
 # per-member symlink/traversal guard possible at all. zip's central directory sits at
