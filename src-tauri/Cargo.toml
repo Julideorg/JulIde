@@ -50,7 +50,7 @@ url = "2"
 percent-encoding = "2"
 # Verifies the sha256 recorded in the signed registry index against the bytes actually
 # downloaded. RustCrypto, pure Rust, already in the tree transitively.
-sha2 = "0.10"
+sha2 = "0.11"
 # .tar.gz extraction for plugin bundles. tar rather than zip because tar streams and
 # exposes each member's header *before* a byte is written — which is what makes a
 # per-member symlink/traversal guard possible at all. zip's central directory sits at
@@ -70,7 +70,7 @@ semver = "1"
 # Encodes image bytes for the markdown preview (images.rs). Base64 over IPC rather than
 # a raw byte response, matching how julIDE already moves image data across the boundary
 # in julia.rs's MIME channel. Already in the lock via reqwest, so no new supply chain.
-base64 = "0.22"
+base64 = "0.23"
 async-trait = "0.1"
 openssl-sys = { version = "0.9", features = ["vendored"], optional = true }
 # The built-in language server. Linked as a library rather than shipped as a
@@ -82,7 +82,12 @@ openssl-sys = { version = "0.9", features = ["vendored"], optional = true }
 # `lsp-server` must stay on the same version fatou depends on, or `Connection`
 # is a different type and `fatou::lsp::serve` cannot be called at all.
 # `cargo tree -d | grep lsp-server` catches a divergence after a fatou bump.
-fatou = "0.10"
+#
+# 0.12 is skipped deliberately, not overlooked: it pins `fatou-parser ^0.2` while
+# its own `fatou-formatter ^0.3.0` resolves to 0.3.1, which moved to
+# `fatou-parser ^0.3`. Two incompatible `JuliaLanguage` types then reach
+# `format_node`, and fatou itself does not compile. 0.13 lines both up on 0.3.
+fatou = "0.13"
 lsp-server = "0.10"
 crossbeam-channel = "0.5"
 

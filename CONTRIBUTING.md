@@ -103,6 +103,31 @@ bun run lint:fix
 bun run format
 ```
 
+> **Two TypeScripts are installed on purpose.** TypeScript 7 is the native port
+> and ships no programmatic API until 7.1, so every tool that does
+> `require("typescript")` — typescript-eslint above all — can still only run
+> against the 6.x API. The split follows Microsoft's documented side-by-side
+> layout:
+>
+> - `@typescript/native` is an alias for the real `typescript@7`. It is the
+>   compiler, and the `typecheck` scripts invoke its binary by path
+>   (`node node_modules/@typescript/native/bin/tsc`) rather than through
+>   `node_modules/.bin/tsc`. Both packages declare a `tsc` bin, so which one
+>   wins the symlink is up to the package manager; naming the path keeps
+>   `bun run typecheck` from silently falling back to 6.x.
+> - `typescript` is an alias for the real `typescript@6`. Nothing runs it as a
+>   compiler; it is there so `require("typescript")` resolves to a full
+>   compiler API, for typescript-eslint, for Storybook's docgen, and for
+>   `src/__test__/ascii.test.ts`, which parses the source tree.
+>
+> Microsoft's own instructions route the 6.x half through the
+> `@typescript/typescript6` shim. That shim declares its payload as
+> `"@typescript/old": "npm:typescript@^6"`, and bun 1.3.13 resolves that nested
+> alias back to the shim itself, so `require("typescript")` yields `{}`. Bypassing
+> the shim and aliasing `typescript@6` directly avoids the bug. Collapse this
+> back to a single dependency once typescript-eslint supports TS ≥ 7.1
+> ([typescript-eslint#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940)).
+
 Rust checks, run from `src-tauri/`:
 
 ```bash

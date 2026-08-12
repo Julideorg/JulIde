@@ -9,6 +9,10 @@ export default tseslint.config(
   {
     ignores: [
       "dist",
+      // Same reason as `dist`: minified build output. Storybook only writes it
+      // when someone runs `build-storybook`, so a tree that has never built the
+      // static site lints clean without this and the gap stays invisible.
+      "storybook-static",
       "node_modules",
       "src-tauri/target",
       "src-tauri/gen",

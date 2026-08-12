@@ -81,12 +81,21 @@ describe("marker lines", () => {
   });
 
   test("a marker is written back canonically: title, type, metadata", () => {
-    const cell = {
+    // Only the marker-line fields matter here; the body fields are filled in
+    // so this stays a real `JupytextCell` rather than a cast through `unknown`.
+    const cell: JupytextCell = {
       type: "markdown",
       title: "Intro",
       metadata: { tags: '["hide"]' },
       cellDepth: 0,
-    } as JupytextCell;
+      source: "",
+      rawMarker: null,
+      rawBody: [],
+      dirty: false,
+      implicit: false,
+      legacy: false,
+      range: { markerLine: 1, startLine: 1, endLine: 1 },
+    };
     expect(formatMarkerLine(cell)).toBe('# %% Intro [markdown] tags=["hide"]');
   });
 });

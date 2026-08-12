@@ -42,6 +42,14 @@ updates:
         update-types:
           - patch
           - minor
+    ignore:
+      # `typescript` is deliberately held on 6.x; TypeScript 7 is installed
+      # alongside it as `@typescript/native`. See the note in CONTRIBUTING.md —
+      # 7.x exposes no programmatic API, so bumping this entry breaks
+      # typescript-eslint outright. Drop this ignore once typescript-eslint
+      # supports TS >= 7.1.
+      - dependency-name: "typescript"
+        versions: [">=7"]
 
   # The workflows themselves
   - package-ecosystem: github-actions

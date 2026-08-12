@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "bun run typecheck && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "typecheck": "tsc --noEmit",
-    "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
+    "typecheck": "node node_modules/@typescript/native/bin/tsc --noEmit",
+    "typecheck:test": "node node_modules/@typescript/native/bin/tsc -p tsconfig.test.json --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -63,7 +63,8 @@
     "@types/bun": "^1.3.11",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^4.7.0",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "@vitejs/plugin-react": "^6.0.5",
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
@@ -71,8 +72,8 @@
     "globals": "^17.9.0",
     "prettier": "^3.9.6",
     "storybook": "^10.5.5",
-    "typescript": "~6.0.3",
+    "typescript": "npm:typescript@~6.0.3",
     "typescript-eslint": "^8.66.0",
-    "vite": "^7.3.1"
+    "vite": "^8.2.1"
   }
 }
