@@ -80,6 +80,41 @@ pub(crate) fn normalize_julia_stdio_line(mut line: String) -> String {
     line
 }
 
+/// Windows `CREATE_NO_WINDOW`: start the child without a console of its own.
+///
+/// julIDE is built with `windows_subsystem = "windows"`, so it has no console
+/// to lend. A console-subsystem program — `julia`, `cmd`, `taskkill` — launched
+/// from it gets one allocated, and that is a black box flashing on screen.
+/// Redirecting the child's stdio does not prevent it; only this flag does.
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+/// Apply [`CREATE_NO_WINDOW`] to an async child.
+///
+/// A no-op off Windows, so call sites need no `#[cfg]` of their own — which is
+/// exactly how `julia_precompile`, `julia_pkg_add` and `julia_pkg_rm` came to
+/// be spawning with a visible console while every command around them hid it.
+pub(crate) fn hide_console(cmd: &mut tokio::process::Command) -> &mut tokio::process::Command {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd
+}
+
+/// The same, for a blocking child.
+///
+/// Windows-only, unlike [`hide_console`]: every blocking spawn julIDE makes is
+/// a Windows-specific one (`cmd /C where julia`, `taskkill`) and already sits
+/// inside a `#[cfg(windows)]` block.
+#[cfg(windows)]
+pub(crate) fn hide_console_sync(cmd: &mut std::process::Command) -> &mut std::process::Command {
+    use std::os::windows::process::CommandExt;
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    cmd
+}
+
 static JULIA_PATH: Lazy<Arc<Mutex<Option<PathBuf>>>> = Lazy::new(|| Arc::new(Mutex::new(None)));
 
 /// Find the Julia executable, trying multiple strategies.
@@ -97,6 +132,37 @@ pub async fn find_julia() -> Option<PathBuf> {
         *cached = Some(p.clone());
     }
     found
+}
+
+/// The `Program Files` roots to scan, in order and without repeats.
+///
+/// Kept separate from the environment lookup so the ordering and the
+/// de-duplication can be tested on a machine that has none of these variables —
+/// which is every machine CI has ever run this on.
+#[cfg(any(windows, test))]
+fn program_files_roots_from(vars: [Option<String>; 3]) -> Vec<PathBuf> {
+    let mut roots: Vec<PathBuf> = Vec::new();
+    for value in vars.into_iter().flatten() {
+        if value.is_empty() {
+            continue;
+        }
+        let root = PathBuf::from(value);
+        if !roots.contains(&root) {
+            roots.push(root);
+        }
+    }
+    roots
+}
+
+/// `%ProgramW6432%` first: it names the 64-bit tree even from a 32-bit process,
+/// where `%ProgramFiles%` is redirected to the x86 one.
+#[cfg(windows)]
+fn program_files_roots() -> Vec<PathBuf> {
+    program_files_roots_from([
+        std::env::var("ProgramW6432").ok(),
+        std::env::var("ProgramFiles").ok(),
+        std::env::var("ProgramFiles(x86)").ok(),
+    ])
 }
 
 fn find_julia_impl() -> Option<PathBuf> {
@@ -140,10 +206,7 @@ fn find_julia_impl() -> Option<PathBuf> {
     {
         let mut cmd = std::process::Command::new("cmd");
         cmd.args(["/C", "where julia"]);
-        {
-            use std::os::windows::process::CommandExt;
-            cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
-        }
+        hide_console_sync(&mut cmd);
         if let Ok(output) = cmd.output() {
             if output.status.success() {
                 // `where` may return multiple lines; take the first
@@ -214,9 +277,13 @@ fn find_julia_impl() -> Option<PathBuf> {
                 }
             }
         }
-        // Also check Program Files
-        for pf in &["C:\\Program Files", "C:\\Program Files (x86)"] {
-            if let Ok(entries) = std::fs::read_dir(pf) {
+        // Also check Program Files. Read from the environment rather than
+        // spelled out: Windows is not always installed on C:, and a 32-bit
+        // process sees `%ProgramFiles%` redirected to the x86 tree, which is
+        // what `%ProgramW6432%` exists to undo. `updater.rs` already reads the
+        // same three when it decides whether julIDE is an installed copy.
+        for pf in program_files_roots() {
+            if let Ok(entries) = std::fs::read_dir(&pf) {
                 for entry in entries.flatten() {
                     let name = entry.file_name();
                     let name_str = name.to_string_lossy();
@@ -259,11 +326,7 @@ pub async fn julia_get_version() -> Result<String, String> {
 
     let mut cmd = tokio::process::Command::new(&julia);
     cmd.arg("--version");
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
-    }
+    hide_console(&mut cmd);
     let output = cmd.output().await.map_err(|e| e.to_string())?;
 
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
@@ -357,11 +420,7 @@ pub async fn julia_run(
     cmd.stdout(std::process::Stdio::piped());
     cmd.stderr(std::process::Stdio::piped());
     cmd.kill_on_drop(true);
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
-    }
+    hide_console(&mut cmd);
 
     let mut child = cmd.spawn().map_err(|e| e.to_string())?;
 
@@ -452,6 +511,7 @@ pub async fn julia_precompile(
     cmd.arg("-e").arg("using Pkg; Pkg.precompile()");
     cmd.stdout(std::process::Stdio::piped());
     cmd.stderr(std::process::Stdio::piped());
+    hide_console(&mut cmd);
 
     let mut child = cmd.spawn().map_err(|e| e.to_string())?;
     let stdout = child.stdout.take().unwrap();
@@ -560,9 +620,9 @@ pub async fn julia_kill(state: tauri::State<'_, SharedJuliaState>) -> Result<(),
         #[cfg(windows)]
         {
             // On Windows use taskkill
-            let _ = std::process::Command::new("taskkill")
-                .args(["/PID", &pid.to_string(), "/F"])
-                .output();
+            let mut cmd = std::process::Command::new("taskkill");
+            cmd.args(["/PID", &pid.to_string(), "/F"]);
+            let _ = hide_console_sync(&mut cmd).output();
         }
     }
     Ok(())
@@ -598,6 +658,7 @@ pub async fn julia_pkg_add(
     cmd.arg("-e").arg(script);
     cmd.stdout(std::process::Stdio::piped());
     cmd.stderr(std::process::Stdio::piped());
+    hide_console(&mut cmd);
 
     let mut child = cmd.spawn().map_err(|e| e.to_string())?;
     let stdout = child.stdout.take().unwrap();
@@ -682,6 +743,7 @@ pub async fn julia_pkg_rm(
     cmd.arg("-e").arg(script);
     cmd.stdout(std::process::Stdio::piped());
     cmd.stderr(std::process::Stdio::piped());
+    hide_console(&mut cmd);
 
     let mut child = cmd.spawn().map_err(|e| e.to_string())?;
     let stdout = child.stdout.take().unwrap();
@@ -766,11 +828,7 @@ pub async fn julia_create_project(
     cmd.stdout(std::process::Stdio::piped());
     cmd.stderr(std::process::Stdio::piped());
     cmd.kill_on_drop(true);
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x08000000);
-    }
+    hide_console(&mut cmd);
 
     let mut child = cmd.spawn().map_err(|e| e.to_string())?;
     let stdout = child.stdout.take().unwrap();
@@ -946,11 +1004,7 @@ BestieTemplate.generate(dst, data; defaults=true, quiet=false)"#;
     cmd.stdout(std::process::Stdio::piped());
     cmd.stderr(std::process::Stdio::piped());
     cmd.kill_on_drop(true);
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x08000000);
-    }
+    hide_console(&mut cmd);
 
     let mut child = cmd.spawn().map_err(|e| e.to_string())?;
     let stdout = child.stdout.take().unwrap();
@@ -1035,11 +1089,7 @@ pub async fn julia_eval(
     cmd.stdout(std::process::Stdio::piped());
     cmd.stderr(std::process::Stdio::piped());
     cmd.kill_on_drop(true);
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x08000000);
-    }
+    hide_console(&mut cmd);
 
     let mut child = cmd.spawn().map_err(|e| e.to_string())?;
 
@@ -1138,11 +1188,7 @@ pub async fn julia_set_path(path: String) -> Result<(), String> {
 async fn probe_julia_binary(path: &Path) -> Result<String, String> {
     let mut cmd = tokio::process::Command::new(path);
     cmd.arg("--version");
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
-    }
+    hide_console(&mut cmd);
 
     let output = cmd
         .output()
@@ -1172,6 +1218,59 @@ async fn probe_julia_binary(path: &Path) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── program_files_roots_from ───────────────────────────────
+    //
+    // The Windows install scan used to look in `C:\Program Files` and
+    // `C:\Program Files (x86)`, spelled out. Windows is not always installed on
+    // C: — `updater.rs` reads the environment for exactly that reason — and a
+    // 32-bit process sees `%ProgramFiles%` redirected to the x86 tree, which is
+    // what `%ProgramW6432%` undoes.
+
+    #[test]
+    fn prefers_the_native_tree_and_keeps_the_rest() {
+        assert_eq!(
+            program_files_roots_from([
+                Some(r"D:\Program Files".into()),
+                Some(r"D:\Program Files (x86)".into()),
+                Some(r"D:\Program Files (x86)".into()),
+            ]),
+            vec![
+                PathBuf::from(r"D:\Program Files"),
+                PathBuf::from(r"D:\Program Files (x86)"),
+            ],
+            "ProgramW6432 first, and the repeat dropped"
+        );
+    }
+
+    /// On a 64-bit process `%ProgramW6432%` and `%ProgramFiles%` are the same
+    /// directory, and scanning it twice is wasted work on a cold filesystem.
+    #[test]
+    fn collapses_the_common_64_bit_case() {
+        assert_eq!(
+            program_files_roots_from([
+                Some(r"C:\Program Files".into()),
+                Some(r"C:\Program Files".into()),
+                Some(r"C:\Program Files (x86)".into()),
+            ]),
+            vec![
+                PathBuf::from(r"C:\Program Files"),
+                PathBuf::from(r"C:\Program Files (x86)"),
+            ]
+        );
+    }
+
+    /// An unset or empty variable is not a directory to scan. `read_dir("")`
+    /// fails harmlessly, but a root of `""` would also make `join` produce a
+    /// relative path resolved against julIDE's working directory.
+    #[test]
+    fn skips_variables_that_are_absent_or_empty() {
+        assert!(program_files_roots_from([None, None, None]).is_empty());
+        assert_eq!(
+            program_files_roots_from([None, Some(String::new()), Some(r"C:\PF".into())]),
+            vec![PathBuf::from(r"C:\PF")]
+        );
+    }
 
     // ── validate_package_name ──────────────────────────────────
 

@@ -182,6 +182,11 @@ export default function App() {
         setLspStatus("error", msg);
       });
     return () => {
+      // Not awaited, and it does not need to be: LspClient runs its lifecycle
+      // calls through one queue, so this `stop` is ordered ahead of the `start`
+      // the next effect enqueues a moment later. Before that queue existed the
+      // two raced across the Tauri boundary and the late stop could tear down
+      // the server the new handshake was already talking to.
       lspClient.stop().catch(console.error);
     };
     // Waits for settingsLoaded so the handshake is built from the user's real

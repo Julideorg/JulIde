@@ -243,13 +243,18 @@ export function StatusBar() {
             Pluto
           </span>
         )}
-        <span
+        {/* A button, not a span: the reason a language server is not running
+            used to live in this `title` alone, which is nowhere on a machine
+            with no console and no log file. Clicking now opens the Output
+            panel, where every status change is written as an `[LSP]` line. */}
+        <button
           className={`status-item status-lsp status-lsp-${lspStatus}`}
           title={
             lspStatus === "error"
-              ? (lspErrorMessage ?? "LSP error")
-              : `${LSP_BACKEND_NAMES[lspBackend] ?? "LanguageServer.jl"}: ${lspStatus}`
+              ? `${lspErrorMessage ?? "LSP error"}${ascii(" — ")}open Output`
+              : `${LSP_BACKEND_NAMES[lspBackend] ?? "LanguageServer.jl"}: ${lspStatus}${ascii(" — ")}open Output`
           }
+          onClick={() => useIdeStore.getState().setActiveBottomPanel("output")}
         >
           {lspStatus !== "off" && (
             <Dot
@@ -257,7 +262,7 @@ export function StatusBar() {
             />
           )}
           {LSP_BACKEND_LABELS[lspBackend] ?? "LSP"}
-        </span>
+        </button>
       </div>
     </div>
   );

@@ -79,6 +79,18 @@ fn emit_status(
 ) {
     use tauri::Emitter;
     let _ = app.emit(
+        "julia-output",
+        crate::julia::JuliaOutputEvent {
+            kind: if status == LspStatus::Error {
+                "stderr".into()
+            } else {
+                "stdout".into()
+            },
+            text: status_log_line(&status, message.as_deref(), backend.as_deref()),
+            exit_code: None,
+        },
+    );
+    let _ = app.emit(
         "lsp-status",
         LspStatusEvent {
             status,
@@ -86,6 +98,35 @@ fn emit_status(
             backend,
         },
     );
+}
+
+/// One line per status change, for the Output panel.
+///
+/// A release Windows build has no console (`main.rs` sets
+/// `windows_subsystem = "windows"`) and julIDE writes no log file, so until now
+/// the only trace of a language server that failed to come up was a tooltip on
+/// the status-bar chip. That is not something a bug report can carry. The
+/// Output panel is already where a child backend's stderr and Fatou's own
+/// errors land, so the lifecycle goes there too and a reporter has something to
+/// paste.
+///
+/// Plain ASCII on purpose: this text is assembled in Rust and never passes
+/// through `src/services/ascii.ts`, so it has to already be foldable-free.
+fn status_log_line(status: &LspStatus, message: Option<&str>, backend: Option<&str>) -> String {
+    let name = backend
+        .filter(|b| !b.is_empty())
+        .map(backend_display_name)
+        .unwrap_or("Language server");
+    let state = match status {
+        LspStatus::Off => "stopped",
+        LspStatus::Starting => "starting",
+        LspStatus::Ready => "ready",
+        LspStatus::Error => "error",
+    };
+    match message {
+        Some(detail) => format!("[LSP] {name}: {state}: {detail}"),
+        None => format!("[LSP] {name}: {state}"),
+    }
 }
 
 /// Convert an outgoing JSON-RPC value into an `lsp_server::Message`.
@@ -293,6 +334,27 @@ fn start_fatou(app: &tauri::AppHandle, state: Arc<Mutex<LspState>>) -> Result<Tr
     Ok(Transport::InProcess(sender))
 }
 
+/// The status a response moves the session to, or `None` to leave it alone.
+///
+/// Only the handshake moves it: the first response to arrive while `Starting`
+/// is the answer to `initialize`. An error there used to be dropped — the
+/// request was failed, but the status stayed `Starting`, which is what
+/// `lsp_start`'s guard reads as "a server is already on its way" and refuses
+/// every retry for the rest of the process. The UI has no word for that state
+/// either: everything that is not `Ready` renders as "Waiting for the language
+/// server", so a server that had already given up looked exactly like one still
+/// starting, forever.
+fn status_after_response(current: &LspStatus, ok: bool) -> Option<LspStatus> {
+    if *current != LspStatus::Starting {
+        return None;
+    }
+    Some(if ok {
+        LspStatus::Ready
+    } else {
+        LspStatus::Error
+    })
+}
+
 async fn dispatch_message(msg: Value, state: &Arc<Mutex<LspState>>, app: &tauri::AppHandle) {
     use tauri::Emitter;
 
@@ -310,27 +372,21 @@ async fn dispatch_message(msg: Value, state: &Arc<Mutex<LspState>>, app: &tauri:
 
         let mut s = state.lock().await;
 
-        // Transition to Ready on successful initialize response
-        if s.status == LspStatus::Starting {
-            if result.is_ok() {
-                s.status = LspStatus::Ready;
-                let backend = s.backend_name.clone();
-                drop(s);
-                emit_status(app, LspStatus::Ready, None, Some(backend));
-                // Re-lock to remove from pending
-                let mut s2 = state.lock().await;
-                if let Some(sender) = s2.pending.remove(&id) {
-                    let _ = sender.send(result);
-                }
-            } else {
-                if let Some(sender) = s.pending.remove(&id) {
-                    let _ = sender.send(result);
-                }
-            }
-        } else {
-            if let Some(sender) = s.pending.remove(&id) {
-                let _ = sender.send(result);
-            }
+        // The handshake is the only exchange that moves the status.
+        let transition = status_after_response(&s.status, result.is_ok());
+        if let Some(next) = transition.clone() {
+            s.status = next;
+        }
+        let sender = s.pending.remove(&id);
+        let backend = s.backend_name.clone();
+        drop(s);
+
+        if let Some(next) = transition {
+            let detail = result.as_ref().err().cloned();
+            emit_status(app, next, detail, Some(backend));
+        }
+        if let Some(sender) = sender {
+            let _ = sender.send(result);
         }
         return;
     }
@@ -391,17 +447,15 @@ async fn build_child_command(
                 "-e",
                 "using LanguageServer; exit(0)",
             ])
-            .env(
-                "JULIA_LOAD_PATH",
-                format!("{}:@v#.#:@stdlib", workspace_path),
-            )
+            // The same load path the server itself is spawned with, below. This
+            // was still the hard-coded `:` form after 0.5.0 fixed the spawn:
+            // on Windows the probe therefore ran with one nonsensical entry, so
+            // a LanguageServer.jl installed in the workspace project failed to
+            // load and the user was told it "is not installed" when it was.
+            .env("JULIA_LOAD_PATH", julia_load_path(workspace_path))
             .stdout(Stdio::null())
             .stderr(Stdio::null());
-        #[cfg(windows)]
-        {
-            use std::os::windows::process::CommandExt;
-            probe_cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
-        }
+        crate::julia::hide_console(&mut probe_cmd);
         let probe = probe_cmd.status().await.map_err(|e| e.to_string())?;
 
         if !probe.success() {
@@ -428,11 +482,7 @@ async fn build_child_command(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
-    }
+    crate::julia::hide_console(&mut cmd);
 
     Ok(cmd)
 }
@@ -567,8 +617,38 @@ pub async fn lsp_stop(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// A request gave up waiting. Release the session if it was the handshake.
+///
+/// The 30-second timeout below used to leave the status alone, and the only
+/// request that runs while `Starting` is `initialize`. So a backend that was
+/// merely slow — a cold LanguageServer.jl precompile is minutes, not seconds —
+/// left the process pinned in `Starting`: the client reported an error, the
+/// status bar kept saying "starting", and `lsp_start`'s guard turned every
+/// later attempt into a silent `Ok(())`. Nothing short of switching backends
+/// could get a language server back.
+async fn abandon_request(app: &tauri::AppHandle, id: u64, reason: &str) {
+    let mut s = LSP_STATE.lock().await;
+    s.pending.remove(&id);
+    if s.status != LspStatus::Starting {
+        return;
+    }
+    s.status = LspStatus::Error;
+    let backend = s.backend_name.clone();
+    drop(s);
+    emit_status(
+        app,
+        LspStatus::Error,
+        Some(reason.to_string()),
+        Some(backend),
+    );
+}
+
 #[tauri::command]
-pub async fn lsp_send_request(method: String, params: Value) -> Result<Value, String> {
+pub async fn lsp_send_request(
+    app: tauri::AppHandle,
+    method: String,
+    params: Value,
+) -> Result<Value, String> {
     let (id, rx, transport) = {
         let mut s = LSP_STATE.lock().await;
         let Some(transport) = s.transport.clone() else {
@@ -588,13 +668,21 @@ pub async fn lsp_send_request(method: String, params: Value) -> Result<Value, St
         "params": params,
     });
 
-    write_lsp_message(&transport, &msg).await?;
+    if let Err(e) = write_lsp_message(&transport, &msg).await {
+        abandon_request(&app, id, &e).await;
+        return Err(e);
+    }
 
     // Wait up to 30s for a response
-    tokio::time::timeout(std::time::Duration::from_secs(30), rx)
-        .await
-        .map_err(|_| "LSP request timed out".to_string())?
-        .map_err(|_| "LSP response channel closed".to_string())?
+    match tokio::time::timeout(std::time::Duration::from_secs(30), rx).await {
+        Ok(Ok(result)) => result,
+        Ok(Err(_)) => Err("LSP response channel closed".to_string()),
+        Err(_) => {
+            let reason = format!("{method} timed out after 30s");
+            abandon_request(&app, id, &reason).await;
+            Err("LSP request timed out".to_string())
+        }
+    }
 }
 
 #[tauri::command]
@@ -678,6 +766,116 @@ mod tests {
     #[test]
     fn rejects_a_message_that_is_neither() {
         assert!(value_to_message(&json!({"jsonrpc": "2.0"})).is_err());
+    }
+
+    // ── Status transitions ─────────────────────────────────────────────────
+    //
+    // `lsp_start` refuses to do anything while the status is `Starting` or
+    // `Ready`, so every path out of `Starting` is load-bearing: one that is
+    // missed does not merely mis-report, it strands the session for the rest of
+    // the process with no way back short of switching backends.
+
+    #[test]
+    fn a_successful_handshake_becomes_ready() {
+        assert_eq!(
+            status_after_response(&LspStatus::Starting, true),
+            Some(LspStatus::Ready)
+        );
+    }
+
+    /// The regression: an `initialize` that came back as an error used to leave
+    /// the status at `Starting`, which reads as "still coming up" forever.
+    #[test]
+    fn a_failed_handshake_becomes_error() {
+        assert_eq!(
+            status_after_response(&LspStatus::Starting, false),
+            Some(LspStatus::Error)
+        );
+    }
+
+    #[test]
+    fn ordinary_traffic_does_not_move_the_status() {
+        for status in [LspStatus::Ready, LspStatus::Off, LspStatus::Error] {
+            for ok in [true, false] {
+                assert_eq!(
+                    status_after_response(&status, ok),
+                    None,
+                    "{status:?} must not be moved by a {} response",
+                    if ok { "successful" } else { "failed" }
+                );
+            }
+        }
+    }
+
+    // ── The Output panel's record of the session ───────────────────────────
+
+    #[test]
+    fn logs_the_backend_and_the_state() {
+        assert_eq!(
+            status_log_line(&LspStatus::Ready, None, Some("fatou")),
+            "[LSP] Fatou: ready"
+        );
+        assert_eq!(
+            status_log_line(&LspStatus::Starting, None, Some("jetls")),
+            "[LSP] JETLS.jl: starting"
+        );
+    }
+
+    /// The whole point: a Windows build has no console and no log file, so this
+    /// line is the only place the reason survives to reach a bug report.
+    #[test]
+    fn logs_why_it_failed() {
+        assert_eq!(
+            status_log_line(
+                &LspStatus::Error,
+                Some("initialize timed out after 30s"),
+                Some("fatou")
+            ),
+            "[LSP] Fatou: error: initialize timed out after 30s"
+        );
+    }
+
+    /// `lsp_stop` clears the backend name before it emits, so the line still
+    /// has to read as a sentence.
+    #[test]
+    fn logs_a_stop_with_no_backend_left() {
+        assert_eq!(
+            status_log_line(&LspStatus::Off, None, None),
+            "[LSP] Language server: stopped"
+        );
+        assert_eq!(
+            status_log_line(&LspStatus::Off, None, Some("")),
+            "[LSP] Language server: stopped"
+        );
+    }
+
+    /// Assembled in Rust, so nothing folds it — see `src/services/ascii.ts`.
+    #[test]
+    fn the_log_line_is_ascii() {
+        for status in [
+            LspStatus::Off,
+            LspStatus::Starting,
+            LspStatus::Ready,
+            LspStatus::Error,
+        ] {
+            let line = status_log_line(&status, Some("something went wrong"), Some("fatou"));
+            assert!(line.is_ascii(), "{line} must be plain ASCII");
+        }
+    }
+
+    // ── JULIA_LOAD_PATH ────────────────────────────────────────────────────
+
+    /// Julia splits this on `;` on Windows and `:` elsewhere. Both the probe
+    /// and the spawn have to agree with the platform — 0.5.0 fixed only the
+    /// spawn, so on Windows the probe reported LanguageServer.jl missing on
+    /// machines where it was installed in the workspace project.
+    #[test]
+    fn the_load_path_uses_the_platform_separator() {
+        let separator = if cfg!(windows) { ';' } else { ':' };
+        assert_eq!(
+            julia_load_path("WORKSPACE"),
+            format!("WORKSPACE{separator}@v#.#{separator}@stdlib")
+        );
     }
 
     // ── Fatou over an in-memory connection ─────────────────────────────────
@@ -925,5 +1123,114 @@ mod tests {
                 "Fatou refused {uri}, which is what the client now sends"
             );
         }
+    }
+
+    /// The `file:` URI julIDE's client builds for `path`.
+    ///
+    /// The same rule as `src/lsp/uri.ts` — lower-cased drive letter, forward
+    /// separators, everything outside RFC 3986's unreserved set percent-encoded
+    /// — whose exact output is pinned against Monaco's own encoder in
+    /// `src/lsp/uri.test.ts`. It is restated here rather than shared because the
+    /// client lives on the far side of the IPC boundary; the point of this copy
+    /// is to drive the *server* with a real path spelled the way the client
+    /// would spell it on whichever platform the test is running.
+    ///
+    /// UNC is left out: `tempfile` never hands one back.
+    fn client_path_to_uri(path: &std::path::Path) -> String {
+        let slashed = path
+            .to_str()
+            .expect("a UTF-8 temporary path")
+            .replace('\\', "/");
+        let body = match slashed.as_bytes() {
+            [drive, b':', ..] if drive.is_ascii_alphabetic() => {
+                format!(
+                    "/{}{}",
+                    (*drive as char).to_ascii_lowercase(),
+                    &slashed[1..]
+                )
+            }
+            _ => slashed,
+        };
+
+        let mut uri = String::from("file://");
+        for ch in body.chars() {
+            if ch == '/' || ch.is_ascii_alphanumeric() || matches!(ch, '-' | '.' | '_' | '~') {
+                uri.push(ch);
+            } else {
+                let mut buf = [0u8; 4];
+                for byte in ch.encode_utf8(&mut buf).as_bytes() {
+                    uri.push_str(&format!("%{byte:02X}"));
+                }
+            }
+        }
+        uri
+    }
+
+    /// Fatou resolves the client's `rootUri` back to a real directory *on this
+    /// platform*.
+    ///
+    /// The test above proves only that the URI parses, and parsing was never
+    /// the whole of issue #38 — the root has to survive percent-decoding into a
+    /// path the filesystem recognises, and that decode is a different function
+    /// under `#[cfg(windows)]`. `file:///c%3A/…` therefore proves nothing when
+    /// the suite only ever runs on Linux, which is how it ran until the Windows
+    /// CI job landed beside this change.
+    ///
+    /// The observable is Fatou's dynamic file-watcher registration, which
+    /// `serve` sends only when `workspace_roots` came back non-empty — i.e.
+    /// only when the URI became a path. julIDE's own `CLIENT_CAPABILITIES`
+    /// deliberately does not advertise `didChangeWatchedFiles` (it forwards no
+    /// watched-file events), so that capability is a probe here and nothing
+    /// more.
+    #[test]
+    fn fatou_resolves_the_client_root_uri_to_a_real_directory() {
+        let workspace = tempfile::tempdir().expect("a temporary workspace");
+        let root_uri = client_path_to_uri(workspace.path());
+
+        let (client, server) = Connection::memory();
+        let handle = std::thread::spawn(move || fatou::lsp::serve(&server));
+        let Connection { sender, receiver } = client;
+
+        let send = |value: Value| sender.send(value_to_message(&value).unwrap()).unwrap();
+        send(json!({
+            "jsonrpc": "2.0", "id": 1, "method": "initialize",
+            "params": {
+                "processId": null,
+                "rootUri": root_uri,
+                "workspaceFolders": [{ "uri": root_uri, "name": "proj" }],
+                "capabilities": {
+                    "workspace": { "didChangeWatchedFiles": { "dynamicRegistration": true } },
+                },
+            },
+        }));
+
+        let reply = receiver
+            .recv_timeout(std::time::Duration::from_secs(30))
+            .expect("no answer to initialize");
+        assert!(
+            matches!(reply, Message::Response(ref r) if r.response_result.is_ok()),
+            "Fatou refused the root URI the client builds here: {root_uri}"
+        );
+        send(json!({"jsonrpc": "2.0", "method": "initialized", "params": {}}));
+
+        let deadline = std::time::Duration::from_secs(30);
+        let registered = loop {
+            match receiver.recv_timeout(deadline) {
+                Ok(Message::Request(r)) if r.method == "client/registerCapability" => break true,
+                Ok(_) => continue,
+                Err(_) => break false,
+            }
+        };
+        assert!(
+            registered,
+            "Fatou watched nothing, so {root_uri} did not decode to a workspace root"
+        );
+
+        drop(sender);
+        for _ in receiver {}
+        handle
+            .join()
+            .expect("Fatou panicked")
+            .expect("Fatou errored");
     }
 }

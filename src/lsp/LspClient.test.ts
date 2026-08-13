@@ -187,6 +187,87 @@ describe("capability negotiation", () => {
   });
 });
 
+// ── Lifecycle ordering ───────────────────────────────────────────────────────
+
+describe("lifecycle queue", () => {
+  /** Record the order commands reach Rust, with a tick of latency each. */
+  function recordCommandOrder(): string[] {
+    const order: string[] = [];
+    const slow = (name: string) => async () => {
+      await Promise.resolve();
+      order.push(name);
+    };
+    invokeHandlers.set("lsp_stop", slow("lsp_stop"));
+    invokeHandlers.set("lsp_start", slow("lsp_start"));
+    invokeHandlers.set("lsp_send_notification", (args: any) => {
+      order.push(args.method);
+    });
+    invokeHandlers.set("lsp_send_request", (args: any) => {
+      order.push(args.method);
+      return { capabilities: {} };
+    });
+    return order;
+  }
+
+  /**
+   * `start` now stops first, which is what makes the Rust-side race harmless.
+   *
+   * `lsp_start` returns `Ok(())` untouched when it believes a server is already
+   * coming up, so a `start` on top of a session that died halfway through used
+   * to hand the handshake to a server that was not there. Coming from `Off`
+   * every time removes the question.
+   */
+  test("start() stops whatever was running first", async () => {
+    const order = recordCommandOrder();
+
+    await lspClient.start("/tmp/ws", { backend: "fatou" });
+
+    expect(order).toEqual(["lsp_stop", "lsp_start", "initialize", "initialized"]);
+
+    await lspClient.stop();
+  });
+
+  /**
+   * A `stop` raised mid-handshake waits for the handshake rather than cutting
+   * into it.
+   *
+   * This is the ordering the queue exists for: App.tsx starts the server when a
+   * workspace opens and stops it from the effect cleanup, without awaiting
+   * either, so the two can be raised one tick apart. Un-queued, the `lsp_stop`
+   * landed between `lsp_start` and `initialize` — dropping the transport under
+   * a handshake that had already begun, which the client reports as
+   * "LSP server not running" and the UI renders as "Waiting for the language
+   * server", permanently and with nothing running behind it.
+   */
+  test("a stop() raised mid-handshake waits for it to finish", async () => {
+    const order = recordCommandOrder();
+
+    const started = lspClient.start("/tmp/ws", { backend: "fatou" });
+    const stopped = lspClient.stop();
+    await Promise.all([started, stopped]);
+
+    expect(order).toEqual(["lsp_stop", "lsp_start", "initialize", "initialized", "lsp_stop"]);
+    expect(lspClient.isReady).toBe(false);
+  });
+
+  /** One failure must not poison the queue for everything behind it. */
+  test("a failed start does not block the next one", async () => {
+    recordCommandOrder();
+    invokeHandlers.set("lsp_send_request", () => {
+      throw new Error("Fatou language server is not running");
+    });
+
+    const failed = lspClient.start("/tmp/ws", { backend: "fatou" });
+    await expect(failed).rejects.toThrow("Fatou language server is not running");
+
+    recordCommandOrder();
+    await lspClient.start("/tmp/ws", { backend: "fatou" });
+    expect(lspClient.isReady).toBe(true);
+
+    await lspClient.stop();
+  });
+});
+
 describe("initialize params", () => {
   test("passes initializationOptions straight through", async () => {
     const options = { format: { "line-width": 100, "indent-width": 2 } };

@@ -10,6 +10,8 @@ import { showInputDialog } from "../components/InputDialog/InputDialog";
 import { showBestieTemplateDialog } from "../components/BestieTemplateDialog/BestieTemplateDialog";
 import { useModeBarStore } from "../components/ModeBar/ModeBar";
 import { isMarkdownPath } from "../markdown/renderer";
+import { lspClient } from "../lsp/LspClient";
+import { lspStartOptions } from "../lsp/lspConfig";
 import { runCellAtCursor } from "../components/Editor/runCell";
 import { getActiveCellLayer } from "../components/Editor/notebook/cellLens";
 import type { NotebookCellLayer } from "../components/Editor/notebook/cellZones";
@@ -842,6 +844,22 @@ function registerBuiltinCommands(containers: boolean) {
       const fromLsp = ide().problems.filter((p) => p.id.startsWith("lsp-"));
       const liveFiles = new Set(fromLsp.map((p) => p.file));
       ide().setProblems([...fromLsp, ...found.filter((p) => !liveFiles.has(p.file))]);
+    },
+  });
+
+  // The only way to get a language server back used to be the backend dropdown
+  // in Settings, which is the sole caller of `lspClient.restart`. Anything that
+  // left the session wedged — a handshake that errored, a backend that never
+  // answered — therefore stayed wedged, and the Problems panel said
+  // "Waiting for the language server" for the rest of the session with nothing
+  // to click.
+  store.registerCommand({
+    id: "lsp.restart",
+    label: "Restart Language Server",
+    execute: async () => {
+      const workspacePath = ide().workspacePath;
+      if (!workspacePath) return;
+      await lspClient.restart(workspacePath, lspStartOptions(settings().settings));
     },
   });
 

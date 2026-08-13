@@ -99,6 +99,55 @@ jobs:
         run: cargo test
         working-directory: src-tauri
 
+  # Everything above runs on Linux, and for a long time everything did. That is
+  # how a `path_str.contains("/.git/")` filter that cannot match a Windows path,
+  # a `JULIA_LOAD_PATH` built with the wrong separator, and three Julia spawns
+  # missing CREATE_NO_WINDOW all shipped: `build.yml` compiles for Windows, but
+  # nothing has ever *run* there, so no `#[cfg(windows)]` branch and no
+  # backslash-shaped assertion was ever executed.
+  #
+  # Deliberately narrower than the Linux job: no fmt, no clippy, no lint — those
+  # are platform-independent and belong in one place. This job exists to execute
+  # the tests on the platform whose behaviour they describe.
+  windows:
+    name: Windows (tests)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.95.0
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # tauri-build needs dist/ to exist, but not to be a real build.
+      - name: Stub frontend dist
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          New-Item -ItemType File -Force -Path dist/index.html | Out-Null
+
+      - name: Test (Rust)
+        run: cargo test
+        working-directory: src-tauri
+
+      # The path <-> URI conversion the language server depends on is frontend
+      # code, and `uri.test.ts` checks it against Monaco's own encoder.
+      - name: Test (frontend)
+        run: bun test
+
   audit:
     name: Dependency audit
     runs-on: ubuntu-22.04

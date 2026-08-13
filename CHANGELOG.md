@@ -5,6 +5,75 @@ All notable changes to julIDE are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 julIDE aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **The language server can say why it is not running, and can be started again.**
+
+  A report from a clean Windows 11 install of the portable build said the interface was
+  stuck on **"Waiting for the language server"**. It was not possible to work out from
+  that which of several things had happened, and that was the first bug: the Problems
+  panel printed those five words for `off`, `starting` **and** `error` alike, and the
+  Outline panel printed "Waiting for LSP..." on the same terms. A server that had already
+  given up, a server that was a second from ready, and a server nobody had asked to start
+  because no folder was open all read identically. The only place the actual reason
+  appeared was a `title` tooltip on the status-bar chip — and a release Windows build has
+  no console (`windows_subsystem = "windows"`) and writes no log file, so the reporter had
+  nothing else to send.
+
+  Each of those is now its own message. An error names the backend and shows the server's
+  own words, with a **Restart language server** button beside them; no folder open says
+  so and offers **Open Folder**; only an actual start still says it is waiting. Every
+  status change is also written to the Output panel as an `[LSP]` line, next to where
+  Fatou's own errors already went, so the next report can carry the reason.
+
+  Two states could strand the session for good. An `initialize` that came back as an
+  _error_ left the status at `Starting` — the request failed, but nothing moved the
+  status — and `lsp_start` treats `Starting` as "a server is already on its way" and
+  returns success without doing anything. So did a handshake that timed out after 30
+  seconds, which a cold LanguageServer.jl precompile can easily exceed. Either one wedged
+  the language server for the rest of the process, and the only path through `lsp_stop`
+  was switching backends in Settings. Both now end in `Error`, and
+  **Restart Language Server** is a command in the palette.
+
+  Starting and stopping also raced. `App.tsx` stops the server from an effect cleanup
+  without awaiting it and starts the next one on the same tick; Tauri runs commands
+  concurrently, so the stop could land _after_ the start and drop the transport under a
+  handshake that had already begun. The client now runs its lifecycle through one queue
+  and always starts from a stopped server.
+
+- **Windows no longer drowns in its own filesystem events.** The watcher skipped `.git`,
+  `node_modules`, `target` and `__pycache__` with four substring tests that each contained
+  a forward slash — against paths `notify` reports as `C:\proj\.git\index`. Not one of
+  them ever matched on Windows. Every git write therefore reached the frontend, which
+  schedules a tree walk and a git refresh; the refresh runs eight git commands, which
+  write to `.git`, which wakes the watcher again. A workspace sat in that loop from the
+  moment it was opened. The check is now on path _components_, where the separator cannot
+  leak into it.
+
+- **LanguageServer.jl is no longer reported missing on Windows when it is installed.**
+  0.5.0 fixed `JULIA_LOAD_PATH` to use `;` on Windows — on the line that spawns the
+  server, but not on the probe twenty-seven lines above it that decides whether it is
+  installed at all. A LanguageServer.jl living in the workspace project failed to load
+  for the probe, and the answer was "not installed. Run: julia -e …".
+
+- **Julia stopped flashing a console window on Windows** when adding or removing a
+  package, precompiling, or killing a run. Four spawns were missing `CREATE_NO_WINDOW`
+  while every command around them set it; they now go through one helper that cannot be
+  forgotten. Julia is also looked for under `%ProgramFiles%`, `%ProgramW6432%` and
+  `%ProgramFiles(x86)%` rather than a hard-coded `C:\Program Files` — Windows is not
+  always installed on C:, and a 32-bit process sees `%ProgramFiles%` redirected.
+
+### Internal
+
+- **CI runs the test suites on Windows.** Every job ran on Linux, which is how all of the
+  above shipped: `build.yml` compiles for Windows, but nothing had ever _run_ there, so no
+  `#[cfg(windows)]` branch and no backslash-shaped assertion was ever executed. There is
+  also a new test that drives Fatou with the `file:` URI julIDE builds for a real
+  directory and checks it resolves back to one — the 0.5.0 regression tests only proved
+  such a URI _parses_, and the decode from URI to path is a different function on Windows.
+
 ## [0.6.0] - 2026-08-12
 
 The markdown preview learned to typeset maths and to colour the code inside fences, the

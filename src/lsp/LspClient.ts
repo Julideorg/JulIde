@@ -333,8 +333,67 @@ class LspClient {
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
+  /**
+   * The lifecycle queue. `start`, `stop` and `restart` run one at a time.
+   *
+   * Every one of them is several `invoke`s with awaits between, and Tauri runs
+   * commands concurrently — so two overlapping calls interleave on the Rust
+   * side in whatever order the runtime picks. That is not hypothetical: the
+   * workspace effect in App.tsx fires `stop()` from its cleanup without
+   * awaiting it and the next effect calls `start()` immediately, so opening a
+   * second folder could land `lsp_start` first and then have the late
+   * `lsp_stop` tear down the transport the handshake was about to use. The
+   * client then sent `initialize` into nothing, reported "LSP server not
+   * running", and the UI sat on "Waiting for the language server" with no
+   * server and no retry.
+   */
+  private queue: Promise<void> = Promise.resolve();
+
+  /** Append `task` to the lifecycle queue and resolve with its outcome. */
+  private enqueue(task: () => Promise<void>): Promise<void> {
+    const run = this.queue.then(task);
+    // The tail swallows the outcome so the queue itself can never reject: one
+    // failed start would otherwise poison every call behind it, which is the
+    // same "no way back" this queue exists to remove. The caller still gets the
+    // rejection it is owed, from `run`.
+    this.queue = run.then(
+      () => {},
+      () => {},
+    );
+    return run;
+  }
+
   /** Start the LSP server and run the initialize handshake. */
-  async start(workspacePath: string, options?: LspStartOptions): Promise<void> {
+  start(workspacePath: string, options?: LspStartOptions): Promise<void> {
+    return this.enqueue(() => this._start(workspacePath, options));
+  }
+
+  /** Stop the LSP server and reset all state. */
+  stop(): Promise<void> {
+    return this.enqueue(() => this._stop());
+  }
+
+  /**
+   * Stop the running server and start the one settings now name.
+   *
+   * Both halves are needed: the Rust side re-reads the backend setting when it
+   * starts a server, and the client has to redo the handshake because the new
+   * backend advertises a different capability set. Both are now `start`'s,
+   * which stops first — this stays as a name of its own because "restart the
+   * language server" is what its two callers mean: the Settings backend switch,
+   * and the `lsp.restart` command.
+   */
+  restart(workspacePath: string, options?: LspStartOptions): Promise<void> {
+    return this.start(workspacePath, options);
+  }
+
+  private async _start(workspacePath: string, options?: LspStartOptions): Promise<void> {
+    // Always from a stopped server. `lsp_start` returns `Ok(())` untouched when
+    // it thinks one is already coming up, so starting on top of a session that
+    // failed halfway through would hand the handshake to a server that is not
+    // there.
+    await this._stop();
+
     this._isReady = false;
     this._capabilities = null;
     this._backend = options?.backend ?? "";
@@ -365,8 +424,7 @@ class LspClient {
     }
   }
 
-  /** Stop the LSP server and reset all state. */
-  async stop(): Promise<void> {
+  private async _stop(): Promise<void> {
     this._isReady = false;
     this._capabilities = null;
     this._backend = "";
@@ -375,18 +433,6 @@ class LspClient {
     this.notificationUnlisten?.();
     this.notificationUnlisten = null;
     await invoke("lsp_stop");
-  }
-
-  /**
-   * Stop the running server and start the one settings now name.
-   *
-   * Both halves are needed: the Rust side re-reads the backend setting when it
-   * starts a server, and the client has to redo the handshake because the new
-   * backend advertises a different capability set.
-   */
-  async restart(workspacePath: string, options?: LspStartOptions): Promise<void> {
-    await this.stop();
-    await this.start(workspacePath, options);
   }
 
   /**

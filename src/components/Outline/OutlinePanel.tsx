@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useIdeStore } from "../../stores/useIdeStore";
 import { lspClient } from "../../lsp/LspClient";
 import { pathToUri } from "../../lsp/uri";
+import { useAscii } from "../../services/ascii";
 import { List, ChevronRight, ChevronDown, RefreshCw } from "lucide-react";
 
 interface DocumentSymbol {
@@ -125,6 +126,8 @@ export function OutlinePanel() {
   const activeTabId = useIdeStore((s) => s.activeTabId);
   const openTabs = useIdeStore((s) => s.openTabs);
   const lspStatus = useIdeStore((s) => s.lspStatus);
+  const lspErrorMessage = useIdeStore((s) => s.lspErrorMessage);
+  const ascii = useAscii();
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
   const [symbols, setSymbols] = useState<DocumentSymbol[]>([]);
@@ -184,9 +187,19 @@ export function OutlinePanel() {
   }
 
   if (lspStatus !== "ready") {
+    // Not one message for every state that is not `ready`. An outline that
+    // never appears because the server died reads the same as one that is a
+    // second away, and the difference is the whole of whether there is
+    // anything to do about it — see ProblemsPanel, which says more.
     return (
       <div className="outline-panel">
-        <div className="outline-empty">Waiting for LSP...</div>
+        <div className="outline-empty">
+          {lspStatus === "error"
+            ? (lspErrorMessage ?? "The language server stopped.")
+            : lspStatus === "off"
+              ? "The language server is not running."
+              : ascii("Waiting for the language server…")}
+        </div>
       </div>
     );
   }
