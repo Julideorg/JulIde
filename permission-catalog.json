@@ -1,6 +1,6 @@
 {
   "catalogVersion": 1,
-  "julideVersion": "0.6.0",
+  "julideVersion": "0.6.1",
   "permissions": [
     {
       "id": "workspace:read",
