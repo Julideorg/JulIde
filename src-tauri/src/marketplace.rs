@@ -24,6 +24,10 @@
 
 use crate::http::{assert_https, read_capped, HTTP};
 use crate::plugins::validate_plugin_name;
+// Both come from `portable.rs`, which is what makes installing a plugin on a
+// portable copy land beside the executable rather than in the home directory of
+// whichever machine the stick happened to be plugged into.
+use crate::portable::{plugins_dir as plugins_root, staging_dir as staging_root};
 use crate::sync::LockRecover;
 use flate2::read::GzDecoder;
 use once_cell::sync::Lazy;
@@ -343,25 +347,12 @@ fn normalise_modes(_root: &Path) -> Result<(), String> {
 }
 
 // ─── Paths ──────────────────────────────────────────────────────────────────
-
-fn plugins_root() -> PathBuf {
-    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-    home.join(".julide").join("plugins")
-}
-
-/// Staging lives under `~/.julide/`, never in the system temp directory.
-///
-/// `/tmp` is a separate filesystem on most Linux setups, and `fs::rename` across
-/// filesystems fails with `EXDEV`. That is the single most common way an "atomic
-/// install" ships broken.
-fn staging_root() -> PathBuf {
-    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-    home.join(".julide").join(".staging")
-}
+//
+// `plugins_root` and `staging_root` are `portable::plugins_dir` and
+// `portable::staging_dir`, imported under these names at the top of the file.
 
 fn cache_root() -> PathBuf {
-    let cache = dirs::cache_dir().unwrap_or_else(|| PathBuf::from("."));
-    cache.join("julide").join("marketplace")
+    crate::portable::cache_dir().join("marketplace")
 }
 
 // ─── Install serialisation ──────────────────────────────────────────────────

@@ -265,8 +265,7 @@ impl Settings {
 }
 
 fn settings_path() -> PathBuf {
-    let config = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
-    config.join("julide").join("settings.json")
+    crate::portable::config_dir().join("settings.json")
 }
 
 /// True once tauri-plugin-window-state has stored a geometry for this app.
@@ -274,13 +273,9 @@ fn settings_path() -> PathBuf {
 /// Used to stop `start_maximized` from stomping on a window size the user chose:
 /// the setting should describe the *first* launch, not override every later one.
 pub fn has_saved_window_state() -> bool {
-    let Some(dir) = dirs::config_dir() else {
-        return false;
-    };
-    // The plugin writes this next to the app's other config, keyed by identifier.
-    dir.join("com.ofek.julide")
-        .join(".window-state.json")
-        .exists()
+    // Where the plugin writes depends on whether this is a portable copy, so the
+    // answer comes from the one function that knows — see `portable.rs`.
+    crate::portable::window_state_file().exists()
 }
 
 #[tauri::command]

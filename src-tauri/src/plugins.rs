@@ -1,3 +1,6 @@
+// Where plugins live is decided in one place, because a portable copy keeps them
+// beside the executable rather than under the user's home directory.
+use crate::portable::plugins_dir;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -51,9 +54,9 @@ pub struct PluginGrant {
 
 /// Reject anything that is not a single, plain directory name.
 ///
-/// The name is joined into a path under `~/.julide/plugins/` by the plugin protocol
-/// handler, so without this a caller could pass `../../../etc` and walk out of the
-/// plugin directory entirely.
+/// The name is joined onto [`plugins_dir`] by the plugin protocol handler, so without
+/// this a caller could pass `../../../etc` and walk out of the plugin directory
+/// entirely.
 ///
 /// `pub(crate)` because archive extraction applies the same rule to every member of a
 /// downloaded bundle. One implementation, so the two cannot drift apart.
@@ -82,11 +85,6 @@ pub(crate) fn validate_plugin_name(name: &str) -> Result<(), String> {
     }
 }
 
-fn plugins_dir() -> PathBuf {
-    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-    home.join(".julide").join("plugins")
-}
-
 #[tauri::command]
 pub fn plugin_get_dir() -> String {
     let dir = plugins_dir();
@@ -106,7 +104,7 @@ pub fn plugin_scan() -> Result<Vec<PluginManifest>, String> {
 }
 
 /// The body of `plugin_scan`, taking the directory as an argument so it can be tested
-/// against a fixture tree rather than against the user's real `~/.julide/plugins`.
+/// against a fixture tree rather than against the user's real plugin directory.
 fn scan_dir(dir: &Path) -> Result<Vec<PluginManifest>, String> {
     let mut manifests = Vec::new();
     let entries = std::fs::read_dir(dir).map_err(|e| e.to_string())?;
@@ -165,8 +163,7 @@ fn scan_dir(dir: &Path) -> Result<Vec<PluginManifest>, String> {
 }
 
 fn grants_path() -> PathBuf {
-    let config = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
-    config.join("julide").join("plugin-grants.json")
+    crate::portable::config_dir().join("plugin-grants.json")
 }
 
 /// Load the user's plugin permission grants.

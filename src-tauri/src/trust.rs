@@ -43,8 +43,7 @@ pub struct TrustStatus {
 }
 
 fn trust_path() -> PathBuf {
-    let config = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
-    config.join("julide").join("workspace-trust.json")
+    crate::portable::config_dir().join("workspace-trust.json")
 }
 
 fn load_all() -> HashMap<String, TrustRecord> {

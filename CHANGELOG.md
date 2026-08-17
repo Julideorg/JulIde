@@ -7,6 +7,56 @@ julIDE aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Added
+
+- **The Windows portable build is now actually portable.** It was portable only in the
+  sense that it did not _install_. Everything it wrote still went where an installed copy
+  writes: settings, plugin permission grants and workspace trust to `%APPDATA%`, plugins
+  to `%USERPROFILE%\.julide`, the marketplace cache to `%LOCALAPPDATA%`, and — the
+  largest one, because nothing in julIDE asked for it — a full WebView2 profile that
+  Tauri points at `%LOCALAPPDATA%\com.ofek.julide` unless a window is built with an
+  explicit data directory. Run it from a stick on one machine and the configuration
+  stayed on that machine; plug the stick into the next one and julIDE started from
+  scratch, having left four directories behind on the first.
+
+  A portable copy now keeps all of it in a single `julide-data` folder beside the
+  `.exe` — `config/`, `plugins/`, `cache/` and `webview/` — and writes nothing outside
+  it. Copy the two items to another machine and the setup comes along; delete them and
+  nothing of julIDE is left.
+
+  Portable mode turns on from any of three signals: a `julide-data` folder next to the
+  executable, a file name containing `portable` (which is what the release asset is
+  called, so the download needs no setup), or `JULIDE_PORTABLE=1`. The folder is the one
+  that makes it stick — julIDE creates it on the first portable launch, so renaming the
+  `.exe` afterwards cannot silently orphan the data. `JULIDE_PORTABLE=0` forces the mode
+  back off. If the folder cannot be written — a read-only share, a directory with no
+  rights — julIDE says so on stderr and falls back to the per-user locations rather than
+  failing to save anything.
+
+  Two things stay outside deliberately: git tokens remain in the OS credential store,
+  because the alternative is a plaintext token on a stick that gets lost, and Julia's own
+  installation and `~/.julia` depot are Julia's to relocate (`JULIA_DEPOT_PATH`), not
+  julIDE's. The mode is not Windows-only — an AppImage with a `julide-data` folder beside
+  it behaves the same way, and resolves the folder against the `.AppImage` file rather
+  than the temporary mount it runs from.
+
+  The updater's portable check no longer has to guess, either. It inferred "portable"
+  from the executable sitting outside Program Files and `%LOCALAPPDATA%`, which called
+  every install in a custom directory portable; a copy running in portable mode now says
+  so outright, and the path heuristic is left as the fallback for a renamed binary with
+  no data folder yet.
+
+### Fixed
+
+- **The window's size and position are restored again.** `tauri-plugin-window-state` was
+  registered from inside the app's `setup` hook, and Tauri builds the windows declared in
+  `tauri.conf.json` _before_ that hook runs. The plugin restores geometry from a
+  window-created hook, so it joined the plugin store too late to ever see the main window:
+  every launch opened at the configured default. Only the saving half of the plugin still
+  worked, and what it saved was an empty `{}` — which `has_saved_window_state` then read
+  as "the user has chosen a size", quietly disabling **Start maximized** from the second
+  launch onwards. The plugin is now registered on the builder, before any window exists.
+
 ## [0.6.1] - 2026-08-14
 
 ### Fixed

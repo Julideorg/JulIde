@@ -72,9 +72,16 @@ fn detect_capability() -> InstallCapability {
 fn detect_capability() -> InstallCapability {
     // A path we cannot read is not something to guess about: every download except
     // the portable one is an install, so that is the safer assumption.
-    let installed = std::env::current_exe()
-        .map(|exe| is_installed_location(&exe, &installer_roots()))
-        .unwrap_or(true);
+    //
+    // The path heuristic below is the fallback, not the first answer. A copy running
+    // in portable mode has said what it is — it keeps its state beside the binary —
+    // and that beats inferring it from where the file happens to sit. The heuristic
+    // still decides for a portable binary that has been renamed and has no data
+    // directory yet, which is the case it was written for.
+    let installed = !crate::portable::is_portable()
+        && std::env::current_exe()
+            .map(|exe| is_installed_location(&exe, &installer_roots()))
+            .unwrap_or(true);
 
     if installed {
         InstallCapability {

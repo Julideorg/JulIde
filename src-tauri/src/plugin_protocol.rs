@@ -24,7 +24,11 @@
 //! `connect-src 'none'`.
 
 use crate::plugins::{validate_plugin_name, PluginManifest};
-use std::path::{Path, PathBuf};
+// Same directory the plugin commands scan, resolved by the same function — a
+// portable copy that served frames from one place and listed them from another
+// would show every plugin as broken.
+use crate::portable::plugins_dir;
+use std::path::Path;
 
 /// The plugin bootstrap, built from `src/plugin-sdk/bootstrap.ts`.
 ///
@@ -229,11 +233,6 @@ fn html_escape(s: &str) -> String {
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
-}
-
-fn plugins_dir() -> PathBuf {
-    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-    home.join(".julide").join("plugins")
 }
 
 /// Read a file from inside a plugin's directory, refusing anything that escapes it.

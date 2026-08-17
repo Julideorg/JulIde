@@ -185,12 +185,19 @@ jobs:
       # assets — `julide_<version>_x64-portable.exe` next to Tauri's own
       # `julide_<version>_x64-setup.exe`.
       #
-      # Two caveats, both written up under "The Windows portable build" in the
-      # README so they reach the people who download it:
-      #   - It needs the WebView2 runtime on the machine. Windows 11 and current
-      #     Windows 10 ship it; the installers can bootstrap it, this cannot.
-      #   - Settings still live in %APPDATA%, so this is "runs without being
-      #     installed", not "leaves no trace".
+      # The name is not cosmetic. `src-tauri/src/portable.rs` treats a file name
+      # containing `portable` as one of the three signals that turn portable mode
+      # on, which is what makes the download keep its settings, plugins, cache and
+      # WebView2 profile in a `julide-data` folder beside itself instead of in
+      # %APPDATA%. Renaming this asset to something without `portable` in it would
+      # silently ship a build that writes to the user profile again — the other two
+      # signals (an existing `julide-data` folder, `JULIDE_PORTABLE=1`) are not
+      # present on a fresh download.
+      #
+      # One caveat remains, written up under "The Windows portable build" in the
+      # README so it reaches the people who download it: it needs the WebView2
+      # runtime on the machine. Windows 11 and current Windows 10 ship it; the
+      # installers can bootstrap it, a single file cannot.
       - name: Stage portable Windows executable
         id: portable
         if: runner.os == 'Windows'

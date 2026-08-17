@@ -287,7 +287,7 @@ Download the latest build from the
 | **Linux** | `.AppImage`          | Recommended download — supports in-app updates. `chmod +x` then run. (Or install the Flatpak above.) |
 | Linux     | `.deb` / `.rpm`      | Installs system-wide and registers `.jl` files. Updates via your package manager.                    |
 | Windows   | `-setup.exe`, `.msi` | Recommended. Also the right download if you use WSL2 — see below.                                    |
-| Windows   | `-portable.exe`      | Single file, no installation — run it from anywhere, including a USB stick. See the caveats below.   |
+| Windows   | `-portable.exe`      | Single file, no installation, settings kept beside it — run it from anywhere, including a USB stick. |
 | macOS     | `.dmg`               | Apple Silicon and Intel builds are published separately.                                             |
 
 You also need **Julia 1.6+** ([download](https://julialang.org/downloads/)). Apart from
@@ -299,19 +299,55 @@ launch, julIDE will offer to help you install or locate it.
 `julide_<version>_x64-portable.exe` is the same application as the installer, as a
 single file that runs where you put it. Nothing is written to Program Files and nothing
 is registered, so it needs no administrator rights — useful on a locked-down machine, or
-to try julIDE without committing to it. Three things to know before you pick it over the
-installer:
+to try julIDE without committing to it.
+
+**It keeps its state beside itself.** On first launch it creates one folder next to the
+`.exe` and never writes anywhere else:
+
+```
+E:\julide\
+  julide_0.6.1_x64-portable.exe
+  julide-data\
+    config\     settings, plugin permission grants, workspace trust, window size
+    plugins\    installed plugins
+    cache\      plugin marketplace index and icons
+    webview\    WebView2 profile
+```
+
+Copy those two items to another machine and everything comes with them. Delete the
+folder and julIDE starts fresh; delete both and nothing of julIDE is left behind.
+
+Three things to know before you pick it over the installer:
 
 - **It needs the WebView2 runtime already on the machine.** Windows 11 and current
   Windows 10 ship it. The installers can fetch it if it is missing; a single file
   cannot. If the window never appears, that is the reason —
   [install the Evergreen runtime](https://developer.microsoft.com/microsoft-edge/webview2/)
   and run it again.
-- **It runs without installing; it does not run without a trace.** Settings, plugins and
-  their permission grants still live under `%APPDATA%` and `%USERPROFILE%`, the same as
-  for an installed copy. Deleting the `.exe` leaves those behind, and moving it to
-  another machine does not carry them along.
+- **Two things stay outside the folder**, deliberately. Git tokens stay in Windows
+  Credential Manager, because the alternative is a token in a plain file on a stick that
+  can be lost. And Julia — its installation and its `~/.julia` package depot — belongs to
+  Julia, not to julIDE; set `JULIA_DEPOT_PATH` before launching if you want the packages
+  to travel too.
 - **It does not update itself.** See [Updates](#updates).
+
+**Turning portable mode on for any copy.** julIDE runs portable when any of these is
+true, so the downloaded `-portable.exe` works with nothing to set up, and keeps working
+after you rename it:
+
+| Signal                                   | Use it when                                                                         |
+| ---------------------------------------- | ----------------------------------------------------------------------------------- |
+| A `julide-data` folder beside the `.exe` | Making any copy portable, including one you built yourself — just create the folder |
+| The file name contains `portable`        | Automatic for the released asset                                                    |
+| `JULIDE_PORTABLE=1`                      | Forcing it on; `JULIDE_PORTABLE=0` forces it back off                               |
+
+If the folder beside the `.exe` cannot be written to — a read-only share, a directory
+you have no rights in — julIDE says so on stderr and falls back to the usual per-user
+locations rather than failing to save anything.
+
+None of this is Windows-only. Put a `julide-data` folder next to the Linux `.AppImage`
+and it behaves the same way — and resolves the folder against the `.AppImage` file
+itself, not the temporary directory an AppImage is mounted at while it runs.
 
 ### If you use WSL2
 

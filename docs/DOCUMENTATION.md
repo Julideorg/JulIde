@@ -181,7 +181,7 @@ bun run tauri build           # Production build with installers
 
 - `Cmd/Ctrl+,` or Command Palette → "Open Settings".
 - Changes are saved immediately and take effect in real-time.
-- Settings file: `~/.config/julide/settings.json`.
+- Settings file: `~/.config/julide/settings.json` (see [Storage Location](#storage-location) for the other platforms and for portable copies).
 
 ---
 
@@ -291,11 +291,12 @@ Each Rust module in `src-tauri/src/` handles one domain:
 | `git_gitlab.rs`      | GitLab REST API implementation of `GitProvider`                                                                  |
 | `git_gitea.rs`       | Gitea REST API implementation of `GitProvider`                                                                   |
 | `container.rs`       | Docker/Podman runtime detection, container lifecycle, devcontainer.json support                                  |
-| `plugins.rs`         | Scan `~/.julide/plugins/` for plugin manifests, persist permission grants                                        |
+| `plugins.rs`         | Scan the plugins directory for manifests, persist permission grants                                              |
 | `plugin_protocol.rs` | The `julide-plugin://` scheme: routes, per-plugin CSP, sandboxed frame documents                                 |
 | `search.rs`          | Walk workspace tree, regex match file contents                                                                   |
 | `watcher.rs`         | Watch workspace for external file changes                                                                        |
 | `settings.rs`        | Load/save JSON settings to the platform config directory                                                         |
+| `portable.rs`        | Decides where every other module's state lives: the platform directories, or `julide-data` beside the executable |
 | `pluto.rs`           | Spawn Pluto.jl server, extract URL, open in Tauri webview                                                        |
 
 ### Shared State
@@ -753,11 +754,19 @@ The IDE supports browsing PRs, issues, and CI status for repositories hosted on 
 
 ### Storage Location
 
-| Platform | Path                                                 |
-| -------- | ---------------------------------------------------- |
-| Linux    | `~/.config/julide/settings.json`                     |
-| macOS    | `~/Library/Application Support/julide/settings.json` |
-| Windows  | `%APPDATA%/julide/settings.json`                     |
+| Platform      | Path                                                               |
+| ------------- | ------------------------------------------------------------------ |
+| Linux         | `~/.config/julide/settings.json`                                   |
+| macOS         | `~/Library/Application Support/julide/settings.json`               |
+| Windows       | `%APPDATA%/julide/settings.json`                                   |
+| Any, portable | `<folder holding the executable>/julide-data/config/settings.json` |
+
+Every path in this document that names a per-user directory moves in the same way
+under a portable copy. `src-tauri/src/portable.rs` is the only module that decides
+this — nothing else calls `dirs::` for julIDE's own state — and it maps
+`config_dir()` to `julide-data/config`, the `~/.julide` state directory to
+`julide-data` itself, and `cache_dir()` to `julide-data/cache`. See "The Windows
+portable build" in the README for what turns the mode on.
 
 ### Schema
 
@@ -944,7 +953,7 @@ Plugin authors should read [`PLUGIN_API_V2.md`](PLUGIN_API_V2.md). This section 
 
 ### Plugin Directory
 
-Plugins are installed in `~/.julide/plugins/`. Each lives in its own subdirectory with a `plugin.json` manifest.
+Plugins are installed in `~/.julide/plugins/` — or in `julide-data/plugins/` beside the executable on a portable copy. Each lives in its own subdirectory with a `plugin.json` manifest.
 
 ```
 ~/.julide/plugins/

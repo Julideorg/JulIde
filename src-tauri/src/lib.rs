@@ -18,6 +18,7 @@ mod notebook_session;
 mod plugin_protocol;
 mod plugins;
 mod pluto;
+mod portable;
 mod pty;
 mod search;
 mod settings;
@@ -64,12 +65,71 @@ fn disable_webkit_dmabuf_renderer() {
     }
 }
 
+/// The window-state plugin, pointed at the portable data directory when there is one.
+///
+/// The plugin resolves its file as `app_config_dir().join(filename)` and exposes no
+/// way to change the directory — only the name. Handing it an absolute path as that
+/// "name" is what redirects it, because `join` discards its left-hand side when the
+/// right-hand side is absolute. See `portable::window_state_file`, which both this
+/// and `settings::has_saved_window_state` go through so the two cannot drift.
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+fn window_state_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
+    let builder = tauri_plugin_window_state::Builder::default();
+    if portable::is_portable() {
+        builder.with_filename(portable::window_state_file().to_string_lossy())
+    } else {
+        builder
+    }
+    .build()
+}
+
+/// Create the windows Tauri was told not to create, with the webview's profile
+/// pointed inside the portable data directory.
+///
+/// Only reachable in portable mode, and it exists for one reason: the WebView2
+/// user-data folder cannot be moved any other way. `tauri.conf.json` accepts only a
+/// relative path, resolved under `%LOCALAPPDATA%`; the builder method that takes an
+/// absolute one has to run *before* the window is built, and Tauri builds windows
+/// declared in the config before `setup` is called. So portable mode turns
+/// `create` off for those windows in the context and builds them here instead.
+///
+/// Left alone, WebView2 keeps a full profile — cache, cookies, local storage,
+/// IndexedDB — under `%LOCALAPPDATA%\com.ofek.julide` regardless of where the
+/// executable was run from. It is the largest trace a "portable" build was leaving.
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+fn create_portable_windows<R: tauri::Runtime>(app: &tauri::App<R>) -> tauri::Result<()> {
+    // `None` here is exactly the case where `create` was left alone above — both
+    // ask the same `portable::data_root()`, which is resolved once — so this
+    // cannot end with a window nobody created.
+    let Some(data_dir) = portable::webview_data_dir() else {
+        return Ok(());
+    };
+
+    for config in app.config().app.windows.clone() {
+        tauri::WebviewWindowBuilder::from_config(app.handle(), &config)?
+            .data_directory(data_dir.clone())
+            .build()?;
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(target_os = "linux")]
     disable_webkit_dmabuf_renderer();
 
-    tauri::Builder::default()
+    #[cfg_attr(mobile, allow(unused_mut))]
+    let mut context = tauri::generate_context!();
+
+    // Portable mode builds the main window itself; see `create_portable_windows`.
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    if portable::is_portable() {
+        for window in context.config_mut().app.windows.iter_mut() {
+            window.create = false;
+        }
+    }
+
+    let builder = tauri::Builder::default()
         // Sandboxed plugin frames. Registered before the webview exists, because a
         // custom scheme cannot be added afterwards. See src/plugin_protocol.rs.
         .register_uri_scheme_protocol("julide-plugin", |ctx, request| {
@@ -90,7 +150,22 @@ pub fn run() {
         // dialog is registered because fs.rs drives the native pickers from Rust.
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
-        .manage(new_julia_state())
+        .manage(new_julia_state());
+
+    // Restores the window's size and position from the previous run.
+    //
+    // Registered on the builder rather than from inside `setup`, where it used to
+    // live. Tauri dispatches the hook that *restores* geometry as each window is
+    // built, and windows declared in tauri.conf.json are built before `setup`
+    // runs — so a plugin registered inside `setup` joined the store too late to
+    // ever see the main window. Only the saving half worked, and what it saved was
+    // an empty `{}`, which `has_saved_window_state` then read as "the user has
+    // picked a size" and used to disable `start_maximized` from the second launch
+    // on. Both halves work from here.
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    let builder = builder.plugin(window_state_plugin());
+
+    builder
         // Builder::setup takes a single closure — a second call replaces the first,
         // so everything that runs at startup belongs in here.
         .setup(|app| {
@@ -102,11 +177,9 @@ pub fn run() {
                 // Only used to restart after an update has been staged.
                 app.handle().plugin(tauri_plugin_process::init())?;
 
-                // Restores the window's size and position from the previous run.
-                // Registered here rather than at the top so it applies before the
-                // maximize decision below.
-                app.handle()
-                    .plugin(tauri_plugin_window_state::Builder::default().build())?;
+                // No-op unless this is a portable copy. Runs before the menu and the
+                // maximize decision below, both of which want a window to exist.
+                create_portable_windows(app)?;
             }
 
             // Native application menu. On macOS this is also what provides the
@@ -297,7 +370,7 @@ pub fn run() {
             notebook_session::notebook_session_stop,
             notebook_session::notebook_session_status,
         ])
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error while building tauri application")
         // `.run(context)` gives no exit hook, and `kill_on_drop` does not help because
         // nothing drops the session registry at exit() — so quitting used to leave one
@@ -305,6 +378,11 @@ pub fn run() {
         .run(|_app, event| {
             if matches!(event, tauri::RunEvent::Exit) {
                 notebook_session::kill_all_on_exit();
+                // Runs after the plugins have handled this event — Tauri dispatches
+                // to them first — so the window state is already saved and the empty
+                // directory the window-state plugin makes on the way past is there
+                // to be swept. No-op outside portable mode.
+                portable::clean_profile_leftovers();
             }
         });
 }
