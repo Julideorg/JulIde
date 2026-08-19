@@ -87,7 +87,7 @@ openssl-sys = { version = "0.9", features = ["vendored"], optional = true }
 # its own `fatou-formatter ^0.3.0` resolves to 0.3.1, which moved to
 # `fatou-parser ^0.3`. Two incompatible `JuliaLanguage` types then reach
 # `format_node`, and fatou itself does not compile. 0.13 lines both up on 0.3.
-fatou = "0.13"
+fatou = "0.14"
 lsp-server = "0.10"
 crossbeam-channel = "0.5"
 

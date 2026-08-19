@@ -704,9 +704,9 @@ dependencies = [
 
 [[package]]
 name = "clapdown"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a39677e61d4fe3889470a5748e3a544e01a3206337e5eadab7d486d5f158b3a"
+checksum = "68bcefa13c36a119d957224c65214f792139033a34f8157297ac2a7fff5a343a"
 dependencies = [
  "clap",
 ]
@@ -1411,9 +1411,9 @@ checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
 name = "fatou"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cbcf3841a5137f3aba36547dac9d8cabe2d65f76db3a3422d1b2918e6657a1ef"
+checksum = "be35d019281cf6f605d05a0badd66af0101d4f3a412d313ec335f89ecd4cdaf9"
 dependencies = [
  "annotate-snippets",
  "clap",
@@ -1430,6 +1430,7 @@ dependencies = [
  "log",
  "lsp-server",
  "lsp-types",
+ "memchr",
  "postcard",
  "rayon",
  "rowan",
@@ -1443,9 +1444,9 @@ dependencies = [
 
 [[package]]
 name = "fatou-formatter"
-version = "0.3.1"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfa34f426a07414b4d7795eaa106b03a646a8c67066f53e00ab5fd56ead79647"
+checksum = "46c9181dc359efc86f57e6c3947a60a3a89ab47cf003b431017c8449a1b914e2"
 dependencies = [
  "fatou-parser",
  "rowan",
@@ -1453,9 +1454,9 @@ dependencies = [
 
 [[package]]
 name = "fatou-parser"
-version = "0.3.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64b3f66d0e2c538a98c58540401fd14514423005bff4633f09ca8168709ff9b7"
+checksum = "0e8a373dc4526bfff1e9f09d11b21eaa74aabb08e118036dc881e3c6c401a810"
 dependencies = [
  "rowan",
  "serde",
